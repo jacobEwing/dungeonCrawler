@@ -20,10 +20,13 @@
 			height: 400px;
 		}
 	</style>
-	<script src="elementSprite.js" type="text/javascript"></script>
+	<script type="text/javascript" src="dungeonGenerator/generator.js"></script> 
+	<script type="text/javascript" src="elementSprite.js"></script>
 	<script type="text/javascript">
 		var gameScale = 6;
 		var sprites = {};
+		var maps = array();
+		var currentMap = undefined;
 
 		function initialize(step){
 			if(step == undefined) step = 'load stone sprite';
@@ -38,13 +41,80 @@
 				case 'load floor sprite':
 					sprites.ground = new spriteSet('ground.sprite', function(){
 						setTimeout(function(){
-							initialize('finish');
+							initialize('load map');
 						}, 1);
 					});
+					break;
+				case 'load map':
+					maps[maps.length] = buildMap('dungeon');
+					currentMap = maps.length - 1;
+					renderMap(currentMap);
+					setTimeout(function(){initialize('finish');}; 1);
 					break;
 				case 'finish':
 					playDemo();
 			}
+		}
+
+		function renderMap(idx){
+			var x, y;
+			var map = maps[idx];
+			for(x = 0; x < map.length; x++){
+				for(y = 0; y < map[x].length; y++){
+					
+				}
+			}
+		}
+
+		function buildMap(mapType){
+			var error = 0;
+			var size = Math.floor(Math.random() * 60);
+			map = new mapBuilder();
+			switch(mapType){
+				case 'dungeon':
+					map.buildDungeon();
+					/*
+
+					map.buildDungeon({
+						'width' : 5 + size, 
+						'height' : 5 + size,
+						'stairdown' : true,
+						'stairup' : true,
+						'roomscale' : 1
+					});
+					*/
+					break;
+				case 'swamp':
+					map.buildSwamp({
+						'width' : 30 + size, 
+						'height' : 30 + size
+					});
+					break;
+				case 'forest':
+					map.buildForest({
+						'width' : 30 + size, 
+						'height' : 30 + size
+					});
+					break;
+				default:
+					alert('Invalid map type');
+					error = 1;
+					map = [];
+			}
+
+			if(!error){
+				map = map.map;
+				var lineStr;
+				$('#mapContent').html('');
+				for(var y = 0; y < map[0].length; y++){
+					lineStr = "";
+					for(var x = 0; x < map.length; x++){
+						lineStr += map[x][y];
+					}
+					$('#mapContent').append(lineStr + "\n");
+				}
+			}
+			return map;
 		}
 
 		window.onload = function(){
