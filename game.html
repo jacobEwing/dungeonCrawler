@@ -25,7 +25,7 @@
 	<script type="text/javascript">
 		var gameScale = 6;
 		var sprites = {};
-		var maps = array();
+		var maps = Array();
 		var currentMap = undefined;
 
 		function initialize(step){
@@ -49,7 +49,7 @@
 					maps[maps.length] = buildMap('dungeon');
 					currentMap = maps.length - 1;
 					renderMap(currentMap);
-					setTimeout(function(){initialize('finish');}; 1);
+					setTimeout(function(){initialize('finish');}, 1);
 					break;
 				case 'finish':
 					playDemo();
