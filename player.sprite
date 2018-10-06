@@ -1,0 +1,134 @@
+{
+	"image" : "images/playerSprite7.png",
+	"frameRate" : 100,
+	"frameWidth" : 5,
+	"frameHeight" : 11,
+	"frames" : {
+		"left_step_1" : {"xoffset" : 0, "yoffset" : 0, "width" : 5},
+		"left_step_2" : {"xoffset" : 5, "yoffset" : 0, "width" : 5},
+		"left_step_3" : {"xoffset" : 11, "yoffset" : 0, "width" : 5},
+		"right_step_3" : {"xoffset" : 15, "yoffset" : 0, "width" : 5},
+		"right_step_2" : {"xoffset" : 21, "yoffset" : 0, "width" : 5},
+		"right_step_1" : {"xoffset" : 27, "yoffset" : 0, "width" : 5},
+		"front_step_1" : {"xoffset" : 32, "yoffset" : 0, "width": 4},
+		"front_step_2" : {"xoffset" : 36, "yoffset" : 0, "width": 4},
+		"back_step_1" : {"xoffset" : 40, "yoffset" : 0, "width": 4},
+		"back_step_2" : {"xoffset" : 44, "yoffset" : 0, "width": 4},
+		"front_idle" : {"xoffset" : 48, "yoffset" : 0, "width" : 4},
+		"back_idle" : {"xoffset" : 52, "yoffset" : 0, "width": 4},
+		"left_idle" : {"xoffset" : 0, "yoffset" : 12, "width": 4},
+		"right_idle" : {"xoffset" : 4, "yoffset" : 12, "width": 5},
+		"back_climbing_1" : {"xoffset" : 10, "yoffset" : 12, "width": 3},
+		"back_climbing_2" : {"xoffset" : 14, "yoffset" : 12, "width": 3},
+
+		"front_sword_1" : {"xoffset" : 22, "yoffset" : 12, "width" : 5},
+		"front_sword_2" : {"xoffset" : 28, "yoffset" : 12, "width" : 5},
+		"front_sword_3" : {"xoffset" : 34, "yoffset" : 12, "width" : 5},
+
+		"back_sword_1" : {"xoffset" : 39, "yoffset" : 12, "width" : 5},
+		"back_sword_2" : {"xoffset" : 45, "yoffset" : 12, "width" : 5},
+		"back_sword_3" : {"xoffset" : 52, "yoffset" : 12, "width" : 5},
+
+		"left_sword_1" : {"xoffset" : 0, "yoffset" : 24, "width" : 6, "drawOffset" : {"x" : -1,"y" : 0}},
+		"left_sword_2" : {"xoffset" : 6, "yoffset" : 24, "width" : 10, "drawOffset" : {"x" : -6,"y" : 0}},
+		"left_sword_3" : {"xoffset" : 17, "yoffset" : 24, "width" : 11, "drawOffset" : {"x" : -5,"y" : 0}},
+
+
+		"right_sword_1" : {"xoffset" : 29, "yoffset" : 24, "width" : 6, "drawOffset" : {"x" : 0,"y" : 0}},
+		"right_sword_2" : {"xoffset" : 36, "yoffset" : 24, "width" : 9, "drawOffset" : {"x" : 0,"y" : 0}},
+		"right_sword_3" : {"xoffset" : 46, "yoffset" : 24, "width" : 11, "drawOffset" : {"x" : 1,"y" : 0}},
+
+		"back_left_idle" : {"xoffset" : 0, "yoffset" : 36, "width" : 4},
+		"back_left_step_1" : {"xoffset" : 5, "yoffset" : 36, "width" : 5},
+		"back_left_step_2" : {"xoffset" : 11, "yoffset" : 36, "width" : 4},
+		"back_left_step_3" : {"xoffset" : 16, "yoffset" : 36, "width" : 4},
+
+		"back_right_idle" : {"xoffset" : 0, "yoffset" : 48, "width" : 4, "drawOffset" : {"x" : 1, "y" : 0}},
+		"back_right_step_1" : {"xoffset" : 5, "yoffset" : 48, "width" : 5, "drawOffset" : {"x" : 0, "y" : 0}},
+		"back_right_step_2" : {"xoffset" : 11, "yoffset" : 48, "width" : 4, "drawOffset" : {"x" : 1, "y" : 0}},
+		"back_right_step_3" : {"xoffset" : 16, "yoffset" : 48, "width" : 4, "drawOffset" : {"x" : 1, "y" : 0}},
+
+		"front_left_idle" : {"xoffset" : 0, "yoffset" : 60, "width" : 4},
+		"front_left_step_1" : {"xoffset" : 5, "yoffset" : 60, "width" : 5},
+		"front_left_step_2" : {"xoffset" : 11, "yoffset" : 60, "width" : 3, "drawOffset" : {"x" : 1, "y" : 0}},
+		"front_left_step_3" : {"xoffset" : 15, "yoffset" : 60, "width" : 4, "drawOffset" : {"x" : 1, "y" : 0}},
+
+		"front_right_idle" : {"xoffset" : 0, "yoffset" : 72, "width" : 4, "drawOffset" : {"x" : 1, "y" : 0}},
+		"front_right_step_1" : {"xoffset" : 5, "yoffset" : 72, "width" : 5},
+		"front_right_step_2" : {"xoffset" : 11, "yoffset" : 72, "width" : 3, "drawOffset" : {"x" : 1, "y" : 0}},
+		"front_right_step_3" : {"xoffset" : 15, "yoffset" : 72, "width" : 4},
+
+		"back_left_sword_1" : {"xoffset" : 21, "yoffset" : 36, "width" : 7, "drawOffset" : {"x" : -3, "y" : 0}},
+		"back_left_sword_2" : {"xoffset" : 29, "yoffset" : 36, "width" : 5, "drawOffset" : {"x" : 0, "y" : 0}},
+		"back_left_sword_3" : {"xoffset" : 34, "yoffset" : 36, "width" : 10, "drawOffset" : {"x" : -6, "y" : 0}},
+
+		"back_right_sword_1" : {"xoffset" : 21, "yoffset" : 48, "width" : 7, "drawOffset" : {"x" : 1, "y" : 0}},
+		"back_right_sword_2" : {"xoffset" : 29, "yoffset" : 48, "width" : 5, "drawOffset" : {"x" : 1, "y" : 0}},
+		"back_right_sword_3" : {"xoffset" : 34, "yoffset" : 48, "width" : 10, "drawOffset" : {"x" : 1, "y" : 0}},
+
+		"front_left_sword_1" : {"xoffset" : 20, "yoffset" : 60, "width" : 5, "drawOffset" : {"x" : -1, "y" : 0}},
+		"front_left_sword_2" : {"xoffset" : 26, "yoffset" : 60, "width" : 4, "drawOffset" : {"x" : 0, "y" : 0}},
+		"front_left_sword_3" : {"xoffset" : 31, "yoffset" : 60, "width" : 8, "drawOffset" : {"x" : -4, "y" : 0}},
+
+		"front_right_sword_1" : {"xoffset" : 20, "yoffset" : 72, "width" : 5, "drawOffset" : {"x" : 1, "y" : 0}},
+		"front_right_sword_2" : {"xoffset" : 23, "yoffset" : 72, "width" : 4, "drawOffset" : {"x" : 1, "y" : 0}},
+		"front_right_sword_3" : {"xoffset" : 31, "yoffset" : 72, "width" : 8, "drawOffset" : {"x" : 1, "y" : 0}}
+
+
+
+
+	},
+	"sequences" : {
+		"walkdownright" : {
+			"frames" : ["front_right_step_1", "front_right_step_3", "front_right_step_2"]
+		},
+		"walkdownleft" : {
+			"frames" : ["front_left_step_1", "front_left_step_3", "front_left_step_2"]
+		},
+		"walkupright" : {
+			"frames" : ["back_right_step_1", "back_right_step_3", "back_right_step_2"]
+		},
+		"walkupleft" : {
+			"frames" : ["back_left_step_1", "back_left_step_3", "back_left_step_2"]
+		},
+		"walkleft" : {
+			"frames" : ["left_step_1", "left_step_2", "left_step_3"]
+		},
+		"walkright" : {
+			"frames" : ["right_step_1", "right_step_2", "right_step_3"]
+		},
+		"walkdown" : {
+			"frames" : ["front_step_1", "front_idle", "front_step_2"]
+		},
+		"walkup" : {
+			"frames" : ["back_step_1", "back_idle", "back_step_2"]
+		},
+		"climb" : {
+			"frames" : ["back_climbing_1", "back_climbing_2"]
+		},
+		"attack_front" : {
+			"frames" : ["front_sword_3", "front_sword_1", "front_sword_2", "front_sword_1"]
+		},
+		"attack_back" : {
+			"frames" : ["back_sword_3", "back_sword_1", "back_sword_2", "back_sword_1"]
+		},
+		"attack_left" : {
+			"frames" : ["left_sword_2", "left_sword_1", "left_sword_3", "left_sword_1"]
+		},
+		"attack_right" : {
+			"frames" : ["right_sword_2", "right_sword_1", "right_sword_3", "right_sword_1"]
+		},
+		"attack_up_left" : {
+			"frames" : ["back_left_sword_1", "back_left_sword_2", "back_left_sword_3", "back_left_sword_2"]
+		},
+		"attack_up_right" : {
+			"frames" : ["back_right_sword_1", "back_right_sword_2", "back_right_sword_3", "back_right_sword_2"]
+		},
+		"attack_down_left" : {
+			"frames" : ["front_left_sword_1", "front_left_sword_2", "front_left_sword_3", "front_left_sword_2"]
+		},
+		"attack_down_right" : {
+			"frames" : ["front_right_sword_1", "front_right_sword_2", "front_right_sword_3", "front_right_sword_2"]
+		}
+	}
+}

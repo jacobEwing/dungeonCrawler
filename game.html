@@ -3,45 +3,127 @@
 <head>
 	<style type="text/css">
 		body{
+			image-rendering: pixelated;
+			image-rendering: -moz-crisp-edges;
+			image-rendering: crisp-edges;
 			background-color: #000;
 		}
 		#gameMargin{
-			position: relative;
-			margin-top: 1em;
+			position: absolute;
+			top:0;
+			left:0;
+			margin: 0;
+			padding: 0;
+			width: 100%;
+			height: 100%;
+			overflow: hidden;
+		}
+		div.gameLayer{
+			position: absolute;
+			top: 0;
+			left: 0;
+			margin: auto;
 			width: 100%;
 			height: 100%;
 		}
 
-		#playArea{
-			image-rendering: pixelated;
-			image-rendering: -moz-crisp-edges;
-			image-rendering: crisp-edges;
-			position: relative;
-			margin: auto;
-			border: 1px solid #000;
-			width: 600px;
-			height: 400px;
-		}
 	</style>
+	<script type="text/javascript" src="keyboard.js"></script>
 	<script type="text/javascript" src="generator.js"></script> 
 	<script type="text/javascript" src="elementSprite.js"></script>
 	<script type="text/javascript" src="jquery.min.js"></script>
 	<script type="text/javascript">
+		var playerSpriteSet = new spriteSet();
+		var player;
 		var gameScale = 5, cellSize = 12;
 		var sprites = {};
 		var maps = Array();
 		var currentMap = undefined;
-		var playArea;
+		var mapLayer;
+		var gameInterval; // <-- the animation interval object
+		var walkSpeed = 2
+		var angSpeedRatio = {
+			x : .70711,
+			y : .70711
+
+			/*
+			// these old values were used on an isometric map
+			x : 0.866, // <- sin(pi / 3)
+			y : 0.5 // <- cos(pi / 3)
+			*/
+		};
+		var screenMiddle = {x: 0, y : 0};
+
+		var player = (function(){
+			var position = {x : 0, y : 0};
+			return {
+				direction : 'down',
+				sprite : null,
+				'position' : position,
+
+				move : function(dx, dy, noCollision){
+					var n, collided = 0;
+					if(noCollision != true){
+						/*
+						for(n in mapObjects){
+							if(mapObjects[n].objType == 'terrain' || mapObjects[n].blockedAreas == undefined) continue;
+							var pPos = this.sprite.position();
+							var hPos = mapObjects[n].image.position();
+							var offset = $('#unitsLayer').css("background-position").split(" ");
+							var testX = pPos.left - hPos.left - parseFloat(offset[0].replace("px",""));
+							var testY = pPos.top - hPos.top - parseFloat(offset[1].replace("px",""));
+
+							testY += this.sprite.element.height();
+							testX += this.sprite.element.width() / 2;
+							testX = testX + dx * gameScale;
+							testY = testY + dy * gameScale;
+
+							collided = 1;
+							for(var a = 0; a < mapObjects[n].blockedAreas.length; a++){
+								for(var p = 0; p < mapObjects[n].blockedAreas[a].length; p++){
+									var px1 = mapObjects[n].blockedAreas[a][p][0] * gameScale;
+									var py1 = mapObjects[n].blockedAreas[a][p][1] * gameScale;
+									var q = (p + 1) % mapObjects[n].blockedAreas[a].length;
+									var px2 = mapObjects[n].blockedAreas[a][q][0] * gameScale;
+									var py2 = mapObjects[n].blockedAreas[a][q][1] *gameScale;
+
+									collided &= side_of_line(px1, py1, px2, py2, testX, testY) != 1;
+								}
+							}
+							if(collided) break;
+						}
+						*/
+					}
+					if(!collided){
+						position.x += dx;
+						position.y += dy;
+						//$('#unitsLayer').css('background-position', -position.x * gameScale + 'px ' + (-position.y * gameScale) + 'px');
+						$('#mapLayer').css({'top' : -position.y * gameScale + 'px', 'left': -position.x * gameScale + 'px'});
+						$('#unitsLayer').css({'top' : -position.y * gameScale + 'px', 'left': -position.x * gameScale + 'px'});
+						//for(n in mapObjects){
+						//	mapObjects[n].refreshZ();
+						//}
+					}
+				},
+				currentSequence: null,
+				currentEndFrame : null
+			};
+		})();
 
 		function initialize(step){
 			if(step == undefined) step = 'initialize';
 			switch(step){
 				case 'initialize':
-					playArea = document.getElementById('playArea');
+					mapLayer = document.getElementById('mapLayer');
+					screenMiddle = {
+						x : gameMargin.offsetWidth / (2 * gameScale),
+						y : gameMargin.offsetHeight / (2 * gameScale)
+					};
 					setTimeout(function(){
 						initialize('load stone sprite');
 					}, 1);
 					break;
+
 				case 'load stone sprite':
 					sprites.stone = new spriteSet('stone.sprite', function(){
 						setTimeout(function(){
@@ -49,21 +131,54 @@
 						}, 1);
 					});
 					break;
+
 				case 'load floor sprite':
 					sprites.ground = new spriteSet('ground.sprite', function(){
 						setTimeout(function(){
-							initialize('load map');
+							initialize('load dungeon elements');
 						}, 1);
 					});
 					break;
+
+				case 'load dungeon elements':
+					sprites.dungeonElements = new spriteSet('dungeonElements.sprite', function(){
+						setTimeout(function(){
+							initialize('load player sprite');
+						}, 1);
+					});
+					break;
+
+				case 'load player sprite':
+					playerSpriteSet.load("player.sprite", function(){
+						player.sprite = new spriteClass(this);
+						player.sprite.setScale(gameScale);
+						player.sprite.appendTo(playerLayer);
+						player.sprite.setPosition(screenMiddle.x, screenMiddle.y, true);
+
+
+						player.sprite.setFrame('front_idle');
+						setTimeout(function(){initialize('load map');}, 0);
+						
+					});
+					break;
+
 				case 'load map':
-					maps[maps.length] = buildMap('dungeon');
+					maps[maps.length] = generateMap('dungeon');
 					currentMap = maps.length - 1;
 					renderMap(currentMap);
+					setTimeout(function(){initialize('initialize keyboard');}, 1);
+					break;
+
+				case 'initialize keyboard':
+					// the functions used here are defined in keyboard.js
+					initialize_keymap();
+					document.onkeyup = keyupCall;
+					document.onkeydown = keydownCall;
 					setTimeout(function(){initialize('finish');}, 1);
 					break;
+
 				case 'finish':
-					playDemo();
+					gameInterval = setInterval(playGame, 70);
 			}
 		}
 
@@ -74,6 +189,9 @@
 			var groundSprite = new spriteClass(sprites.ground);
 			groundSprite.setScale(gameScale);
 
+			dungeonElementsSprite = new spriteClass(sprites.dungeonElements);
+			dungeonElementsSprite.setScale(gameScale);
+
 			var x, y, drawX, drawY;
 			var map = maps[idx];
 			for(x = 0; x < map.length; x++){
@@ -82,12 +200,18 @@
 					drawY = y * cellSize * gameScale;
 
 					switch(map[x][y]){
-						case '.': case '<': case '>': // <-- those need to be made stairwells
+						case '.':
 							groundSprite.rotate(Math.PI / 2);
-							groundSprite.drawRandomArea(playArea, drawX, drawY, cellSize, cellSize);
+							groundSprite.drawRandomArea(mapLayer, drawX, drawY, cellSize, cellSize);
+							break;
+ 						case '<':
+							dungeonElementsSprite.drawFrame(mapLayer, 'stairsUp', drawX, drawY);
+							break;
+						case '>':
+							dungeonElementsSprite.drawFrame(mapLayer, 'stairsDown', drawX, drawY);
 							break;
 						case '#':
-							stoneSprite.drawFrame(playArea, Math.floor(Math.random() * 25), drawX, drawY);
+							stoneSprite.drawFrame(mapLayer, Math.floor(Math.random() * 25), drawX, drawY);
 							break;
 						default:
 							continue;
@@ -96,13 +220,18 @@
 			}
 		}
 
-		function buildMap(mapType){
+		function generateMap(mapType){
 			var error = 0;
 			var size = Math.floor(Math.random() * 60);
 			map = new mapBuilder();
 			switch(mapType){
 				case 'dungeon':
-					map.buildDungeon({width : 50, height: 30});
+					map.buildDungeon({
+						width : 40,
+						height: 40,
+						stairup: true,
+						stairdown: true
+					});
 					/*
 
 					map.buildDungeon({
@@ -151,13 +280,145 @@
 			initialize();
 		};
 
-		function playDemo(){
+		function playGame(){
+			check_key_state();
+			if(player.currentSequence != null){
+				switch(player.currentSequence){
+					case 'walkup': player.move(0, -walkSpeed); break;
+					case 'walkdown': player.move(0, walkSpeed); break;
+					case 'walkleft': player.move(-walkSpeed, 0); break;
+					case 'walkright': player.move(walkSpeed, 0); break;
+					case 'walkupleft': player.move(-angSpeedRatio.x * walkSpeed, -angSpeedRatio.y * walkSpeed ); break;
+					case 'walkupright': player.move(angSpeedRatio.x * walkSpeed, -angSpeedRatio.y * walkSpeed ); break;
+					case 'walkdownleft': player.move(-angSpeedRatio.x * walkSpeed, angSpeedRatio.y * walkSpeed); break;
+					case 'walkdownright': player.move(angSpeedRatio.x * walkSpeed, angSpeedRatio.y * walkSpeed); break;
+				}
+				player.sprite.doSequenceStep();
+
+
+			}
+		}
+		
+		function check_key_state(){
+			var dirCombo = 0;
+			var sequence = null;
+			var endFrame = null;
+			var fighting = (keyState[KEYMAP['ALT']] || keyState[KEYMAP['CTRL']] || keyState[KEYMAP['META']]) ? 1 : 0;
+
+			dirCombo += keyState[KEYMAP['UP']] ? 1 : 0;
+			dirCombo += keyState[KEYMAP['DOWN']] ? 2 : 0;
+			dirCombo += keyState[KEYMAP['LEFT']] ? 4 : 0;
+			dirCombo += keyState[KEYMAP['RIGHT']] ? 8 : 0;
+
+	
+			switch(dirCombo){
+				case 1: // up
+					sequence = 'walkup';
+					endFrame = 'back_idle';
+					player.direction = 'up';
+					break;
+				case 2: // down
+					sequence = 'walkdown';
+					endFrame = 'front_idle';
+					player.direction = 'down';
+					break;
+				case 4: // left
+					sequence = 'walkleft';
+					endFrame = 'left_idle';
+					player.direction = 'left';
+					break;
+				case 8: // right
+					sequence = 'walkright';
+					endFrame = 'right_idle';
+					player.direction = 'right';
+					break;
+				case 5: // up/left
+					sequence = 'walkupleft';
+					endFrame = 'back_left_idle';
+					player.direction = 'upleft';
+					break;
+				case 6: // down/left
+					sequence = 'walkdownleft';
+					endFrame = 'front_left_idle';
+					player.direction = 'downleft';
+					break;
+				case 9: // up/right
+					sequence = 'walkupright';
+					endFrame = 'back_right_idle';
+					player.direction = 'upright';
+					break;
+				case 10: // down/right
+					sequence = 'walkdownright';
+					endFrame = 'front_right_idle';
+					player.direction = 'downright';
+					break;
+			}
+
+			if(fighting){
+				var endState = {
+					'up' : 'back_idle',
+					'down' : 'front_idle',
+					'left' : 'left_idle',
+					'right' : 'right_idle',
+					'upleft' : 'back_left_idle',
+					'upright' : 'back_right_idle',
+					'downleft' : 'front_left_idle',
+					'downright' : 'front_right_idle'
+				}[player.direction];
+				var newSequence = {
+					'up' : 'attack_back',
+					'down' : 'attack_front',
+					'left' : 'attack_left',
+					'right' : 'attack_right',
+					'upleft' : 'attack_up_left',
+					'upright' : 'attack_up_right',
+					'downleft' : 'attack_down_left',
+					'downright' : 'attack_down_right'
+				}[player.direction];
+				if(newSequence != undefined && newSequence != player.currentSequence){
+					player.currentSequence = newSequence;
+					player.sprite.startSequence(newSequence, {
+						iterations: 1,
+						method : 'manual',
+						callback: function(){
+							player.currentSequence = null;
+							player.sprite.setFrame(endState);
+						}
+					});
+				}
+			}else{
+				if(sequence == null){
+					if(player.currentSequence != null){
+						player.sprite.stopSequence(player.currentSequence);
+						player.sprite.setFrame(player.currentEndFrame);
+						player.currentSequence = null;
+					}
+				}else if(sequence != player.currentSequence){
+					if(player.currentSequence != null){
+						player.sprite.stopSequence(player.currentSequence);
+					}
+					player.currentEndFrame = endFrame;
+					player.currentSequence = sequence;
+					player.sprite.startSequence(sequence, {
+						iterations: 0,
+						method : 'manual',
+						callback: function(){
+							player.currentSequence = null;
+							player.sprite.setFrame(endFrame);
+						}
+					});
+				}
+			}
 		}
 	</script>
 </head>
 <body>
 	<div id="gameMargin">
-		<div id="playArea">
+		<div id="mapLayer" class="gameLayer">
+		</div>
+		<div id="unitsLayer" class="gameLayer">
+		</div>
+		<div id="playerLayer" class="gameLayer">
 		</div>
 	</div>
 </body>
