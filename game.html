@@ -107,12 +107,7 @@
 					if(!collided){
 						position.x += dx;
 						position.y += dy;
-						//$('#unitsLayer').css('background-position', -position.x * gameScale + 'px ' + (-position.y * gameScale) + 'px');
-						$('#mapLayer').css({'top' : -position.y * gameScale + 'px', 'left': -position.x * gameScale + 'px'});
-						$('#unitsLayer').css({'top' : -position.y * gameScale + 'px', 'left': -position.x * gameScale + 'px'});
-						//for(n in mapObjects){
-						//	mapObjects[n].refreshZ();
-						//}
+						alignLayersToPlayer();
 					}
 				},
 				currentSequence: null,
@@ -165,7 +160,6 @@
 						player.sprite.appendTo(playerLayer);
 						player.sprite.setPosition(screenMiddle.x, screenMiddle.y, true);
 
-
 						player.sprite.setFrame('front_idle');
 						setTimeout(function(){initialize('load map');}, 0);
 						
@@ -217,13 +211,10 @@
  						case '>':
 							dungeonElementsSprite.drawFrame(mapLayer, 'stairsUp', drawX, drawY);
 							entryPoint = {x : x, y : y};
-							/*
-							playerPosition = {x: x, y: y};
-							$('#mapLayer').css({
-								'top' : ((screenMiddle.top - playerPosition.y) * gameScale * cellSize) + 'px', 
-								'left' : ((screenMiddle.left - playerPosition.x) * gameScale * cellSize) + 'px'
-							});
-							*/
+
+							player.position.x = cellSize * x - screenMiddle.x;
+							player.position.y = cellSize * y - screenMiddle.y;
+							alignLayersToPlayer();
 							break;
 						case '<':
 							dungeonElementsSprite.drawFrame(mapLayer, 'stairsDown', drawX, drawY);
@@ -238,6 +229,11 @@
 			}
 		}
 
+		function alignLayersToPlayer(){
+			$('#mapLayer').css({'top' : -player.position.y * gameScale + 'px', 'left': -player.position.x * gameScale + 'px'});
+			$('#unitsLayer').css({'top' : -player.position.y * gameScale + 'px', 'left': -player.position.x * gameScale + 'px'});
+		}
+
 		function generateMap(mapType){
 			var error = 0;
 			var size = Math.floor(Math.random() * 60);
@@ -247,6 +243,7 @@
 					map.buildDungeon({
 						width : 40,
 						height: 40,
+						roomscale: .5,
 						stairup: true,
 						stairdown: true
 					});

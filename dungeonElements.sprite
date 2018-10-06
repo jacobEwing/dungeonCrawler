@@ -5,7 +5,7 @@
 	"centerx" : 6,
 	"centery" : 6,
 	"frames" : {
-		"stairsUp" : { "x" : 0, "y" : 0 },
-		"stairsDown" : { "x" : 1, "y" : 0 }
+		"stairsDown" : { "x" : 0, "y" : 0 },
+		"stairsUp" : { "x" : 1, "y" : 0 }
 	}
 }
