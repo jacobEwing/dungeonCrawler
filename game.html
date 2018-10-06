@@ -41,7 +41,7 @@
 		var currentMap = undefined;
 		var mapLayer;
 		var gameInterval; // <-- the animation interval object
-		var walkSpeed = 2
+		var walkSpeed = 3;
 		var angSpeedRatio = {
 			x : .70711,
 			y : .70711
@@ -63,6 +63,16 @@
 
 				move : function(dx, dy, noCollision){
 					var n, collided = 0;
+					var map = maps[currentMap];
+					var mapX = Math.floor((this.position.x + screenMiddle.x + dx) / (cellSize));
+					var mapY = Math.floor((this.position.y + screenMiddle.y + dy) / (cellSize)) + 1;
+					if(mapX < 0 || mapY < 0 || mapX >= map.length || mapY >= map[mapX].length){
+						collided = true;
+						console.log(mapX + ', ' + mapY);
+					}else if({'#' : 1}[map[mapX][mapY]] != undefined){
+						collided = true;
+					}
+					
 					if(noCollision != true){
 						/*
 						for(n in mapObjects){
@@ -204,10 +214,18 @@
 							groundSprite.rotate(Math.PI / 2);
 							groundSprite.drawRandomArea(mapLayer, drawX, drawY, cellSize, cellSize);
 							break;
- 						case '<':
+ 						case '>':
 							dungeonElementsSprite.drawFrame(mapLayer, 'stairsUp', drawX, drawY);
+							entryPoint = {x : x, y : y};
+							/*
+							playerPosition = {x: x, y: y};
+							$('#mapLayer').css({
+								'top' : ((screenMiddle.top - playerPosition.y) * gameScale * cellSize) + 'px', 
+								'left' : ((screenMiddle.left - playerPosition.x) * gameScale * cellSize) + 'px'
+							});
+							*/
 							break;
-						case '>':
+						case '<':
 							dungeonElementsSprite.drawFrame(mapLayer, 'stairsDown', drawX, drawY);
 							break;
 						case '#':
@@ -223,7 +241,7 @@
 		function generateMap(mapType){
 			var error = 0;
 			var size = Math.floor(Math.random() * 60);
-			map = new mapBuilder();
+			var map = new mapBuilder();
 			switch(mapType){
 				case 'dungeon':
 					map.buildDungeon({

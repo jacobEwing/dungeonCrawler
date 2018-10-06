@@ -166,6 +166,8 @@ spriteClass.prototype.refreshFrame = function(){
 	this.image.style.position = 'absolute';
 	this.image.style.left = -(this.frame.x * this.scale) + 'px';
 	this.image.style.top = -(this.frame.y * this.scale) + 'px';
+	this.element.style.marginLeft = this.frame.drawOffset.x * this.scale + 'px';
+	this.element.style.marginTop = this.frame.drawOffset.y * this.scale + 'px';
 };
 
 spriteClass.prototype.drawFrame = function(target, framename, drawx, drawy){
@@ -242,7 +244,7 @@ spriteClass.prototype.prependTo = function(target){
 
 spriteClass.prototype.setPosition = function(x, y, useScale){
 	this.centerx = this.centery = 0;
-
+	var offset = {'x' : 0, 'y' : 0};
 	this.position.x = x;
 	this.position.y = y;
 	if(useScale){
@@ -252,6 +254,9 @@ spriteClass.prototype.setPosition = function(x, y, useScale){
 	if(this.frame != undefined){
 		this.centerx = this.frame.centerx;
 		this.centery = this.frame.centery;
+		offset = this.frame.drawOffset;
+		this.element.style.marginLeft = this.frame.drawOffset.x * this.scale + 'px';
+		this.element.style.marginTop = this.frame.drawOffset.y * this.scale + 'px';
 	}
 	this.element.style.left = (this.position.x - this.centerx * this.scale) + 'px';
 	this.element.style.top = (this.position.y - this.centery * this.scale) + 'px';
@@ -515,11 +520,12 @@ spriteSet.prototype.load_frames = function(data){
 			'width': this.frameWidth,
 			'height': this.frameHeight,
 			'centerx': this.centerx,
-			'centery': this.centery
+			'centery': this.centery,
+			'drawOffset': {'x' : 0, 'y' : 0}
 		};
 		this.frameNames[this.frameNames.length] = name;
 		for(arg in data[name]){
-			switch(arg){
+			switch(arg.toLowerCase()){
 				case 'width': case 'height':
 					this.frames[name][arg] = 1 * data[name][arg];
 					break;
@@ -540,6 +546,9 @@ spriteSet.prototype.load_frames = function(data){
 					break;
 				case 'centery': case 'cy':
 					this.frames[name]['centery'] = 1 * data[name][arg];
+					break;
+				case 'drawoffset':
+					this.frames[name]['drawOffset'] = data[name][arg];
 					break;
 				
 			}
