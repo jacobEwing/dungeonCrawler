@@ -2,6 +2,9 @@
 <html>
 <head>
 	<style type="text/css">
+		body{
+			background-color: #000;
+		}
 		#gameMargin{
 			position: relative;
 			margin-top: 1em;
@@ -20,17 +23,25 @@
 			height: 400px;
 		}
 	</style>
-	<script type="text/javascript" src="dungeonGenerator/generator.js"></script> 
+	<script type="text/javascript" src="generator.js"></script> 
 	<script type="text/javascript" src="elementSprite.js"></script>
+	<script type="text/javascript" src="jquery.min.js"></script>
 	<script type="text/javascript">
-		var gameScale = 6;
+		var gameScale = 5, cellSize = 12;
 		var sprites = {};
 		var maps = Array();
 		var currentMap = undefined;
+		var playArea;
 
 		function initialize(step){
-			if(step == undefined) step = 'load stone sprite';
+			if(step == undefined) step = 'initialize';
 			switch(step){
+				case 'initialize':
+					playArea = document.getElementById('playArea');
+					setTimeout(function(){
+						initialize('load stone sprite');
+					}, 1);
+					break;
 				case 'load stone sprite':
 					sprites.stone = new spriteSet('stone.sprite', function(){
 						setTimeout(function(){
@@ -57,11 +68,30 @@
 		}
 
 		function renderMap(idx){
-			var x, y;
+			var stoneSprite = new spriteClass(sprites.stone);
+			stoneSprite.setScale(gameScale);
+
+			var groundSprite = new spriteClass(sprites.ground);
+			groundSprite.setScale(gameScale);
+
+			var x, y, drawX, drawY;
 			var map = maps[idx];
 			for(x = 0; x < map.length; x++){
 				for(y = 0; y < map[x].length; y++){
-					
+					drawX = x * cellSize * gameScale;
+					drawY = y * cellSize * gameScale;
+
+					switch(map[x][y]){
+						case '.': case '<': case '>': // <-- those need to be made stairwells
+							groundSprite.rotate(Math.PI / 2);
+							groundSprite.drawRandomArea(playArea, drawX, drawY, cellSize, cellSize);
+							break;
+						case '#':
+							stoneSprite.drawFrame(playArea, Math.floor(Math.random() * 25), drawX, drawY);
+							break;
+						default:
+							continue;
+					}
 				}
 			}
 		}
@@ -72,7 +102,7 @@
 			map = new mapBuilder();
 			switch(mapType){
 				case 'dungeon':
-					map.buildDungeon();
+					map.buildDungeon({width : 50, height: 30});
 					/*
 
 					map.buildDungeon({
@@ -122,46 +152,7 @@
 		};
 
 		function playDemo(){
-			var playArea = document.getElementById('playArea');
-			var tile = new spriteClass(sprites.stone);
-			tile.setScale(gameScale);
-			//tile.rotation = 15;
-			setInterval(function(){
-				//tile.rotate(.1);
-				tile.drawFrame(playArea, Math.floor(Math.random() * 36), 10, 10);
-				//tile.drawRandomArea(document.getElementById('playArea'), 10, 10, 6, 6);
-			}, 100);
-
-			var ground = new spriteClass(sprites.ground);
-			ground.setScale(gameScale);
-			ground.rotation = 1;
-			setInterval(function(){
-				//ground.drawCell(29);
-				ground.drawRandomArea(playArea, 100, 10, 6, 6);
-			}, 100);
-
-
-			// show the usage of a sequence defined in the sprite
-			var sequenceDemo = new spriteClass(sprites.stone);
-			sequenceDemo.setScale(gameScale);
-			sequenceDemo.prependTo(playArea, 0, 10, 10);
-			sequenceDemo.setPosition(200, 10);
-			sequenceDemo.startSequence('test', {'iterations' : 0});
-
-			// show the usage of a sequence defined in the sprite
-			var rotsequenceDemo = new spriteClass(sprites.stone);
-			var ang = 0;
-			rotsequenceDemo.setScale(gameScale);
-			rotsequenceDemo.prependTo(playArea, 0, 10, 10);
-			rotsequenceDemo.setPosition(300, 10);
-			rotsequenceDemo.startSequence('test', {'iterations' : 0, 'method' : 'manual'});
-			setInterval(function(){
-				rotsequenceDemo.doSequenceStep();
-				ang += .1;
-				rotsequenceDemo.rotate(Math.sin(ang) / 10);
-			}, 80);
 		}
-
 	</script>
 </head>
 <body>
