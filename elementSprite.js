@@ -60,13 +60,15 @@ spriteClass.prototype.detach = function(){
 
 spriteClass.prototype.setFrame = function(framename){
 	framename = trim(framename).toLowerCase();
-
+	var rval = 0;
 	if(this.set.frames[framename] != undefined){
 		this.frame = this.set.frames[framename];
 		this.currentFrame = framename;
 		this.setFrameSize(this.frame.width * this.scale, this.frame.height * this.scale);
 		this.refreshFrame();
+		rval = 1;
 	}
+	return rval;
 };
 
 // draws an random zone of the sprite's image, ignoring frames

@@ -1,6 +1,7 @@
 <!doctype html>
 <html>
 <head>
+	<link href="https://fonts.googleapis.com/css?family=VT323" rel="stylesheet">
 	<style type="text/css">
 		body{
 			image-rendering: pixelated;
@@ -27,6 +28,11 @@
 			height: 100%;
 		}
 
+		#overlay{
+			font-size: 50px;
+			font-family: 'VT323', monospace;
+		}
+
 	</style>
 	<script type="text/javascript" src="keyboard.js"></script>
 	<script type="text/javascript" src="generator.js"></script> 
@@ -42,6 +48,7 @@
 		var mapLayer;
 		var gameInterval; // <-- the animation interval object
 		var walkSpeed = 3;
+		var mapEngine;
 		var angSpeedRatio = {
 			x : .70711,
 			y : .70711
@@ -61,54 +68,57 @@
 				sprite : null,
 				'position' : position,
 
-				move : function(dx, dy, noCollision){
-					var n, collided = 0;
+				canWalkOn : function(x, y){
 					var map = maps[currentMap];
-					var mapX = Math.floor((this.position.x + screenMiddle.x + dx) / (cellSize));
-					var mapY = Math.floor((this.position.y + screenMiddle.y + dy) / (cellSize)) + 1;
+					var rval = true;
+					var mapX = Math.floor((x + screenMiddle.x) / cellSize);
+					var mapY = Math.floor((y - 3 + screenMiddle.y) / cellSize) + 1;
 					if(mapX < 0 || mapY < 0 || mapX >= map.length || mapY >= map[mapX].length){
-						collided = true;
-						console.log(mapX + ', ' + mapY);
+						rval = false;
 					}else if({'#' : 1}[map[mapX][mapY]] != undefined){
-						collided = true;
+						rval = false;
 					}
+					return rval;
+				},
+				move : function(dx, dy, noCollision){
+					var i, xTally, yTally;
+					var sgndx = Math.sign(dx);
+					var absdx = Math.abs(dx);
+					var sgndy = Math.sign(dy);
+					var absdy = Math.abs(dy);
 					
-					if(noCollision != true){
-						/*
-						for(n in mapObjects){
-							if(mapObjects[n].objType == 'terrain' || mapObjects[n].blockedAreas == undefined) continue;
-							var pPos = this.sprite.position();
-							var hPos = mapObjects[n].image.position();
-							var offset = $('#unitsLayer').css("background-position").split(" ");
-							var testX = pPos.left - hPos.left - parseFloat(offset[0].replace("px",""));
-							var testY = pPos.top - hPos.top - parseFloat(offset[1].replace("px",""));
 
-							testY += this.sprite.element.height();
-							testX += this.sprite.element.width() / 2;
-							testX = testX + dx * gameScale;
-							testY = testY + dy * gameScale;
-
-							collided = 1;
-							for(var a = 0; a < mapObjects[n].blockedAreas.length; a++){
-								for(var p = 0; p < mapObjects[n].blockedAreas[a].length; p++){
-									var px1 = mapObjects[n].blockedAreas[a][p][0] * gameScale;
-									var py1 = mapObjects[n].blockedAreas[a][p][1] * gameScale;
-									var q = (p + 1) % mapObjects[n].blockedAreas[a].length;
-									var px2 = mapObjects[n].blockedAreas[a][q][0] * gameScale;
-									var py2 = mapObjects[n].blockedAreas[a][q][1] *gameScale;
-
-									collided &= side_of_line(px1, py1, px2, py2, testX, testY) != 1;
+					if (absdx >= absdy){
+						yTally = absdx >> 1;
+						for(i = 0; i < absdx; i++){
+							yTally += absdy;
+							if (yTally >= absdx){
+								yTally -= absdx;
+								if(this.canWalkOn(this.position.x, this.position.y + sgndy)){
+									this.position.y += sgndy;
 								}
 							}
-							if(collided) break;
+							if(this.canWalkOn(this.position.x + sgndx, this.position.y)){
+								this.position.x += sgndx;
+							}
 						}
-						*/
+					}else{
+						xTally = absdy >> 1;
+						for(i = 0; i < absdy; i++){
+							xTally += absdx;
+							if(xTally >= absdy){
+								xTally -= absdy;
+								if(this.canWalkOn(this.position.x + sgndx, this.position.y)){
+									this.position.x += sgndx;
+								}
+							}
+							if(this.canWalkOn(this.position.x, this.position.y + sgndy)){
+								this.position.y += sgndy;
+							}
+						}
 					}
-					if(!collided){
-						position.x += dx;
-						position.y += dy;
-						alignLayersToPlayer();
-					}
+
+					alignLayersToPlayer();
 				},
 				currentSequence: null,
 				currentEndFrame : null
@@ -116,21 +126,27 @@
 		})();
 
 		function initialize(step){
+			// pre-load any data we need to get the game started.
+			// Note that using callbacks on this method prevents it from building a stack.
+			// It also allows us to wait for each step to complete before calling the next
+			// one.
 			if(step == undefined) step = 'initialize';
 			switch(step){
 				case 'initialize':
 					mapLayer = document.getElementById('mapLayer');
+					overlay = document.getElementById('overlay');
 					screenMiddle = {
 						x : gameMargin.offsetWidth / (2 * gameScale),
 						y : gameMargin.offsetHeight / (2 * gameScale)
 					};
+					mapEngine = new mapBuilder();
 					setTimeout(function(){
 						initialize('load stone sprite');
 					}, 1);
 					break;
 
 				case 'load stone sprite':
-					sprites.stone = new spriteSet('stone.sprite', function(){
+					sprites.stone = new spriteSet('sprites/stone.sprite', function(){
 						setTimeout(function(){
 							initialize('load floor sprite');
 						}, 1);
@@ -138,7 +154,7 @@
 					break;
 
 				case 'load floor sprite':
-					sprites.ground = new spriteSet('ground.sprite', function(){
+					sprites.ground = new spriteSet('sprites/ground.sprite', function(){
 						setTimeout(function(){
 							initialize('load dungeon elements');
 						}, 1);
@@ -146,7 +162,7 @@
 					break;
 
 				case 'load dungeon elements':
-					sprites.dungeonElements = new spriteSet('dungeonElements.sprite', function(){
+					sprites.dungeonElements = new spriteSet('sprites/dungeonElements.sprite', function(){
 						setTimeout(function(){
 							initialize('load player sprite');
 						}, 1);
@@ -154,7 +170,7 @@
 					break;
 
 				case 'load player sprite':
-					playerSpriteSet.load("player.sprite", function(){
+					playerSpriteSet.load("sprites/player.sprite", function(){
 						player.sprite = new spriteClass(this);
 						player.sprite.setScale(gameScale);
 						player.sprite.appendTo(playerLayer);
@@ -167,7 +183,13 @@
 					break;
 
 				case 'load map':
-					maps[maps.length] = generateMap('dungeon');
+					maps[maps.length] = mapEngine.buildDungeon({
+						width : 80,
+						height: 25,
+						roomscale: .5,
+						stairup: true,
+						stairdown: true
+					});
 					currentMap = maps.length - 1;
 					renderMap(currentMap);
 					setTimeout(function(){initialize('initialize keyboard');}, 1);
@@ -234,6 +256,11 @@
 			$('#unitsLayer').css({'top' : -player.position.y * gameScale + 'px', 'left': -player.position.x * gameScale + 'px'});
 		}
 
+		function writeText(x, y, text){
+			$('<span></span>').html(text).css({position:'absolute', 'top': (y + gameScale), 'left': (x + gameScale), 'color' : '#000'}).appendTo($('#overlay'));
+			$('<span></span>').html(text).css({position:'absolute', 'top': y, 'left': x, 'color' : '#AAA'}).appendTo($('#overlay'));
+		}
+
 		function generateMap(mapType){
 			var error = 0;
 			var size = Math.floor(Math.random() * 60);
@@ -241,8 +268,8 @@
 			switch(mapType){
 				case 'dungeon':
 					map.buildDungeon({
-						width : 40,
-						height: 40,
+						width : 80,
+						height: 25,
 						roomscale: .5,
 						stairup: true,
 						stairdown: true
@@ -434,6 +461,8 @@
 		<div id="unitsLayer" class="gameLayer">
 		</div>
 		<div id="playerLayer" class="gameLayer">
+		</div>
+		<div id="overlay" class="gameLayer">
 		</div>
 	</div>
 </body>

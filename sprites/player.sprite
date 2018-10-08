@@ -1,5 +1,5 @@
 {
-	"image" : "images/playerSprite7.png",
+	"image" : "sprites/playerSprite7.png",
 	"frameRate" : 100,
 	"frameWidth" : 5,
 	"frameHeight" : 11,

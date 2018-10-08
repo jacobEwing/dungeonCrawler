@@ -1,5 +1,5 @@
 {
-	"image" : "images/stonetiles.png",
+	"image" : "sprites/stonetiles.png",
 	"frameWidth" : 6,
 	"frameHeight" : 6,
 	"centerx" : 6,
