@@ -71,8 +71,8 @@
 				canWalkOn : function(x, y){
 					var map = maps[currentMap];
 					var rval = true;
-					var mapX = Math.floor((x + screenMiddle.x) / cellSize);
-					var mapY = Math.floor((y - 3 + screenMiddle.y) / cellSize) + 1;
+					var mapX = Math.floor((x + 2 + screenMiddle.x) / cellSize);
+					var mapY = Math.floor((y - 2 + screenMiddle.y) / cellSize) + 1;
 					if(mapX < 0 || mapY < 0 || mapX >= map.length || mapY >= map[mapX].length){
 						rval = false;
 					}else if({'#' : 1}[map[mapX][mapY]] != undefined){
@@ -259,63 +259,6 @@
 		function writeText(x, y, text){
 			$('<span></span>').html(text).css({position:'absolute', 'top': (y + gameScale), 'left': (x + gameScale), 'color' : '#000'}).appendTo($('#overlay'));
 			$('<span></span>').html(text).css({position:'absolute', 'top': y, 'left': x, 'color' : '#AAA'}).appendTo($('#overlay'));
-		}
-
-		function generateMap(mapType){
-			var error = 0;
-			var size = Math.floor(Math.random() * 60);
-			var map = new mapBuilder();
-			switch(mapType){
-				case 'dungeon':
-					map.buildDungeon({
-						width : 80,
-						height: 25,
-						roomscale: .5,
-						stairup: true,
-						stairdown: true
-					});
-					/*
-
-					map.buildDungeon({
-						'width' : 5 + size, 
-						'height' : 5 + size,
-						'stairdown' : true,
-						'stairup' : true,
-						'roomscale' : 1
-					});
-					*/
-					break;
-				case 'swamp':
-					map.buildSwamp({
-						'width' : 30 + size, 
-						'height' : 30 + size
-					});
-					break;
-				case 'forest':
-					map.buildForest({
-						'width' : 30 + size, 
-						'height' : 30 + size
-					});
-					break;
-				default:
-					alert('Invalid map type');
-					error = 1;
-					map = [];
-			}
-
-			if(!error){
-				map = map.map;
-				var lineStr;
-				$('#mapContent').html('');
-				for(var y = 0; y < map[0].length; y++){
-					lineStr = "";
-					for(var x = 0; x < map.length; x++){
-						lineStr += map[x][y];
-					}
-					$('#mapContent').append(lineStr + "\n");
-				}
-			}
-			return map;
 		}
 
 		window.onload = function(){
