@@ -39,6 +39,7 @@
 	<script type="text/javascript" src="elementSprite.js"></script>
 	<script type="text/javascript" src="jquery.min.js"></script>
 	<script type="text/javascript">
+		var motionControls = {};
 		var playerSpriteSet = new spriteSet();
 		var player;
 		var gameScale = 5, cellSize = 12;
@@ -67,18 +68,41 @@
 				direction : 'down',
 				sprite : null,
 				'position' : position,
-
+				mapPos : function(x, y){
+					if(x == undefined) x = this.position.x;
+					if(y == undefined) y = this.position.y;
+					return {
+						x : Math.floor((x + 2 + screenMiddle.x) / cellSize),
+						y : Math.floor((y - 2 + screenMiddle.y) / cellSize) + 1
+					}
+				},
+				setMapPos : function(x, y){
+					this.position.x = cellSize * x - screenMiddle.x;
+					this.position.y = cellSize * y - screenMiddle.y;
+				},
 				canWalkOn : function(x, y){
 					var map = maps[currentMap];
 					var rval = true;
-					var mapX = Math.floor((x + 2 + screenMiddle.x) / cellSize);
-					var mapY = Math.floor((y - 2 + screenMiddle.y) / cellSize) + 1;
-					if(mapX < 0 || mapY < 0 || mapX >= map.length || mapY >= map[mapX].length){
+					var pos = this.mapPos(x, y);
+					if(pos.x < 0 || pos.y < 0 || pos >= map.length || pos.y >= map[pos.x].length){
 						rval = false;
-					}else if({'#' : 1}[map[mapX][mapY]] != undefined){
+					}else if({'#' : 1}[map[pos.x][pos.y]] != undefined){
 						rval = false;
 					}
 					return rval;
+				},
+				currentMapVal : function(){
+					var map = maps[currentMap];
+					var rval;
+					var pos = this.mapPos();
+					if(pos.x < 0 || pos.y < 0 || pos.x >= map.length || pos.y >= map[pos.x].length){
+						rval = null;
+					}else{
+						rval = map[pos.x][pos.y];
+					}
+					return rval;
+
+
 				},
 				move : function(dx, dy, noCollision){
 					var i, xTally, yTally;
@@ -125,89 +149,6 @@
 			};
 		})();
 
-		function initialize(step){
-			// pre-load any data we need to get the game started.
-			// Note that using callbacks on this method prevents it from building a stack.
-			// It also allows us to wait for each step to complete before calling the next
-			// one.
-			if(step == undefined) step = 'initialize';
-			switch(step){
-				case 'initialize':
-					mapLayer = document.getElementById('mapLayer');
-					overlay = document.getElementById('overlay');
-					screenMiddle = {
-						x : gameMargin.offsetWidth / (2 * gameScale),
-						y : gameMargin.offsetHeight / (2 * gameScale)
-					};
-					mapEngine = new mapBuilder();
-					setTimeout(function(){
-						initialize('load stone sprite');
-					}, 1);
-					break;
-
-				case 'load stone sprite':
-					sprites.stone = new spriteSet('sprites/stone.sprite', function(){
-						setTimeout(function(){
-							initialize('load floor sprite');
-						}, 1);
-					});
-					break;
-
-				case 'load floor sprite':
-					sprites.ground = new spriteSet('sprites/ground.sprite', function(){
-						setTimeout(function(){
-							initialize('load dungeon elements');
-						}, 1);
-					});
-					break;
-
-				case 'load dungeon elements':
-					sprites.dungeonElements = new spriteSet('sprites/dungeonElements.sprite', function(){
-						setTimeout(function(){
-							initialize('load player sprite');
-						}, 1);
-					});
-					break;
-
-				case 'load player sprite':
-					playerSpriteSet.load("sprites/player.sprite", function(){
-						player.sprite = new spriteClass(this);
-						player.sprite.setScale(gameScale);
-						player.sprite.appendTo(playerLayer);
-						player.sprite.setPosition(screenMiddle.x, screenMiddle.y, true);
-
-						player.sprite.setFrame('front_idle');
-						setTimeout(function(){initialize('load map');}, 0);
-						
-					});
-					break;
-
-				case 'load map':
-					maps[maps.length] = mapEngine.buildDungeon({
-						width : 80,
-						height: 25,
-						roomscale: .5,
-						stairup: true,
-						stairdown: true
-					});
-					currentMap = maps.length - 1;
-					renderMap(currentMap);
-					setTimeout(function(){initialize('initialize keyboard');}, 1);
-					break;
-
-				case 'initialize keyboard':
-					// the functions used here are defined in keyboard.js
-					initialize_keymap();
-					document.onkeyup = keyupCall;
-					document.onkeydown = keydownCall;
-					setTimeout(function(){initialize('finish');}, 1);
-					break;
-
-				case 'finish':
-					gameInterval = setInterval(playGame, 70);
-			}
-		}
-
 		function renderMap(idx){
 			var stoneSprite = new spriteClass(sprites.stone);
 			stoneSprite.setScale(gameScale);
@@ -231,15 +172,13 @@
 							groundSprite.drawRandomArea(mapLayer, drawX, drawY, cellSize, cellSize);
 							break;
  						case '>':
-							dungeonElementsSprite.drawFrame(mapLayer, 'stairsUp', drawX, drawY);
-							entryPoint = {x : x, y : y};
-
-							player.position.x = cellSize * x - screenMiddle.x;
-							player.position.y = cellSize * y - screenMiddle.y;
-							alignLayersToPlayer();
+							dungeonElementsSprite.drawFrame(mapLayer, 'stairsDown', drawX, drawY);
 							break;
 						case '<':
-							dungeonElementsSprite.drawFrame(mapLayer, 'stairsDown', drawX, drawY);
+							dungeonElementsSprite.drawFrame(mapLayer, 'stairsUp', drawX, drawY);
+
+							player.setMapPos(x, y);
+							alignLayersToPlayer();
 							break;
 						case '#':
 							stoneSprite.drawFrame(mapLayer, Math.floor(Math.random() * 25), drawX, drawY);
@@ -283,18 +222,43 @@
 
 			}
 		}
+
+		function loadDefaultMotionControls(){
+			motionControls = {
+				up : [KEYMAP['UP']],
+				down: [KEYMAP['DOWN']],
+				left: [KEYMAP['LEFT']],
+				right: [KEYMAP['RIGHT']],
+				enter : [KEYMAP['SHIFT'], KEYMAP['.']],
+				exit : [KEYMAP['SHIFT'], KEYMAP[',']],
+				attack: [KEYMAP['CTRL']],
+				grab : [KEYMAP[',']]
+			};
+		}
+
+		function checkKeyControl(action){
+			var rval, n;
+			if(motionControls[action] != undefined){
+				rval = true;
+				for(n in motionControls[action]){
+					rval &= keyState[motionControls[action][n]] ? true : false;
+				}
+			}else{
+				rval = false;
+			}
+			return rval;
+		}
 		
 		function check_key_state(){
 			var dirCombo = 0;
 			var sequence = null;
 			var endFrame = null;
-			var fighting = (keyState[KEYMAP['ALT']] || keyState[KEYMAP['CTRL']] || keyState[KEYMAP['META']]) ? 1 : 0;
+			var fighting = checkKeyControl('attack');
 
-			dirCombo += keyState[KEYMAP['UP']] ? 1 : 0;
-			dirCombo += keyState[KEYMAP['DOWN']] ? 2 : 0;
-			dirCombo += keyState[KEYMAP['LEFT']] ? 4 : 0;
-			dirCombo += keyState[KEYMAP['RIGHT']] ? 8 : 0;
-
+			dirCombo += checkKeyControl('up') ? 1 : 0;
+			dirCombo += checkKeyControl('down') ? 2 : 0;
+			dirCombo += checkKeyControl('left') ? 4 : 0;
+			dirCombo += checkKeyControl('right') ? 8 : 0;
 	
 			switch(dirCombo){
 				case 1: // up
@@ -372,12 +336,25 @@
 					});
 				}
 			}else{
+				var currentCellType = player.currentMapVal();
 				if(sequence == null){
 					if(player.currentSequence != null){
 						player.sprite.stopSequence(player.currentSequence);
 						player.sprite.setFrame(player.currentEndFrame);
 						player.currentSequence = null;
 					}
+
+					console.log(currentCellType);
+					
+					// there's no walking or fighting going on, let's check theresta
+					if(currentCellType == '>' && checkKeyControl('enter')){
+						console.log('going down');
+					}
+					if(currentCellType == '<' && checkKeyControl('exit')){
+						console.log('going up');
+					}
+
+
 				}else if(sequence != player.currentSequence){
 					if(player.currentSequence != null){
 						player.sprite.stopSequence(player.currentSequence);
@@ -393,6 +370,90 @@
 						}
 					});
 				}
+			}
+		}
+
+		function initialize(step){
+			// pre-load any data we need to get the game started.
+			// Note that using callbacks on this method prevents it from building a stack.
+			// It also allows us to wait for each step to complete before calling the next
+			// one.
+			if(step == undefined) step = 'initialize';
+			switch(step){
+				case 'initialize':
+					mapLayer = document.getElementById('mapLayer');
+					overlay = document.getElementById('overlay');
+					screenMiddle = {
+						x : gameMargin.offsetWidth / (2 * gameScale),
+						y : gameMargin.offsetHeight / (2 * gameScale)
+					};
+					mapEngine = new mapBuilder();
+					setTimeout(function(){
+						initialize('load stone sprite');
+					}, 1);
+					break;
+
+				case 'load stone sprite':
+					sprites.stone = new spriteSet('sprites/stone.sprite', function(){
+						setTimeout(function(){
+							initialize('load floor sprite');
+						}, 1);
+					});
+					break;
+
+				case 'load floor sprite':
+					sprites.ground = new spriteSet('sprites/ground.sprite', function(){
+						setTimeout(function(){
+							initialize('load dungeon elements');
+						}, 1);
+					});
+					break;
+
+				case 'load dungeon elements':
+					sprites.dungeonElements = new spriteSet('sprites/dungeonElements.sprite', function(){
+						setTimeout(function(){
+							initialize('load player sprite');
+						}, 1);
+					});
+					break;
+
+				case 'load player sprite':
+					playerSpriteSet.load("sprites/player.sprite", function(){
+						player.sprite = new spriteClass(this);
+						player.sprite.setScale(gameScale);
+						player.sprite.appendTo(playerLayer);
+						player.sprite.setPosition(screenMiddle.x, screenMiddle.y, true);
+
+						player.sprite.setFrame('front_idle');
+						setTimeout(function(){initialize('load map');}, 0);
+						
+					});
+					break;
+
+				case 'load map':
+					maps[maps.length] = mapEngine.buildDungeon({
+						width : 80,
+						height: 25,
+						roomscale: .5,
+						stairup: true,
+						stairdown: true
+					});
+					currentMap = maps.length - 1;
+					renderMap(currentMap);
+					setTimeout(function(){initialize('initialize keyboard');}, 1);
+					break;
+
+				case 'initialize keyboard':
+					// the functions used here are defined in keyboard.js
+					initialize_keymap();
+					loadDefaultMotionControls();
+					document.onkeyup = keyupCall;
+					document.onkeydown = keydownCall;
+					setTimeout(function(){initialize('finish');}, 1);
+					break;
+
+				case 'finish':
+					gameInterval = setInterval(playGame, 70);
 			}
 		}
 	</script>
