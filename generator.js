@@ -132,8 +132,8 @@ mapBuilder.prototype.buildDungeon = function(){
 	this.encloseWithBricks();
 
 	// were stairs up/down requested?
-	if(this.stairup) this.placeinRandomRoom('<');
-	if(this.stairdown) this.placeinRandomRoom('>');
+	if(this.stairup) this.placeinRandomRoom('stairup');
+	if(this.stairdown) this.placeinRandomRoom('stairup');
 
 	return this.map;
 

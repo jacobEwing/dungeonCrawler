@@ -42,7 +42,7 @@
 		var motionControls = {};
 		var playerSpriteSet = new spriteSet();
 		var player;
-		var gameScale = 1, cellSize = 12;
+		var gameScale = 5, cellSize = 12;
 		var sprites = {};
 		var maps = Array();
 		var activeMap;
@@ -185,11 +185,11 @@
 				drawX = item.x * cellSize * gameScale;
 				drawY = item.y * cellSize * gameScale;
 				switch(item.content){
-					case '>':
-						dungeonElementsSprite.drawFrame(mapLayer, 'stairsDown', drawX, drawY);
+					case 'stairup':
+						dungeonElementsSprite.drawFrame(unitsLayer, 'stairsDown', drawX, drawY);
 						break;
-					case '<':
-						dungeonElementsSprite.drawFrame(mapLayer, 'stairsUp', drawX, drawY);
+					case 'stairdown':
+						dungeonElementsSprite.drawFrame(unitsLayer, 'stairsUp', drawX, drawY);
 						break;
 				}
 				//debugger;
@@ -436,9 +436,9 @@
 					var mapIdx = maps.length;
 					maps[mapIdx] = new mapBuilder();
 					maps[mapIdx].buildDungeon({
-						width : 80,
-						height: 25,
-						roomscale: .5,
+						width : 30,
+						height: 30,
+						roomscale: .8,
 			//			stairup: true,
 						stairdown: true,
 			//			startTexture: '<'
