@@ -42,15 +42,13 @@
 		var motionControls = {};
 		var playerSpriteSet = new spriteSet();
 		var player;
-		var gameScale = 5, cellSize = 12;
+		var gameScale = 1, cellSize = 12;
 		var sprites = {};
 		var maps = Array();
 		var activeMap;
-		var currentMap = undefined;
 		var mapLayer;
 		var gameInterval; // <-- the animation interval object
 		var walkSpeed = 3;
-		var mapEngine;
 		var angSpeedRatio = {
 			x : .70711,
 			y : .70711
@@ -151,8 +149,6 @@
 			};
 		})();
 
-	</script><script type="text/javascript"> // <-- this is here soley to deal with vim syntax highlighting limits
-
 		function renderArea(area){
 			var stoneSprite = new spriteClass(sprites.stone);
 			stoneSprite.setScale(gameScale);
@@ -163,7 +159,7 @@
 			dungeonElementsSprite = new spriteClass(sprites.dungeonElements);
 			dungeonElementsSprite.setScale(gameScale);
 
-			var x, y, drawX, drawY;
+			var x, y, drawX, drawY, n;
 			for(x = 0; x < area.map.length; x++){
 				for(y = 0; y < area.map[x].length; y++){
 					drawX = x * cellSize * gameScale;
@@ -174,12 +170,6 @@
 							groundSprite.rotate(Math.PI / 2);
 							groundSprite.drawRandomArea(mapLayer, drawX, drawY, cellSize, cellSize);
 							break;
- 						case '>':
-							dungeonElementsSprite.drawFrame(mapLayer, 'stairsDown', drawX, drawY);
-							break;
-						case '<':
-							dungeonElementsSprite.drawFrame(mapLayer, 'stairsUp', drawX, drawY);
-
 							break;
 						case '#':
 							stoneSprite.drawFrame(mapLayer, Math.floor(Math.random() * 25), drawX, drawY);
@@ -189,7 +179,23 @@
 					}
 				}
 			}
-			player.setMapPos(area.userpos.x, area.userpos.y);
+
+			for(n in area.items){
+				item = area.items[n];
+				drawX = item.x * cellSize * gameScale;
+				drawY = item.y * cellSize * gameScale;
+				switch(item.content){
+					case '>':
+						dungeonElementsSprite.drawFrame(mapLayer, 'stairsDown', drawX, drawY);
+						break;
+					case '<':
+						dungeonElementsSprite.drawFrame(mapLayer, 'stairsUp', drawX, drawY);
+						break;
+				}
+				//debugger;
+			}
+
+			player.setMapPos(area.playerPos.x, area.playerPos.y);
 			alignLayersToPlayer();
 		}
 
@@ -202,8 +208,6 @@
 			$('<span></span>').html(text).css({position:'absolute', 'top': (y + gameScale), 'left': (x + gameScale), 'color' : '#000'}).appendTo($('#overlay'));
 			$('<span></span>').html(text).css({position:'absolute', 'top': y, 'left': x, 'color' : '#AAA'}).appendTo($('#overlay'));
 		}
-
-	</script><script type="text/javascript"> // <-- this is here soley to deal with vim syntax highlighting limits
 
 		function playGame(){
 			check_key_state();
@@ -372,8 +376,6 @@
 			}
 		}
 
-	</script><script type="text/javascript"> // <-- this is here soley to deal with vim syntax highlighting limits
-
 		function initialize(step){
 			// pre-load any data we need to get the game started.
 			// Note that using callbacks on this method prevents it from building a stack.
@@ -388,7 +390,6 @@
 						x : gameMargin.offsetWidth / (2 * gameScale),
 						y : gameMargin.offsetHeight / (2 * gameScale)
 					};
-					mapEngine = new mapBuilder();
 					setTimeout(function(){
 						initialize('load stone sprite');
 					}, 1);
@@ -432,7 +433,9 @@
 					break;
 
 				case 'load map':
-					maps[maps.length] = mapEngine.render('dungeon', {
+					var mapIdx = maps.length;
+					maps[mapIdx] = new mapBuilder();
+					maps[mapIdx].buildDungeon({
 						width : 80,
 						height: 25,
 						roomscale: .5,
@@ -440,8 +443,10 @@
 						stairdown: true,
 			//			startTexture: '<'
 					});
-					currentMap = maps.length - 1;
-					activeMap = maps[currentMap];
+					activeMap = maps[mapIdx];
+
+					// quick random placement for now:
+					activeMap.playerPos = activeMap.findTextureSpot('.');
 					renderArea(activeMap);
 
 					setTimeout(function(){initialize('initialize keyboard');}, 1);

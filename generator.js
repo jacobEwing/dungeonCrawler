@@ -43,6 +43,8 @@ roomClass.prototype.setArea = function(x, y, gridStep, zoom){
 var mapBuilder = function(){
 	this.width = this.height = 0;
 	this.rooms = Array();
+	this.mappedItems = Array();
+	this.items = Array();
 	this.defaultParams = {
 		'width' : 60,
 		'height' : 25,
@@ -51,28 +53,22 @@ var mapBuilder = function(){
 		'roomscale' : .9 + Math.random() * .2,
 		'gridscale' : 1 + Math.random() * .5,
 		'treeChance' : 10,
-		'waterChance' : 1,
-		'reedChance' : 85,
-		'startTexture' : 'any'
+		'waterChance' : 20,
+		'reedChance' : 80
 	}
 };
 
-mapBuilder.prototype.readParams = function(params){
+mapBuilder.prototype.readParams = function(){
+	if(arguments[0] == undefined){
+		arguments[0]= {};
+	}
 	for(param in this.defaultParams){
 		defaultval = this.defaultParams[param];
 
-		if(params[param] != undefined){
-			if(params[param] === null || 1 * params[param] == params[param]){
-				eval('this.' + param + ' = ' + params[param]); 
-			}else{
-				eval('this.' + param + ' = "' + params[param] + '"'); 
-			}
+		if(arguments[0][param] != undefined){
+			eval('this.' + param + ' = ' + arguments[0][param]); 
 		}else{
-			if(defaultval === null || 1 * defaultval == defaultval){
-				eval('this.' + param + ' = ' + defaultval); 
-			}else{
-				eval('this.' + param + ' = "' + defaultval + '"'); 
-			}
+			eval('this.' + param + ' = ' + defaultval); 
 		}
 	}
 
@@ -87,58 +83,15 @@ mapBuilder.prototype.readParams = function(params){
 	}
 }
 
-mapBuilder.prototype.render = function(maptype, params){
-	var rval = {};
-
-	this.readParams(params);
-	switch(maptype){
-		case 'dungeon':
-			rval.map = this.buildDungeon();
-			break;
-		case 'forest':
-			rval.map = this.buildForest();
-			break;
-		case 'swamp':
-			rval.map = this.buildSwamp();
-			break;
-	}
-	rval.userpos = this.placeUser(rval.map);
-	return rval;
-};
-
-mapBuilder.prototype.placeUser = function(map){
-	var rval = {x: null, y : null};
-	var x, y, n, width, height;
-	width = map.length;
-	height = map[0].length;
-
-	// this is really really shitty code and needs to be rewritten.
-	// the problem with is that it's extremely un-random.
-
-	if(this.startTexture == 'any'){
-		for(x = 0; x < width; x++){
-			for(y = 0; y < height; y++){
-				if({'.' : 1, '>' : 1, '<' : 2, 'T' : 2}[map[x][y]] != undefined){
-					rval = {x : x, y : y};
-				}
-			}
-		}
-	}else{
-		for(x = 0; x < width; x++){
-			for(y = 0; y < height; y++){
-				if(map[x][y] == this.startTexture){
-					rval = {x : x, y : y};
-				}
-			}
-		}
-	}
-	return rval;
-}
 
 mapBuilder.prototype.buildDungeon = function(){
+
+	this.readParams.apply(this, arguments);
+
+
 	var area = this.width * this.height;
 
-	this.map = this.makeEmptyMap();
+	this.map = this.makeEmptyMap(' ');
 
 	// ok, we have our empty map, now let's do the dirty business!
 	var zoom, room, dx, dy, n, m, x, y;
@@ -186,7 +139,7 @@ mapBuilder.prototype.buildDungeon = function(){
 
 }
 
-mapBuilder.prototype.placeinRandomRoom = function(symbol, targetTexture){
+mapBuilder.prototype.placeinRandomRoom = function(content, targetTexture){
 	if(targetTexture == undefined){
 		targetTexture = '.';
 	}
@@ -210,10 +163,14 @@ mapBuilder.prototype.placeinRandomRoom = function(symbol, targetTexture){
 	}
 
 	if(goodSpot){
-		this.map[this.rooms[upRoom].x][this.rooms[upRoom].y] = symbol;
+		this.addItem({
+			x : this.rooms[upRoom].x,
+			y : this.rooms[upRoom].y,
+			content : content
+		});
 	}else{
 		// fuck it then, go for any existing floor cell
-		this.changeRandomCellFrom('.', symbol, this.map);
+		this.placeRandomlyOnTexture(content, targetTexture)
 	}
 }
 
@@ -314,30 +271,71 @@ mapBuilder.prototype.encloseWithBricks = function(){
 
 // changes a random character on the map of the value from, to the value to.
 // Returns true if successful, false otherwise
-mapBuilder.prototype.changeRandomCellFrom = function(from, to, map){
+mapBuilder.prototype.placeRandomlyOnTexture = function(content, targetTexture){
 	var width = this.map.length;
 	var height = this.map[0].length;
 	var rval = false;
+	var itemDat;
 
 	var x = Math.floor(Math.random() * width);
 	var y = Math.floor(Math.random() * height);
 	for(var tally = 0; tally < width * height; tally++){
-		if(this.map[x][y] == from) break;
+		if(this.map[x][y] == targetTexture) break;
 		x = (x + 1) % width;
 		if(!x) y = (y + 1) % height;
 	}
 
-	if(this.map[x][y] == from){
-		this.map[x][y] = to;
+	if(this.map[x][y] == targetTexture){
+		
+		itemDat = {
+			x : x,
+			y : y,
+			content : content
+		};
+		this.addItem(itemDat);
 		rval = true;
 	}
 	return rval;
 };
 
+mapBuilder.prototype.findTextureSpot = function(targetTexture){
+	var width = this.map.length;
+	var height = this.map[0].length;
+	var rval = null;
+
+	var x = Math.floor(Math.random() * width);
+	var y = Math.floor(Math.random() * height);
+	for(var tally = 0; tally < width * height; tally++){
+		if(this.map[x][y] == targetTexture) break;
+		x = (x + 1) % width;
+		if(!x) y = (y + 1) % height;
+	}
+
+	if(this.map[x][y] == targetTexture){
+		rval = {x : x, y : y};
+	}
+	return rval;
+};
+
+
+// we have an item created and placed, throw it in the map's data
+mapBuilder.prototype.addItem = function(item){
+	if(this.mappedItems[item.x] == undefined){
+		this.mappedItems[item.x] = Array();
+	}
+	if(this.mappedItems[item.x][item.y] == undefined){
+		this.mappedItems[item.x][item.y] = Array();
+	}
+	this.items[this.items.length] = item;
+}
+
 // Render a forest terrain
 mapBuilder.prototype.buildForest = function(){
+
+	this.readParams.apply(this, arguments);
+
 	var area = this.width * this.height;
-	this.map = this.makeEmptyMap();
+	this.map = this.makeEmptyMap('.');
 
 
 	// ok, we have our empty map, now let's do the dirty business!
@@ -366,9 +364,11 @@ mapBuilder.prototype.buildForest = function(){
 
 // Render a swamp terrain
 mapBuilder.prototype.buildSwamp = function(){
-	var area = this.width * this.height;
-	this.map = this.makeEmptyMap();
 
+	this.readParams.apply(this, arguments);
+
+	var area = this.width * this.height;
+	this.map = this.makeEmptyMap('"');
 
 	// ok, we have our empty map, now let's do the dirty business!
 	var gridStep = Math.round(Math.pow(area, .125));
@@ -390,6 +390,7 @@ mapBuilder.prototype.buildSwamp = function(){
 				}else{
 					drawchar = '"';
 				}
+					drawchar = 'T';
 				for(dx = 0; dx < gridStep; dx++){
 					for(dy = 0; dy < gridStep; dy++){
 						this.map[x * gridStep + dx][y * gridStep + dy] = drawchar;
@@ -400,13 +401,13 @@ mapBuilder.prototype.buildSwamp = function(){
 	}
 
 	// let's run the game of life on it to give it a more chaotic look
-	this.life(4, '.');
+	this.life(5, ['"', '=']);
 	return this.map;
 }
 
 // a competetive version of the game of life, which allows competing life forms
 mapBuilder.prototype.life = function(iterations, deadchar){
-	var newMap = this.makeEmptyMap(this.map.length, this.map[0].length);
+	var newMap = this.makeEmptyMap(' ', this.map.length, this.map[0].length);
 	var x, y, dx, dy, tally, rx, ry, n, charval;
 	for(n = 0; n < iterations; n++){
 		for(x = 0; x < this.map.length; x++){
@@ -438,7 +439,11 @@ mapBuilder.prototype.life = function(iterations, deadchar){
 				if(bestTally != -1){
 					newMap[x][y] = bestTally;
 				}else{
-					newMap[x][y] = deadchar;
+					if(typeof(deadchar) == 'object'){
+						newMap[x][y] = deadchar[Math.floor(Math.random() * deadchar.length)];
+					}else{
+						newMap[x][y] = deadchar;
+					}
 				}
 			}
 		}
@@ -453,7 +458,7 @@ mapBuilder.prototype.life = function(iterations, deadchar){
 }
 
 // initialize a clean map of the specified dimensions.
-mapBuilder.prototype.makeEmptyMap = function (width, height, fillchar){
+mapBuilder.prototype.makeEmptyMap = function (fillchar, width, height){
 	if(width == undefined) width = this.width;
 	if(height == undefined) height = this.height;
 	if(fillchar == undefined) fillchar = ' ';
