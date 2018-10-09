@@ -51,22 +51,28 @@ var mapBuilder = function(){
 		'roomscale' : .9 + Math.random() * .2,
 		'gridscale' : 1 + Math.random() * .5,
 		'treeChance' : 10,
-		'waterChance' : 15,
-		'reedChance' : 85
+		'waterChance' : 1,
+		'reedChance' : 85,
+		'startTexture' : 'any'
 	}
 };
 
-mapBuilder.prototype.readParams = function(){
-	if(arguments[0] == undefined){
-		arguments[0]= {};
-	}
+mapBuilder.prototype.readParams = function(params){
 	for(param in this.defaultParams){
 		defaultval = this.defaultParams[param];
 
-		if(arguments[0][param] != undefined){
-			eval('this.' + param + ' = ' + arguments[0][param]); 
+		if(params[param] != undefined){
+			if(params[param] === null || 1 * params[param] == params[param]){
+				eval('this.' + param + ' = ' + params[param]); 
+			}else{
+				eval('this.' + param + ' = "' + params[param] + '"'); 
+			}
 		}else{
-			eval('this.' + param + ' = ' + defaultval); 
+			if(defaultval === null || 1 * defaultval == defaultval){
+				eval('this.' + param + ' = ' + defaultval); 
+			}else{
+				eval('this.' + param + ' = "' + defaultval + '"'); 
+			}
 		}
 	}
 
@@ -81,11 +87,55 @@ mapBuilder.prototype.readParams = function(){
 	}
 }
 
+mapBuilder.prototype.render = function(maptype, params){
+	var rval = {};
+
+	this.readParams(params);
+	switch(maptype){
+		case 'dungeon':
+			rval.map = this.buildDungeon();
+			break;
+		case 'forest':
+			rval.map = this.buildForest();
+			break;
+		case 'swamp':
+			rval.map = this.buildSwamp();
+			break;
+	}
+	rval.userpos = this.placeUser(rval.map);
+	return rval;
+};
+
+mapBuilder.prototype.placeUser = function(map){
+	var rval = {x: null, y : null};
+	var x, y, n, width, height;
+	width = map.length;
+	height = map[0].length;
+
+	// this is really really shitty code and needs to be rewritten.
+	// the problem with is that it's extremely un-random.
+
+	if(this.startTexture == 'any'){
+		for(x = 0; x < width; x++){
+			for(y = 0; y < height; y++){
+				if({'.' : 1, '>' : 1, '<' : 2, 'T' : 2}[map[x][y]] != undefined){
+					rval = {x : x, y : y};
+				}
+			}
+		}
+	}else{
+		for(x = 0; x < width; x++){
+			for(y = 0; y < height; y++){
+				if(map[x][y] == this.startTexture){
+					rval = {x : x, y : y};
+				}
+			}
+		}
+	}
+	return rval;
+}
+
 mapBuilder.prototype.buildDungeon = function(){
-
-	this.readParams.apply(this, arguments);
-
-
 	var area = this.width * this.height;
 
 	this.map = this.makeEmptyMap();
@@ -286,9 +336,6 @@ mapBuilder.prototype.changeRandomCellFrom = function(from, to, map){
 
 // Render a forest terrain
 mapBuilder.prototype.buildForest = function(){
-
-	this.readParams.apply(this, arguments);
-
 	var area = this.width * this.height;
 	this.map = this.makeEmptyMap();
 
@@ -319,9 +366,6 @@ mapBuilder.prototype.buildForest = function(){
 
 // Render a swamp terrain
 mapBuilder.prototype.buildSwamp = function(){
-
-	this.readParams.apply(this, arguments);
-
 	var area = this.width * this.height;
 	this.map = this.makeEmptyMap();
 

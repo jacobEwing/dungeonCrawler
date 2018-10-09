@@ -45,6 +45,7 @@
 		var gameScale = 5, cellSize = 12;
 		var sprites = {};
 		var maps = Array();
+		var activeMap;
 		var currentMap = undefined;
 		var mapLayer;
 		var gameInterval; // <-- the animation interval object
@@ -81,7 +82,7 @@
 					this.position.y = cellSize * y - screenMiddle.y;
 				},
 				canWalkOn : function(x, y){
-					var map = maps[currentMap];
+					var map = activeMap.map;
 					var rval = true;
 					var pos = this.mapPos(x, y);
 					if(pos.x < 0 || pos.y < 0 || pos >= map.length || pos.y >= map[pos.x].length){
@@ -92,7 +93,7 @@
 					return rval;
 				},
 				currentMapVal : function(){
-					var map = maps[currentMap];
+					var map = activeMap.map;
 					var rval;
 					var pos = this.mapPos();
 					if(pos.x < 0 || pos.y < 0 || pos.x >= map.length || pos.y >= map[pos.x].length){
@@ -141,7 +142,8 @@
 							}
 						}
 					}
-
+					var pos = this.mapPos();
+					console.log(pos.x + ', ' + pos.y);
 					alignLayersToPlayer();
 				},
 				currentSequence: null,
@@ -149,7 +151,9 @@
 			};
 		})();
 
-		function renderMap(idx){
+	</script><script type="text/javascript"> // <-- this is here soley to deal with vim syntax highlighting limits
+
+		function renderArea(area){
 			var stoneSprite = new spriteClass(sprites.stone);
 			stoneSprite.setScale(gameScale);
 
@@ -160,13 +164,12 @@
 			dungeonElementsSprite.setScale(gameScale);
 
 			var x, y, drawX, drawY;
-			var map = maps[idx];
-			for(x = 0; x < map.length; x++){
-				for(y = 0; y < map[x].length; y++){
+			for(x = 0; x < area.map.length; x++){
+				for(y = 0; y < area.map[x].length; y++){
 					drawX = x * cellSize * gameScale;
 					drawY = y * cellSize * gameScale;
 
-					switch(map[x][y]){
+					switch(area.map[x][y]){
 						case '.':
 							groundSprite.rotate(Math.PI / 2);
 							groundSprite.drawRandomArea(mapLayer, drawX, drawY, cellSize, cellSize);
@@ -177,8 +180,6 @@
 						case '<':
 							dungeonElementsSprite.drawFrame(mapLayer, 'stairsUp', drawX, drawY);
 
-							player.setMapPos(x, y);
-							alignLayersToPlayer();
 							break;
 						case '#':
 							stoneSprite.drawFrame(mapLayer, Math.floor(Math.random() * 25), drawX, drawY);
@@ -188,6 +189,8 @@
 					}
 				}
 			}
+			player.setMapPos(area.userpos.x, area.userpos.y);
+			alignLayersToPlayer();
 		}
 
 		function alignLayersToPlayer(){
@@ -200,9 +203,7 @@
 			$('<span></span>').html(text).css({position:'absolute', 'top': y, 'left': x, 'color' : '#AAA'}).appendTo($('#overlay'));
 		}
 
-		window.onload = function(){
-			initialize();
-		};
+	</script><script type="text/javascript"> // <-- this is here soley to deal with vim syntax highlighting limits
 
 		function playGame(){
 			check_key_state();
@@ -344,8 +345,6 @@
 						player.currentSequence = null;
 					}
 
-					console.log(currentCellType);
-					
 					// there's no walking or fighting going on, let's check theresta
 					if(currentCellType == '>' && checkKeyControl('enter')){
 						console.log('going down');
@@ -372,6 +371,8 @@
 				}
 			}
 		}
+
+	</script><script type="text/javascript"> // <-- this is here soley to deal with vim syntax highlighting limits
 
 		function initialize(step){
 			// pre-load any data we need to get the game started.
@@ -431,15 +432,18 @@
 					break;
 
 				case 'load map':
-					maps[maps.length] = mapEngine.buildDungeon({
+					maps[maps.length] = mapEngine.render('dungeon', {
 						width : 80,
 						height: 25,
 						roomscale: .5,
-						stairup: true,
-						stairdown: true
+			//			stairup: true,
+						stairdown: true,
+			//			startTexture: '<'
 					});
 					currentMap = maps.length - 1;
-					renderMap(currentMap);
+					activeMap = maps[currentMap];
+					renderArea(activeMap);
+
 					setTimeout(function(){initialize('initialize keyboard');}, 1);
 					break;
 
@@ -456,6 +460,11 @@
 					gameInterval = setInterval(playGame, 70);
 			}
 		}
+
+		window.onload = function(){
+			initialize();
+		};
+
 	</script>
 </head>
 <body>
