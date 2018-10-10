@@ -343,7 +343,10 @@ mapBuilder.prototype.addItem = function(item){
 	if(this.mappedItems[item.x][item.y] == undefined){
 		this.mappedItems[item.x][item.y] = Array();
 	}
-	this.items[item.content] = item;
+	if(this.items[item.content] == undefined){
+		this.items[item.content] = Array();
+	}
+	this.items[item.content].push(item);
 	this.mappedItems[item.x][item.y][this.mappedItems[item.x][item.y].length] = item;
 }
 

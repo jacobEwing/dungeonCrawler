@@ -195,16 +195,18 @@
 			}
 
 			for(var itemName in area.items){
-				item = area.items[itemName];
-				drawX = item.x * cellSize * gameScale;
-				drawY = item.y * cellSize * gameScale;
-				switch(item.content){
-					case 'stairup':
-						dungeonElementsSprite.drawFrame(unitsLayer, 'stairsUp', drawX, drawY);
-						break;
-					case 'stairdown':
-						dungeonElementsSprite.drawFrame(unitsLayer, 'stairsDown', drawX, drawY);
-						break;
+				for(n in area.items[itemName]){
+					item = area.items[itemName][n];
+					drawX = item.x * cellSize * gameScale;
+					drawY = item.y * cellSize * gameScale;
+					switch(item.content){
+						case 'stairup':
+							dungeonElementsSprite.drawFrame(unitsLayer, 'stairsUp', drawX, drawY);
+							break;
+						case 'stairdown':
+							dungeonElementsSprite.drawFrame(unitsLayer, 'stairsDown', drawX, drawY);
+							break;
+					}
 				}
 				//debugger;
 			}
@@ -374,46 +376,12 @@
 						switch(currentItems[n].content){
 							case 'stairup':
 								if(checkKeyControl('exit')){
-									var mapIdx = maps.length;
-									maps[mapIdx] = new mapBuilder();
-									maps[mapIdx].buildDungeon({
-										width : 30,
-										height: 30,
-										roomscale: .8,
-										stairup: true,
-										stairdown: true
-									});
-									activeMap = maps[mapIdx];
-									document.getElementById("mapLayer").innerHTML = '';
-									document.getElementById("unitsLayer").innerHTML = '';
-									document.getElementById("overlay").innerHTML = '';
-									activeMap.playerPos = {
-										x : activeMap.items['stairdown'].x,
-										y : activeMap.items['stairdown'].y
-									};
-									renderArea(activeMap);
+									useEntrance(currentItems[n]);
 								}
 								break;
 							case 'stairdown':
 								if(checkKeyControl('enter')){
-									var mapIdx = maps.length;
-									maps[mapIdx] = new mapBuilder();
-									maps[mapIdx].buildDungeon({
-										width : 30,
-										height: 30,
-										roomscale: .8,
-										stairup: true,
-										stairdown: true
-									});
-									activeMap = maps[mapIdx];
-									document.getElementById("mapLayer").innerHTML = '';
-									document.getElementById("unitsLayer").innerHTML = '';
-									document.getElementById("overlay").innerHTML = '';
-									activeMap.playerPos = {
-										x : activeMap.items['stairup'].x,
-										y : activeMap.items['stairup'].y
-									};
-									renderArea(activeMap);
+									useEntrance(currentItems[n]);
 								}
 								break;
 							default:
@@ -421,16 +389,7 @@
 						}
 					}
 
-					// there's no walking or fighting going on, let's check theresta
-/*					
-					if(currentCellType == '>' && checkKeyControl('enter')){
-						console.log('going down');
-					}
-					if(currentCellType == '<' && checkKeyControl('exit')){
-						console.log('going up');
-					}
 
-*/
 				}else if(sequence != player.currentSequence){
 					if(player.currentSequence != null){
 						player.sprite.stopSequence(player.currentSequence);
@@ -447,6 +406,46 @@
 					});
 				}
 			}
+		}
+		function useEntrance(entrance){
+			if(entrance.target == undefined){
+				var mapIdx = maps.length;
+				maps[mapIdx] = new mapBuilder();
+				maps[mapIdx].buildDungeon({
+					width : 30,
+					height: 30,
+					roomscale: .8,
+					stairup: true,
+					stairdown: true
+				});
+				entrance.target = maps[mapIdx];
+			}
+
+			document.getElementById("mapLayer").innerHTML = '';
+			document.getElementById("unitsLayer").innerHTML = '';
+			document.getElementById("overlay").innerHTML = '';
+			switch(entrance.content){
+				case 'stairup':
+					entrance.target.playerPos = {
+						x : entrance.target.items['stairdown'][0].x,
+						y : entrance.target.items['stairdown'][0].y
+					};
+					if(entrance.target.items['stairdown'][0].target == undefined){
+						entrance.target.items['stairdown'][0].target = activeMap;
+					}
+					break;
+				case 'stairdown':
+					entrance.target.playerPos = {
+						x : entrance.target.items['stairup'][0].x,
+						y : entrance.target.items['stairup'][0].y
+					};
+					if(entrance.target.items['stairdown'][0].target == undefined){
+						entrance.target.items['stairup'][0].target = activeMap;
+					}
+					break;
+			}
+			activeMap = entrance.target;
+			renderArea(activeMap);
 		}
 
 		function initialize(step){
