@@ -44,7 +44,7 @@ var mapBuilder = function(){
 	this.width = this.height = 0;
 	this.rooms = Array();
 	this.mappedItems = Array();
-	this.items = Array();
+	this.items = {};//Array();
 	this.defaultParams = {
 		'width' : 60,
 		'height' : 25,
@@ -343,7 +343,7 @@ mapBuilder.prototype.addItem = function(item){
 	if(this.mappedItems[item.x][item.y] == undefined){
 		this.mappedItems[item.x][item.y] = Array();
 	}
-	this.items[this.items.length] = item;
+	this.items[item.content] = item;
 	this.mappedItems[item.x][item.y][this.mappedItems[item.x][item.y].length] = item;
 }
 

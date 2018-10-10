@@ -194,8 +194,8 @@
 				}
 			}
 
-			for(n in area.items){
-				item = area.items[n];
+			for(var itemName in area.items){
+				item = area.items[itemName];
 				drawX = item.x * cellSize * gameScale;
 				drawY = item.y * cellSize * gameScale;
 				switch(item.content){
@@ -374,12 +374,46 @@
 						switch(currentItems[n].content){
 							case 'stairup':
 								if(checkKeyControl('exit')){
-									console.log('go upstairs');
+									var mapIdx = maps.length;
+									maps[mapIdx] = new mapBuilder();
+									maps[mapIdx].buildDungeon({
+										width : 30,
+										height: 30,
+										roomscale: .8,
+										stairup: true,
+										stairdown: true
+									});
+									activeMap = maps[mapIdx];
+									document.getElementById("mapLayer").innerHTML = '';
+									document.getElementById("unitsLayer").innerHTML = '';
+									document.getElementById("overlay").innerHTML = '';
+									activeMap.playerPos = {
+										x : activeMap.items['stairdown'].x,
+										y : activeMap.items['stairdown'].y
+									};
+									renderArea(activeMap);
 								}
 								break;
 							case 'stairdown':
 								if(checkKeyControl('enter')){
-									console.log('go downstairs');
+									var mapIdx = maps.length;
+									maps[mapIdx] = new mapBuilder();
+									maps[mapIdx].buildDungeon({
+										width : 30,
+										height: 30,
+										roomscale: .8,
+										stairup: true,
+										stairdown: true
+									});
+									activeMap = maps[mapIdx];
+									document.getElementById("mapLayer").innerHTML = '';
+									document.getElementById("unitsLayer").innerHTML = '';
+									document.getElementById("overlay").innerHTML = '';
+									activeMap.playerPos = {
+										x : activeMap.items['stairup'].x,
+										y : activeMap.items['stairup'].y
+									};
+									renderArea(activeMap);
 								}
 								break;
 							default:
