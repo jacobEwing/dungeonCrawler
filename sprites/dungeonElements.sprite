@@ -1,11 +1,11 @@
 {
-	"image" : "sprites/dungeonElements2.png",
+	"image" : "sprites/dungeonElements.png",
 	"frameWidth" : 12,
 	"frameHeight" : 12,
 	"centerx" : 6,
 	"centery" : 6,
 	"frames" : {
 		"stairsDown" : { "x" : 0, "y" : 0 },
-		"stairsUp" : { "x" : 1, "y" : 0 }
+		"stairsUp" : { "x" : 1, "y" : 0 , "height" : 22, "drawOffset" : { "x" : 0, "y" : -10 }}
 	}
 }

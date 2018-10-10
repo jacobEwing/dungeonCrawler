@@ -120,42 +120,6 @@ spriteClass.prototype.drawArea = function(target, drawx, drawy, x, y, width, hei
 }
 
 
-spriteClass.prototype.drawFrame = function(target, framename, drawx, drawy){
-	if(this.set.frames[framename] == undefined) return false;
-	var frame = this.set.frames[framename];
-	var style = {
-		'width' : frame.width * this.scale + 'px',
-		'height' : frame.height * this.scale + 'px',
-		'overflow' : 'hidden'
-	};
-	if(drawx == undefined && drawy == undefined){
-		style['position'] = 'relative';
-		style['display'] = 'inline-block';
-	}else{
-		if(drawx == undefined) drawx = 0;
-		if(drawy == undefined) drawy = 0;
-		style['left'] = drawx + 'px';
-		style['top'] = drawy + 'px';
-		style['position'] = 'absolute';
-	}
-	
-	var picture = document.createElement('div');
-	var img = this.image.cloneNode();
-	for(var n in style){
-		picture.style[n] = style[n];
-	}
-	picture.appendChild(img);
-	img.style.position = 'absolute';
-	img.style.width = this.image.width * this.scale + 'px';
-	img.style.height = this.image.height * this.scale + 'px';
-	img.style.left = -(frame.x * this.scale) + 'px';
-	img.style.top = -(frame.y * this.scale) + 'px';
-
-	target.appendChild(picture);
-	return picture;
-};
-
-
 spriteClass.prototype.setFrameSize = function(w, h){
 	this.frameWidth = w;
 	this.frameHeight = h;
@@ -178,6 +142,8 @@ spriteClass.prototype.drawFrame = function(target, framename, drawx, drawy){
 	var style = {
 		'width' : frame.width * this.scale + 'px',
 		'height' : frame.height * this.scale + 'px',
+		'marginLeft' : frame.drawOffset.x * this.scale + 'px',
+		'marginTop' : frame.drawOffset.y * this.scale + 'px',
 		'overflow' : 'hidden'
 	};
 	if(this.rotation != 0){

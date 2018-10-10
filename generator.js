@@ -132,17 +132,21 @@ mapBuilder.prototype.buildDungeon = function(){
 	this.encloseWithBricks();
 
 	// were stairs up/down requested?
-	if(this.stairup) this.placeinRandomRoom('stairup');
-	if(this.stairdown) this.placeinRandomRoom('stairup');
+	if(this.stairup) this.placeinRandomRoom('stairup', 1);
+	if(this.stairdown) this.placeinRandomRoom('stairdown', 1);
 
 	return this.map;
 
 }
 
-mapBuilder.prototype.placeinRandomRoom = function(content, targetTexture){
+mapBuilder.prototype.placeinRandomRoom = function(content, emptyTarget, targetTexture){
 	if(targetTexture == undefined){
 		targetTexture = '.';
 	}
+	if(emptyTarget == undefined){
+		emptyTarget = false;
+	}
+
 	// first see if we can find a middle-of-room that fits
 	offset = Math.floor(Math.random() * this.rooms.length);
 	for(uR = 0; uR < this.rooms.length; uR++){
@@ -153,6 +157,10 @@ mapBuilder.prototype.placeinRandomRoom = function(content, targetTexture){
 			for(y = this.rooms[upRoom].y - 1; y <= this.rooms[upRoom].y + 1 && goodSpot; y++){
 				if(this.map[x][y] != targetTexture){
 					goodSpot = 0;
+				}else if(emptyTarget && this.mappedItems[x] != undefined){
+					if(this.mappedItems[x][y] != undefined){
+						goodSpot = 0;
+					}
 				}
 			}
 		}
@@ -170,7 +178,7 @@ mapBuilder.prototype.placeinRandomRoom = function(content, targetTexture){
 		});
 	}else{
 		// fuck it then, go for any existing floor cell
-		this.placeRandomlyOnTexture(content, targetTexture)
+		this.placeRandomlyOnTexture(content, emptyTarget, targetTexture)
 	}
 }
 
@@ -271,16 +279,25 @@ mapBuilder.prototype.encloseWithBricks = function(){
 
 // changes a random character on the map of the value from, to the value to.
 // Returns true if successful, false otherwise
-mapBuilder.prototype.placeRandomlyOnTexture = function(content, targetTexture){
+mapBuilder.prototype.placeRandomlyOnTexture = function(content, emptyTarget, targetTexture){
 	var width = this.map.length;
 	var height = this.map[0].length;
 	var rval = false;
 	var itemDat;
+	console.log('picking a random spot');
 
 	var x = Math.floor(Math.random() * width);
 	var y = Math.floor(Math.random() * height);
 	for(var tally = 0; tally < width * height; tally++){
-		if(this.map[x][y] == targetTexture) break;
+		if(this.map[x][y] == targetTexture){
+			if(!emptyTarget){
+				break;
+			}else if(this.mappedItems[x] == undefined){
+				break;
+			}else if(this.mappedItems[x][y] == undefined){
+				break;
+			}
+		}
 		x = (x + 1) % width;
 		if(!x) y = (y + 1) % height;
 	}
@@ -327,6 +344,7 @@ mapBuilder.prototype.addItem = function(item){
 		this.mappedItems[item.x][item.y] = Array();
 	}
 	this.items[this.items.length] = item;
+	this.mappedItems[item.x][item.y][this.mappedItems[item.x][item.y].length] = item;
 }
 
 // Render a forest terrain

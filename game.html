@@ -19,6 +19,7 @@
 			height: 100%;
 			overflow: hidden;
 		}
+
 		div.gameLayer{
 			position: absolute;
 			top: 0;
@@ -103,6 +104,20 @@
 
 
 				},
+				currentItems : function(){
+					rval = Array();
+					var pos = this.mapPos();
+					if(activeMap.mappedItems[pos.x] != undefined){
+						if(activeMap.mappedItems[pos.x][pos.y] != undefined){
+							for(var n in activeMap.mappedItems[pos.x][pos.y]){
+								rval = rval.concat(activeMap.mappedItems[pos.x][pos.y]);
+							}
+						}
+					}
+					return rval;
+
+
+				},
 				move : function(dx, dy, noCollision){
 					var i, xTally, yTally;
 					var sgndx = Math.sign(dx);
@@ -141,7 +156,6 @@
 						}
 					}
 					var pos = this.mapPos();
-					console.log(pos.x + ', ' + pos.y);
 					alignLayersToPlayer();
 				},
 				currentSequence: null,
@@ -186,10 +200,10 @@
 				drawY = item.y * cellSize * gameScale;
 				switch(item.content){
 					case 'stairup':
-						dungeonElementsSprite.drawFrame(unitsLayer, 'stairsDown', drawX, drawY);
+						dungeonElementsSprite.drawFrame(unitsLayer, 'stairsUp', drawX, drawY);
 						break;
 					case 'stairdown':
-						dungeonElementsSprite.drawFrame(unitsLayer, 'stairsUp', drawX, drawY);
+						dungeonElementsSprite.drawFrame(unitsLayer, 'stairsDown', drawX, drawY);
 						break;
 				}
 				//debugger;
@@ -237,7 +251,7 @@
 				enter : [KEYMAP['SHIFT'], KEYMAP['.']],
 				exit : [KEYMAP['SHIFT'], KEYMAP[',']],
 				attack: [KEYMAP['CTRL']],
-				grab : [KEYMAP[',']]
+				grab : [KEYMAP[',']],
 			};
 		}
 
@@ -255,7 +269,7 @@
 		}
 		
 		function check_key_state(){
-			var dirCombo = 0;
+			var dirCombo = 0, n;
 			var sequence = null;
 			var endFrame = null;
 			var fighting = checkKeyControl('attack');
@@ -342,14 +356,39 @@
 				}
 			}else{
 				var currentCellType = player.currentMapVal();
+				var currentItems = player.currentItems();
+
 				if(sequence == null){
 					if(player.currentSequence != null){
 						player.sprite.stopSequence(player.currentSequence);
 						player.sprite.setFrame(player.currentEndFrame);
 						player.currentSequence = null;
 					}
+					// this should be replaced with a call to a function that builds a menu of
+					// actions available (e.g, "go down", "take food", "take weapon", etc.).  That
+					// would be a mildly translucent menu that lits on another interface layer
+					// above, perhaps to the bottom right of the player.  Each option in there
+					// would have a keyboard shortcut(e.g. "pick up item [,]").  With an option not
+					// to display those menus.
+					for(n in currentItems){
+						switch(currentItems[n].content){
+							case 'stairup':
+								if(checkKeyControl('exit')){
+									console.log('go upstairs');
+								}
+								break;
+							case 'stairdown':
+								if(checkKeyControl('enter')){
+									console.log('go downstairs');
+								}
+								break;
+							default:
+								console.log(currentItems[n].content);
+						}
+					}
 
 					// there's no walking or fighting going on, let's check theresta
+/*					
 					if(currentCellType == '>' && checkKeyControl('enter')){
 						console.log('going down');
 					}
@@ -357,7 +396,7 @@
 						console.log('going up');
 					}
 
-
+*/
 				}else if(sequence != player.currentSequence){
 					if(player.currentSequence != null){
 						player.sprite.stopSequence(player.currentSequence);
@@ -439,7 +478,7 @@
 						width : 30,
 						height: 30,
 						roomscale: .8,
-			//			stairup: true,
+						stairup: true,
 						stairdown: true,
 			//			startTexture: '<'
 					});
