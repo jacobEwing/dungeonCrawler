@@ -46,6 +46,7 @@ var mapBuilder = function(){
 	this.mappedItems = Array();
 	this.items = {};//Array();
 	this.defaultParams = {
+		'category' : 'dungeon',
 		'width' : 60,
 		'height' : 25,
 		'stairup' : false,
@@ -58,17 +59,47 @@ var mapBuilder = function(){
 	}
 };
 
+mapBuilder.prototype.build = function(params){
+	this.readParams.apply(this, arguments);
+	switch(this.category){
+		case 'dungeon':
+			this.buildDungeon();
+			break;
+		case 'swamp':
+			this.buildDungeon();
+			break;
+		case 'forest':
+			this.buildDungeon();
+			break;
+		default:
+			throw "invalied map type";
+	}
+	this.hideMap();
+}
+
+mapBuilder.prototype.hideMap = function(){
+	this.hideMap = Array();
+	for(var x = 0; x < this.width; x++){
+		this.hideMap[x] = Array();
+		for(var y = 0; y < this.height; y++){
+			this.hideMap[x][y] = true;
+		}
+	}
+}
+
 mapBuilder.prototype.readParams = function(){
 	if(arguments[0] == undefined){
 		arguments[0]= {};
 	}
 	for(param in this.defaultParams){
 		defaultval = this.defaultParams[param];
-
+		
 		if(arguments[0][param] != undefined){
-			eval('this.' + param + ' = ' + arguments[0][param]); 
+			quote = typeof(arguments[0][param]) == 'string' ? '"' : '';
+			eval('this.' + param + ' = ' + quote + arguments[0][param] + quote); 
 		}else{
-			eval('this.' + param + ' = ' + defaultval); 
+			quote = typeof(defaultval) == 'string' ? '"' : '';
+			eval('this.' + param + ' = ' + quote + defaultval + quote); 
 		}
 	}
 
@@ -86,7 +117,6 @@ mapBuilder.prototype.readParams = function(){
 
 mapBuilder.prototype.buildDungeon = function(){
 
-	this.readParams.apply(this, arguments);
 
 
 	var area = this.width * this.height;
@@ -353,7 +383,6 @@ mapBuilder.prototype.addItem = function(item){
 // Render a forest terrain
 mapBuilder.prototype.buildForest = function(){
 
-	this.readParams.apply(this, arguments);
 
 	var area = this.width * this.height;
 	this.map = this.makeEmptyMap('.');
@@ -386,7 +415,6 @@ mapBuilder.prototype.buildForest = function(){
 // Render a swamp terrain
 mapBuilder.prototype.buildSwamp = function(){
 
-	this.readParams.apply(this, arguments);
 
 	var area = this.width * this.height;
 	this.map = this.makeEmptyMap('"');

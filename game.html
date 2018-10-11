@@ -30,10 +30,15 @@
 		}
 
 		#overlay{
-			font-size: 50px;
+			font-size: 30px;
 			font-family: 'VT323', monospace;
 		}
-
+		div.darkness{
+			width: 60px;
+			height: 60px;
+			background-color: #000;
+			position: absolute;
+		}
 	</style>
 	<script type="text/javascript" src="keyboard.js"></script>
 	<script type="text/javascript" src="generator.js"></script> 
@@ -155,6 +160,7 @@
 							}
 						}
 					}
+					checkOverlay();
 					var pos = this.mapPos();
 					alignLayersToPlayer();
 				},
@@ -191,6 +197,10 @@
 						default:
 							continue;
 					}
+					if(area.hideMap[x][y]){
+						//area.hideMap[x][y] = false;
+						$('<div id="darkness_' + x + '_' + y + '" class="darkness", style="top: ' + drawY + 'px; left:' + drawX + 'px"></div>').appendTo($('#blindness'));
+					}
 				}
 			}
 
@@ -213,16 +223,37 @@
 
 			player.setMapPos(area.playerPos.x, area.playerPos.y);
 			alignLayersToPlayer();
+			checkOverlay();
+		}
+
+		function checkOverlay(){
+			var x, y, cx, cy;
+			var pos = player.mapPos();
+			for(x = -8; x <= 8; x++){
+				cx = x + pos.x;
+				if(cx >= 0 && cx < activeMap.width){
+					for(y = -8; y <= 8; y++){
+						cy = y + pos.y;
+						if(cy >= 0 && cy < activeMap.height){
+							if(x * x + y * y < 16){
+								activeMap.hideMap[cx][cy] = false;
+								$('#darkness_' + (cx) + '_' + (cy)).remove();
+							}
+						}
+					}
+				}
+			}
 		}
 
 		function alignLayersToPlayer(){
 			$('#mapLayer').css({'top' : -player.position.y * gameScale + 'px', 'left': -player.position.x * gameScale + 'px'});
 			$('#unitsLayer').css({'top' : -player.position.y * gameScale + 'px', 'left': -player.position.x * gameScale + 'px'});
+			$('#blindness').css({'top' : -player.position.y * gameScale + 'px', 'left': -player.position.x * gameScale + 'px'});
 		}
 
 		function writeText(x, y, text){
-			$('<span></span>').html(text).css({position:'absolute', 'top': (y + gameScale), 'left': (x + gameScale), 'color' : '#000'}).appendTo($('#overlay'));
-			$('<span></span>').html(text).css({position:'absolute', 'top': y, 'left': x, 'color' : '#AAA'}).appendTo($('#overlay'));
+			$('<span></span>').html(text).css({position:'absolute', 'top': (y + 2), 'left': (x + 2), 'color' : '#000'}).appendTo($('#overlay'));
+			$('<span></span>').html(text).css({position:'absolute', 'top': y, 'left': x, 'color' : '#EFE'}).appendTo($('#overlay'));
 		}
 
 		function playGame(){
@@ -411,7 +442,8 @@
 			if(entrance.target == undefined){
 				var mapIdx = maps.length;
 				maps[mapIdx] = new mapBuilder();
-				maps[mapIdx].buildDungeon({
+				maps[mapIdx].build({
+					category : 'dungeon',
 					width : 30,
 					height: 30,
 					roomscale: .8,
@@ -424,6 +456,7 @@
 			document.getElementById("mapLayer").innerHTML = '';
 			document.getElementById("unitsLayer").innerHTML = '';
 			document.getElementById("overlay").innerHTML = '';
+			document.getElementById("blindness").innerHTML = '';
 			switch(entrance.content){
 				case 'stairup':
 					entrance.target.playerPos = {
@@ -462,6 +495,7 @@
 						x : gameMargin.offsetWidth / (2 * gameScale),
 						y : gameMargin.offsetHeight / (2 * gameScale)
 					};
+					writeText(5, 5, "DungeonCrawler v.0.0");
 					setTimeout(function(){
 						initialize('load stone sprite');
 					}, 1);
@@ -507,7 +541,8 @@
 				case 'load map':
 					var mapIdx = maps.length;
 					maps[mapIdx] = new mapBuilder();
-					maps[mapIdx].buildDungeon({
+					maps[mapIdx].build({
+						category : 'dungeon',
 						width : 30,
 						height: 30,
 						roomscale: .8,
@@ -551,6 +586,8 @@
 		<div id="unitsLayer" class="gameLayer">
 		</div>
 		<div id="playerLayer" class="gameLayer">
+		</div>
+		<div id="blindness" class="gameLayer">
 		</div>
 		<div id="overlay" class="gameLayer">
 		</div>
