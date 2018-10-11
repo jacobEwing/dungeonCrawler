@@ -34,8 +34,6 @@
 			font-family: 'VT323', monospace;
 		}
 		div.darkness{
-			width: 60px;
-			height: 60px;
 			background-color: #000;
 			position: absolute;
 		}
@@ -48,7 +46,7 @@
 		var motionControls = {};
 		var playerSpriteSet = new spriteSet();
 		var player;
-		var gameScale = 5, cellSize = 12;
+		var gameScale = 4, cellSize = 12;
 		var sprites = {};
 		var maps = Array();
 		var activeMap;
@@ -56,7 +54,7 @@
 		var gameInterval; // <-- the animation interval object
 		var walkSpeed = 3;
 		var angSpeedRatio = {
-			x : .70711,
+			x : .70711, // 1/sqrt(2) <- the axis projection of a 45 degree unit vector
 			y : .70711
 
 			/*
@@ -129,7 +127,6 @@
 					var absdx = Math.abs(dx);
 					var sgndy = Math.sign(dy);
 					var absdy = Math.abs(dy);
-					
 
 					if (absdx >= absdy){
 						yTally = absdx >> 1;
@@ -222,22 +219,30 @@
 			}
 
 			player.setMapPos(area.playerPos.x, area.playerPos.y);
+			scaleBlindTiles();
 			alignLayersToPlayer();
 			checkOverlay();
 		}
 
 		function checkOverlay(){
-			var x, y, cx, cy;
+			var x, y, cx, cy, opactiy, o, cell;
 			var pos = player.mapPos();
 			for(x = -8; x <= 8; x++){
 				cx = x + pos.x;
 				if(cx >= 0 && cx < activeMap.width){
 					for(y = -8; y <= 8; y++){
 						cy = y + pos.y;
+						cell = $('#darkness_' + (cx) + '_' + (cy));
 						if(cy >= 0 && cy < activeMap.height){
 							if(x * x + y * y < 16){
 								activeMap.hideMap[cx][cy] = false;
-								$('#darkness_' + (cx) + '_' + (cy)).remove();
+								cell.remove();
+							}else{
+								opacity = (x * x + y * y) / 36;
+								o = cell.css('opacity');
+								if(o == undefined || o > opacity){
+									cell.css('opacity', opacity);
+								}
 							}
 						}
 					}
@@ -300,7 +305,7 @@
 			}
 			return rval;
 		}
-		
+
 		function check_key_state(){
 			var dirCombo = 0, n;
 			var sequence = null;
@@ -311,7 +316,7 @@
 			dirCombo += checkKeyControl('down') ? 2 : 0;
 			dirCombo += checkKeyControl('left') ? 4 : 0;
 			dirCombo += checkKeyControl('right') ? 8 : 0;
-	
+
 			switch(dirCombo){
 				case 1: // up
 					sequence = 'walkup';
@@ -481,6 +486,20 @@
 			renderArea(activeMap);
 		}
 
+		function scaleBlindTiles(){
+			var n;
+			var size = gameScale * cellSize + 'px';
+			var list = document.getElementsByClassName('darkness');
+			for(n = 0; n < list.length; n++){
+				try{
+					list[n].style.width = size;
+					list[n].style.height = size;
+				}catch(e){
+					debugger;
+				}
+			}
+		}
+
 		function initialize(step){
 			// pre-load any data we need to get the game started.
 			// Note that using callbacks on this method prevents it from building a stack.
@@ -534,7 +553,6 @@
 
 						player.sprite.setFrame('front_idle');
 						setTimeout(function(){initialize('load map');}, 0);
-						
 					});
 					break;
 
@@ -556,6 +574,7 @@
 					activeMap.playerPos = activeMap.findTextureSpot('.');
 					renderArea(activeMap);
 
+					scaleBlindTiles();
 					setTimeout(function(){initialize('initialize keyboard');}, 1);
 					break;
 
