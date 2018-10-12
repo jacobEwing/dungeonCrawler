@@ -66,10 +66,10 @@ mapBuilder.prototype.build = function(params){
 			this.buildDungeon();
 			break;
 		case 'swamp':
-			this.buildDungeon();
+			this.buildSwamp();
 			break;
 		case 'forest':
-			this.buildDungeon();
+			this.buildForest();
 			break;
 		default:
 			throw "invalied map type";
@@ -385,7 +385,7 @@ mapBuilder.prototype.buildForest = function(){
 
 
 	var area = this.width * this.height;
-	this.map = this.makeEmptyMap('.');
+	this.map = this.makeEmptyMap('"');
 
 
 	// ok, we have our empty map, now let's do the dirty business!
@@ -408,7 +408,7 @@ mapBuilder.prototype.buildForest = function(){
 	}
 
 	// let's run the game of life on it to give it a more chaotic look
-	this.life(5, 'T');
+	this.life(8, '"');
 	return this.map;
 }
 
