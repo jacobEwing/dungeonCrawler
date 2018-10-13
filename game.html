@@ -38,7 +38,7 @@
 			position: absolute;
 		}
 	</style>
-	<script type="text/javascript" src="keyboard.js"></script>
+	<script type="text/javascript" src="kbListener.js"></script>
 	<script type="text/javascript" src="generator.js"></script> 
 	<script type="text/javascript" src="elementSprite.js"></script>
 	<script type="text/javascript" src="jquery.min.js"></script>
@@ -282,14 +282,14 @@
 
 		function loadDefaultMotionControls(){
 			motionControls = {
-				up : [KEYMAP['UP']],
-				down: [KEYMAP['DOWN']],
-				left: [KEYMAP['LEFT']],
-				right: [KEYMAP['RIGHT']],
-				enter : [KEYMAP['SHIFT'], KEYMAP['.']],
-				exit : [KEYMAP['SHIFT'], KEYMAP[',']],
-				attack: [KEYMAP['CTRL']],
-				grab : [KEYMAP[',']],
+				up : [keyboard.KEYMAP['UP']],
+				down: [keyboard.KEYMAP['DOWN']],
+				left: [keyboard.KEYMAP['LEFT']],
+				right: [keyboard.KEYMAP['RIGHT']],
+				enter : [keyboard.KEYMAP['SHIFT'], keyboard.KEYMAP['.']],
+				exit : [keyboard.KEYMAP['SHIFT'], keyboard.KEYMAP[',']],
+				attack: [keyboard.KEYMAP['CTRL']],
+				grab : [keyboard.KEYMAP[',']],
 			};
 		}
 
@@ -298,7 +298,7 @@
 			if(motionControls[action] != undefined){
 				rval = true;
 				for(n in motionControls[action]){
-					rval &= keyState[motionControls[action][n]] ? true : false;
+					rval &= keyboard.keyState[motionControls[action][n]] ? true : false;
 				}
 			}else{
 				rval = false;
@@ -580,10 +580,9 @@
 
 				case 'initialize keyboard':
 					// the functions used here are defined in keyboard.js
-					initialize_keymap();
+					keyboard = new kbListener();
+					keyboard.listen();
 					loadDefaultMotionControls();
-					document.onkeyup = keyupCall;
-					document.onkeydown = keydownCall;
 					setTimeout(function(){initialize('finish');}, 1);
 					break;
 
