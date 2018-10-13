@@ -167,13 +167,22 @@
 		})();
 
 		function renderArea(area){
+			var tree1GreensSprite = new spriteClass(sprites.tree1);
+			tree1GreensSprite.setScale(gameScale);
+
+			var tree1Sprite = new spriteClass(sprites.tree1);
+			tree1Sprite.setScale(gameScale);
+
+			var grassSprite = new spriteClass(sprites.grass);
+			grassSprite.setScale(gameScale);
+
 			var stoneSprite = new spriteClass(sprites.stone);
 			stoneSprite.setScale(gameScale);
 
 			var groundSprite = new spriteClass(sprites.ground);
 			groundSprite.setScale(gameScale);
 
-			dungeonElementsSprite = new spriteClass(sprites.dungeonElements);
+			var dungeonElementsSprite = new spriteClass(sprites.dungeonElements);
 			dungeonElementsSprite.setScale(gameScale);
 
 			var x, y, drawX, drawY, n;
@@ -187,9 +196,19 @@
 							groundSprite.rotate(Math.PI / 2);
 							groundSprite.drawRandomArea(mapLayer, drawX, drawY, cellSize, cellSize);
 							break;
-							break;
 						case '#':
 							stoneSprite.drawFrame(mapLayer, Math.floor(Math.random() * 25), drawX, drawY);
+							break;
+						case 'T':
+							grassSprite.rotate(Math.PI / 2);
+							grassSprite.drawRandomArea(mapLayer, drawX, drawY, cellSize, cellSize);
+							tree1GreensSprite.rotate(Math.random());
+							tree1GreensSprite.drawFrame(overheadLayer, 'greens', drawX, drawY);
+							tree1Sprite.drawFrame(unitsLayer, 'trunk', drawX, drawY);
+							break;
+						case '"':
+							grassSprite.rotate(Math.PI / 2);
+							grassSprite.drawRandomArea(mapLayer, drawX, drawY, cellSize, cellSize);
 							break;
 						default:
 							continue;
@@ -217,6 +236,8 @@
 				}
 				//debugger;
 			}
+
+
 
 			player.setMapPos(area.playerPos.x, area.playerPos.y);
 			scaleBlindTiles();
@@ -251,9 +272,12 @@
 		}
 
 		function alignLayersToPlayer(){
+			$('.alignToPlayer').css({'top' : -player.position.y * gameScale + 'px', 'left': -player.position.x * gameScale + 'px'});
+			/*
 			$('#mapLayer').css({'top' : -player.position.y * gameScale + 'px', 'left': -player.position.x * gameScale + 'px'});
 			$('#unitsLayer').css({'top' : -player.position.y * gameScale + 'px', 'left': -player.position.x * gameScale + 'px'});
 			$('#blindness').css({'top' : -player.position.y * gameScale + 'px', 'left': -player.position.x * gameScale + 'px'});
+			*/
 		}
 
 		function writeText(x, y, text){
@@ -462,6 +486,7 @@
 			document.getElementById("unitsLayer").innerHTML = '';
 			document.getElementById("overlay").innerHTML = '';
 			document.getElementById("blindness").innerHTML = '';
+			document.getElementById("overheadLayer").innerHTML = '';
 			switch(entrance.content){
 				case 'stairup':
 					entrance.target.playerPos = {
@@ -500,96 +525,102 @@
 			}
 		}
 
-		function initialize(step){
-			// pre-load any data we need to get the game started.
-			// Note that using callbacks on this method prevents it from building a stack.
-			// It also allows us to wait for each step to complete before calling the next
-			// one.
-			if(step == undefined) step = 'initialize';
-			switch(step){
-				case 'initialize':
-					mapLayer = document.getElementById('mapLayer');
-					overlay = document.getElementById('overlay');
-					screenMiddle = {
-						x : gameMargin.offsetWidth / (2 * gameScale),
-						y : gameMargin.offsetHeight / (2 * gameScale)
-					};
-					writeText(5, 5, "DungeonCrawler v.0.0");
-					setTimeout(function(){
-						initialize('load stone sprite');
-					}, 1);
-					break;
+		initialize = function(){
 
-				case 'load stone sprite':
-					sprites.stone = new spriteSet('sprites/stone.sprite', function(){
+			this.spriteList = Array(
+				{'name' : 'grass', 'file' : 'grass.sprite'},
+				{'name' : 'tree1', 'file' : 'tree1.sprite'},
+				{'name' : 'stone', 'file': 'stone.sprite'},
+				{'name' : 'ground', 'file' : 'ground.sprite'},
+				{'name' : 'dungeonElements', 'file' : 'dungeonElements.sprite'}
+			);
+
+		
+			this.doStep = function(step){
+				var dat;
+				// pre-load any data we need to get the game started.
+				// Note that using callbacks on this method prevents it from building a stack.
+				// It also allows us to wait for each step to complete before calling the next
+				// one.
+				switch(step){
+					case 'initialize':
+						mapLayer = document.getElementById('mapLayer');
+						overheadLayer = document.getElementById('overheadLayer');
+						overlay = document.getElementById('overlay');
+						screenMiddle = {
+							x : gameMargin.offsetWidth / (2 * gameScale),
+							y : gameMargin.offsetHeight / (2 * gameScale)
+						};
+						writeText(5, 5, "DungeonCrawler v.0.0");
 						setTimeout(function(){
-							initialize('load floor sprite');
+							this.doStep('load sprites');
 						}, 1);
-					});
-					break;
+						break;
 
-				case 'load floor sprite':
-					sprites.ground = new spriteSet('sprites/ground.sprite', function(){
-						setTimeout(function(){
-							initialize('load dungeon elements');
-						}, 1);
-					});
-					break;
+					case 'load sprites':
+						if(this.spriteList.length > 0){
+							dat = this.spriteList.pop();
+							sprites[dat.name] = new spriteSet('sprites/' + dat.file, function(){
+								setTimeout(function(){
+									this.doStep('load sprites');
+								}, 1);
+							});
 
-				case 'load dungeon elements':
-					sprites.dungeonElements = new spriteSet('sprites/dungeonElements.sprite', function(){
-						setTimeout(function(){
-							initialize('load player sprite');
-						}, 1);
-					});
-					break;
+						}else{
+							this.doStep('load player sprite');
+						}
+						break;
 
-				case 'load player sprite':
-					playerSpriteSet.load("sprites/player.sprite", function(){
-						player.sprite = new spriteClass(this);
-						player.sprite.setScale(gameScale);
-						player.sprite.appendTo(playerLayer);
-						player.sprite.setPosition(screenMiddle.x, screenMiddle.y, true);
 
-						player.sprite.setFrame('front_idle');
-						setTimeout(function(){initialize('load map');}, 0);
-					});
-					break;
+					case 'load player sprite':
+						playerSpriteSet.load("sprites/player.sprite", function(){
+							player.sprite = new spriteClass(this);
+							player.sprite.setScale(gameScale);
+							player.sprite.appendTo(playerLayer);
+							player.sprite.setPosition(screenMiddle.x, screenMiddle.y, true);
 
-				case 'load map':
-					var mapIdx = maps.length;
-					maps[mapIdx] = new mapBuilder();
-					maps[mapIdx].build({
-						category : 'dungeon',
-						width : 30,
-						height: 30,
-						roomscale: .8,
-						stairup: true,
-						stairdown: true,
-			//			startTexture: '<'
-					});
-					activeMap = maps[mapIdx];
+							player.sprite.setFrame('front_idle');
+							setTimeout(function(){this.doStep('load map');}, 0);
+						});
+						break;
 
-					// quick random placement for now:
-					activeMap.playerPos = activeMap.findTextureSpot('.');
-					renderArea(activeMap);
+					case 'load map':
+						var mapIdx = maps.length;
+						maps[mapIdx] = new mapBuilder();
+						maps[mapIdx].build({
+							category : 'dungeon',
+							width : 30,
+							height: 30,
+							roomscale: .8,
+							//stairup: true,
+							stairdown: true,
+							//startTexture: '<'
+						});
+						activeMap = maps[mapIdx];
 
-					scaleBlindTiles();
-					setTimeout(function(){initialize('initialize keyboard');}, 1);
-					break;
+						// quick random placement for now:
+						activeMap.playerPos = activeMap.findTextureSpot('.');
+						renderArea(activeMap);
 
-				case 'initialize keyboard':
-					// the functions used here are defined in keyboard.js
-					keyboard = new kbListener();
-					keyboard.listen();
-					loadDefaultMotionControls();
-					setTimeout(function(){initialize('finish');}, 1);
-					break;
+						scaleBlindTiles();
+						setTimeout(function(){this.doStep('initialize keyboard');}, 1);
+						break;
 
-				case 'finish':
-					gameInterval = setInterval(playGame, 70);
+					case 'initialize keyboard':
+						// the functions used here are defined in keyboard.js
+						keyboard = new kbListener();
+						keyboard.listen();
+						loadDefaultMotionControls();
+						setTimeout(function(){this.doStep('finish');}, 1);
+						break;
+
+					case 'finish':
+
+						gameInterval = setInterval(playGame, 70);
+				}
 			}
-		}
+			this.doStep('initialize');
+		};
 
 		window.onload = function(){
 			initialize();
@@ -599,13 +630,15 @@
 </head>
 <body>
 	<div id="gameMargin">
-		<div id="mapLayer" class="gameLayer">
+		<div id="mapLayer" class="gameLayer alignToPlayer">
 		</div>
-		<div id="unitsLayer" class="gameLayer">
+		<div id="unitsLayer" class="gameLayer alignToPlayer">
 		</div>
 		<div id="playerLayer" class="gameLayer">
 		</div>
-		<div id="blindness" class="gameLayer">
+		<div id="overheadLayer" class="gameLayer alignToPlayer">
+		</div>
+		<div id="blindness" class="gameLayer alignToPlayer">
 		</div>
 		<div id="overlay" class="gameLayer">
 		</div>
