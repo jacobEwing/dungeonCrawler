@@ -71,9 +71,10 @@ cSprite.prototype.rotate = function(angle){
 	this.rotation += angle;
 };
 
-cSprite.prototype.drawRandomArea = function(context, drawx, drawy, width, height){
+cSprite.prototype.drawRandomArea = function(context, drawx, drawy, width, height, randomKey){
 
-	
+	var x, y;
+
 	width *= 1;
 	width = width > this.imageWidth ? this.imageWidth : (width < 0 ? 0 : width);
 
@@ -81,9 +82,17 @@ cSprite.prototype.drawRandomArea = function(context, drawx, drawy, width, height
 	height = height > this.imageHeight ? this.imageHeight : (height < 0 ? 0 : height);
 
 	if(width == 0 || height == 0) return;
-
-	var x = Math.floor(Math.random() * (this.imageWidth - width));
-	var y = Math.floor(Math.random() * (this.imageHeight - height));
+	if(randomKey == undefined){
+		x = Math.floor(Math.random() * (this.imageWidth - width));
+		y = Math.floor(Math.random() * (this.imageHeight - height));
+	}else{
+		randomKey = Math.sin(randomKey) * 10000;
+		randomKey -= Math.floor(randomKey);
+		x = Math.floor(randomKey * (this.imageWidth - width));
+		randomKey = Math.sin(randomKey) * 10000;
+		randomKey -= Math.floor(randomKey);
+		y = Math.floor(randomKey * (this.imageHeight - height));
+	}
 	this.draw(context, {
 		x : drawx, 
 		y : drawy, 

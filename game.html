@@ -72,40 +72,40 @@
 			*/
 		};
 		var screenMiddle = {x: 0, y : 0};
-
 		var player = (function(){
 			var position = {x : 0, y : 0};
 			return {
 				direction : 'down',
 				sprite : null,
 				'position' : position,
-				mapPos : function(x, y){
-					if(x == undefined) x = this.position.x;
-					if(y == undefined) y = this.position.y;
-					return {
-						x : Math.floor((x + 2 + screenMiddle.x) / cellSize),
-						y : Math.floor((y - 2 + screenMiddle.y) / cellSize) + 1
-					}
-				},
 				setMapPos : function(x, y){
-					this.position.x = cellSize * x - screenMiddle.x;
-					this.position.y = cellSize * y - screenMiddle.y;
+					// our grid position on the map
+					map.playerPos.x = x;
+					map.playerPos.y = y;
+
+					// our real position in the map
+					this.position.x = cellSize * x;
+					this.position.y = cellSize * y;
 				},
-				canWalkOn : function(x, y){
+				canWalkOn : function(posx, posy){
+					return true;
+
+					var roundX = Math.floor(posx / cellSize)
+					var roundY = Math.floor(posy / cellSize)
 					var map = activeMap.map;
 					var rval = true;
-					var pos = this.mapPos(x, y);
-					if(pos.x < 0 || pos.y < 0 || pos >= map.length || pos.y >= map[pos.x].length){
+					if(roundX < 0 || roundY < 0 || roundX >= map.length || roundY >= map[roundX].length){
 						rval = false;
-					}else if({'#' : 1}[map[pos.x][pos.y]] != undefined){
+					}else if({'#' : 1}[map[roundX][roundY]] != undefined){
 						rval = false;
 					}
 					return rval;
 				},
 				currentMapVal : function(){
 					var map = activeMap.map;
+					var pos = activeMap.playerPos;
 					var rval;
-					var pos = this.mapPos();
+
 					if(pos.x < 0 || pos.y < 0 || pos.x >= map.length || pos.y >= map[pos.x].length){
 						rval = null;
 					}else{
@@ -114,21 +114,20 @@
 					return rval;
 
 
-				},
+				}/*,
 				currentItems : function(){
 					rval = Array();
-					var pos = this.mapPos();
-					if(activeMap.mappedItems[pos.x] != undefined){
-						if(activeMap.mappedItems[pos.x][pos.y] != undefined){
-							for(var n in activeMap.mappedItems[pos.x][pos.y]){
-								rval = rval.concat(activeMap.mappedItems[pos.x][pos.y]);
+					if(activeMap.mappedItems[map.playerPos.x] != undefined){
+						if(activeMap.mappedItems[map.playerPos.x][map.playerPos.y] != undefined){
+							for(var n in activeMap.mappedItems[map.playerPos.x][map.playerPos.y]){
+								rval = rval.concat(activeMap.mappedItems[map.playerPos.x][map.playerPos.y]);
 							}
 						}
 					}
 					return rval;
 
 
-				},
+				}*/,
 				move : function(dx, dy, noCollision){
 					var i, xTally, yTally;
 					var sgndx = Math.sign(dx);
@@ -160,13 +159,15 @@
 									this.position.x += sgndx;
 								}
 							}
-							if(this.canWalkOn(this.position.x, this.position.y + sgndy)){
+							if(this.canWalkOn(this.position.x, this.y + sgndy)){
 								this.position.y += sgndy;
 							}
 						}
 					}
-					checkOverlay();
-					var pos = this.mapPos();
+					activeMap.playerPos = {
+						x : Math.floor(this.position.x / cellSize),
+						y : Math.floor(this.position.y / cellSize)
+					}
 				},
 				currentSequence: null,
 				currentEndFrame : null
@@ -174,6 +175,7 @@
 		})();
 
 		function renderView(area){
+			var randomKey;
 			var tree1GreensSprite = new cSprite(sprites.tree1);
 			tree1GreensSprite.setScale(gameScale);
 
@@ -193,7 +195,9 @@
 			dungeonElementsSprite.setScale(gameScale);
 
 			var x, y, mapX, mapY, drawX, drawY, n;
-			console.log(area.playerPos.x + ', ' + area.playerPos.y);
+			
+			context.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+
 			for(x = 0; x < viewRange.width; x++){
 				mapX = area.playerPos.x + x - Math.floor(screenMiddle.x / (gameScale * cellSize));
 				if(mapX < 0 || mapX > area.map.length - 1) continue;
@@ -214,11 +218,17 @@
 					*/
 					switch(area.map[mapX][mapY]){
 						case '.':
-							groundSprite.rotate(Math.PI / 2);
-							groundSprite.drawRandomArea(context, drawX, drawY, cellSize, cellSize);
+							randomKey = Math.sin(mapX + mapY * viewRange.width) * 10000;
+							randomKey -= Math.floor(randomKey);
+
+							groundSprite.rotate(Math.floor(randomKey * 4) * Math.PI / 2);
+							groundSprite.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
 							break;
 						case '#':
-							stoneSprite.setFrame(Math.floor(Math.random() * 25));
+							randomKey = Math.sin(mapX + mapY * viewRange.width) * 10000;
+							randomKey -= Math.floor(randomKey);
+
+							stoneSprite.setFrame(Math.floor(randomKey * 25));
 							stoneSprite.draw(context, {x : drawX, y : drawY});
 							break;
 						case 'T':
@@ -229,14 +239,21 @@
 							//tree1Sprite.drawFrame(unitsLayer, 'trunk', drawX, drawY);
 							break;
 						case '"':
+							randomKey = Math.sin(mapX + mapY * viewRange.width) * 10000;
+							randomKey -= Math.floor(randomKey);
+
 							grassSprite.rotate(Math.PI / 2);
-							grassSprite.drawRandomArea(context, drawX, drawY, cellSize, cellSize);
+							grassSprite.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
 							break;
 						default:
+							context.fillStyle = '#AAAA88';
+							context.fillRect(drawX, drawY, cellSize * gameScale, cellSize * gameScale);
 							continue;
 					}
 				}
 			}
+
+			player.sprite.draw(context, {x : screenMiddle.x, y : screenMiddle.y});
 /*
 			for(var itemName in area.items){
 				for(n in area.items[itemName]){
@@ -260,36 +277,9 @@
 
 /*
 			player.setMapPos(area.playerPos.x, area.playerPos.y);
-			checkOverlay();
 */
 		}
-/*
-		function checkOverlay(){
-			var x, y, cx, cy, opactiy, o, cell;
-			var pos = player.mapPos();
-			for(x = -8; x <= 8; x++){
-				cx = x + pos.x;
-				if(cx >= 0 && cx < activeMap.width){
-					for(y = -8; y <= 8; y++){
-						cy = y + pos.y;
-						cell = $('#darkness_' + (cx) + '_' + (cy));
-						if(cy >= 0 && cy < activeMap.height){
-							if(x * x + y * y < 16){
-								activeMap.hideMap[cx][cy] = false;
-								cell.remove();
-							}else{
-								opacity = (x * x + y * y) / 36;
-								o = cell.css('opacity');
-								if(o == undefined || o > opacity){
-									cell.css('opacity', opacity);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-*/
+
 		function writeText(x, y, text){
 			$('<span></span>').html(text).css({position:'absolute', 'top': (y + 2), 'left': (x + 2), 'color' : '#000'}).appendTo($('#overlay'));
 			$('<span></span>').html(text).css({position:'absolute', 'top': y, 'left': x, 'color' : '#EFE'}).appendTo($('#overlay'));
@@ -312,6 +302,7 @@
 
 
 			}
+			renderView(activeMap);
 		}
 
 		function loadDefaultMotionControls(){
@@ -427,12 +418,12 @@
 					});
 				}
 			}else{
-				var currentCellType = player.currentMapVal();
-				var currentItems = player.currentItems();
+				//var currentCellType = player.currentMapVal();
+//				var currentItems = player.currentItems();
 
 				if(sequence == null){
 					if(player.currentSequence != null){
-						player.sprite.stopSequence(player.currentSequence);
+//						player.sprite.stopSequence(player.currentSequence);
 						player.sprite.setFrame(player.currentEndFrame);
 						player.currentSequence = null;
 					}
@@ -442,6 +433,7 @@
 					// above, perhaps to the bottom right of the player.  Each option in there
 					// would have a keyboard shortcut(e.g. "pick up item [,]").  With an option not
 					// to display those menus.
+					/*
 					for(n in currentItems){
 						switch(currentItems[n].content){
 							case 'stairup':
@@ -458,12 +450,15 @@
 								console.log(currentItems[n].content);
 						}
 					}
+					*/
 
 
 				}else if(sequence != player.currentSequence){
+					/*
 					if(player.currentSequence != null){
 						player.sprite.stopSequence(player.currentSequence);
 					}
+					*/
 					player.currentEndFrame = endFrame;
 					player.currentSequence = sequence;
 					player.sprite.startSequence(sequence, {
@@ -600,6 +595,8 @@
 
 						// quick random placement for now:
 						activeMap.playerPos = activeMap.findTextureSpot('.');
+						player.position.x = Math.floor(cellSize * (activeMap.playerPos.x - .5));
+						player.position.y = Math.floor(cellSize * (activeMap.playerPos.y - .5));
 
 						renderView(activeMap);
 
