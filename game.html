@@ -37,7 +37,6 @@
 	<script type="text/javascript" src="kbListener.js"></script>
 	<script type="text/javascript" src="generator.js"></script> 
 	<script type="text/javascript" src="canvasSprite.js"></script>
-	<script type="text/javascript" src="jquery.min.js"></script>
 	<script type="text/javascript">
 		/*
 		Math.random = (function(){
@@ -80,8 +79,8 @@
 				'position' : position,
 				setMapPos : function(x, y){
 					// our grid position on the map
-					map.playerPos.x = x;
-					map.playerPos.y = y;
+					activeMap.playerPos.x = x;
+					activeMap.playerPos.y = y;
 
 					// our real position in the map
 					this.position.x = cellSize * x;
@@ -112,20 +111,20 @@
 					return rval;
 
 
-				}/*,
-				currentItems : function(){
-					rval = Array();
-					if(activeMap.mappedItems[map.playerPos.x] != undefined){
-						if(activeMap.mappedItems[map.playerPos.x][map.playerPos.y] != undefined){
-							for(var n in activeMap.mappedItems[map.playerPos.x][map.playerPos.y]){
-								rval = rval.concat(activeMap.mappedItems[map.playerPos.x][map.playerPos.y]);
+				},
+				touchingItems : function(){
+					var rval = Array();
+					if(activeMap.mappedItems[activeMap.playerPos.x] != undefined){
+						if(activeMap.mappedItems[activeMap.playerPos.x][activeMap.playerPos.y] != undefined){
+							for(var n in activeMap.mappedItems[activeMap.playerPos.x][activeMap.playerPos.y]){
+								rval = rval.concat(activeMap.mappedItems[activeMap.playerPos.x][activeMap.playerPos.y]);
 							}
 						}
 					}
 					return rval;
 
 
-				}*/,
+				},
 				move : function(dx, dy, noCollision){
 					var i, xTally, yTally;
 					var sgndx = Math.sign(dx);
@@ -231,7 +230,8 @@
 							randomKey -= Math.floor(randomKey);
 
 							stoneSprite.setFrame(Math.floor(randomKey * 25));
-							stoneSprite.draw(context, {x : x * cellSize - drawOffset.x , y : y * cellSize - drawOffset.y});
+							//stoneSprite.draw(context, {x : x * cellSize - drawOffset.x , y : y * cellSize - drawOffset.y});
+							stoneSprite.draw(context, {x : drawX / gameScale, y : drawY / gameScale});
 							break;
 						case 'T':
 							//grassSprite.rotate(Math.PI / 2);
@@ -253,48 +253,50 @@
 							context.fillRect(drawX, drawY, cellSize * gameScale, cellSize * gameScale);
 							*/
 					}
+					for(var itemName in area.items){
+						for(n in area.items[itemName]){
+							item = area.items[itemName][n];
+							if(item.x == mapX && item.y == mapY){
+								frameName = {
+									'stairup' : 'stairsUp',
+									'stairdown' : 'stairsDown'
+								}[item.content];
+								switch(frameName){
+									case 'stairsUp': case 'stairsDown':
+										dungeonElementsSprite.setFrame(frameName);
+										//dungeonElementsSprite.draw(context, {x : x * cellSize - drawOffset.x , y : y * cellSize - drawOffset.y});
+										dungeonElementsSprite.draw(context, {x : drawX / gameScale, y : drawY / gameScale});
+										break;
+								}
+							}
+						}
+					}
+
 				}
 			}
-			// this positioning is a hack that doesn't work on other scales
-			/*
-			player.sprite.draw(context, {
-				x : Math.floor(screenMiddle.x / gameScale - player.sprite.frameWidth / 2),
-				y : Math.floor(screenMiddle.y / gameScale - player.sprite.frameHeight + 1)
-			});
-			*/
 			player.sprite.draw(context, {
 				x : cellSize * Math.floor(screenMiddle.x / (gameScale * cellSize)) - (player.sprite.frameWidth >> 1),
 				y : cellSize * Math.floor(screenMiddle.y / (gameScale * cellSize)) - player.sprite.frameHeight + 1
 			});
-/*
-			for(var itemName in area.items){
-				for(n in area.items[itemName]){
-					item = area.items[itemName][n];
-					drawX = (item.x * cellSize - player.position.x) * gameScale;
-					drawY = (item.y * cellSize - player.position.x) * gameScale;
-					switch(item.content){
-						case 'stairup':
-							dungeonElementsSprite.setFrame('stairsUp');
-							dungeonElementsSprite.draw(context, {x : drawX, y : drawY});
-							break;
-						case 'stairdown':
-							dungeonElementsSprite.setFrame('stairsDown');
-							dungeonElementsSprite.draw(context, {x : drawX, y : drawY});
-							break;
-					}
-				}
-			}
-*/			
-
-
-/*
-			player.setMapPos(area.playerPos.x, area.playerPos.y);
-*/
 		}
 
 		function writeText(x, y, text){
-			$('<span></span>').html(text).css({position:'absolute', 'top': (y + 2), 'left': (x + 2), 'color' : '#000'}).appendTo($('#overlay'));
-			$('<span></span>').html(text).css({position:'absolute', 'top': y, 'left': x, 'color' : '#EFE'}).appendTo($('#overlay'));
+			var span = document.createElement('span');
+			span.innerHTML = text;
+			span.style.position = 'absolute';
+			span.style.left = (x + 2) + 'px';
+			span.style.top = (y + 2) + 'px';
+			span.style.color = '#000';
+			document.getElementById('overlay').appendChild(span);
+
+			var span = document.createElement('span');
+			span.innerHTML = text;
+			span.style.position = 'absolute';
+			span.style.left = x + 'px';
+			span.style.top = y + 'px';
+			span.style.color = '#FFF';
+			document.getElementById('overlay').appendChild(span);
+
 		}
 
 		function playGame(){
@@ -431,7 +433,7 @@
 				}
 			}else{
 				//var currentCellType = player.currentMapVal();
-//				var currentItems = player.currentItems();
+				var touchingItems = player.touchingItems();
 
 				if(sequence == null){
 					if(player.currentSequence != null){
@@ -447,24 +449,22 @@
 					// above, perhaps to the bottom right of the player.  Each option in there
 					// would have a keyboard shortcut(e.g. "pick up item [,]").  With an option not
 					// to display those menus.
-					/*
-					for(n in currentItems){
-						switch(currentItems[n].content){
+					for(n in touchingItems){
+						switch(touchingItems[n].content){
 							case 'stairup':
 								if(checkKeyControl('exit')){
-									useEntrance(currentItems[n]);
+									useEntrance(touchingItems[n]);
 								}
 								break;
 							case 'stairdown':
 								if(checkKeyControl('enter')){
-									useEntrance(currentItems[n]);
+									useEntrance(touchingItems[n]);
 								}
 								break;
 							default:
-								console.log(currentItems[n].content);
+								console.log(touchingItems[n].content);
 						}
 					}
-					*/
 
 
 				}else if(sequence != player.currentSequence){
@@ -522,6 +522,7 @@
 					break;
 			}
 			activeMap = entrance.target;
+			player.setMapPos(activeMap.playerPos.x, activeMap.playerPos.y);
 			renderView(activeMap);
 		}
 

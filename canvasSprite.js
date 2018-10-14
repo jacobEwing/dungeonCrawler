@@ -130,8 +130,10 @@ cSprite.prototype.draw = function(context, params){
 		}
 	}
 	context.save();
-	x += this.frame.drawOffset.x;
-	y += this.frame.drawOffset.y;
+	if(this.frame.drawOffset != undefined){
+		x += this.frame.drawOffset.x;
+		y += this.frame.drawOffset.y;
+	}
 	context.translate(x * drawScale, y * drawScale);
 	context.rotate(this.rotation);
 
