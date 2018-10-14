@@ -27,12 +27,6 @@
 			width:100%;
 			height:100%;
 		}
-		/*
-		div.darkness{
-			background-color: #000;
-			position: absolute;
-		}
-		*/
 	</style>
 	<script type="text/javascript" src="kbListener.js"></script>
 	<script type="text/javascript" src="generator.js"></script> 
@@ -165,6 +159,7 @@
 						x : Math.floor(this.position.x / cellSize),
 						y : Math.floor(this.position.y / cellSize)
 					}
+					checkOverlay();
 				},
 				currentSequence: null,
 				currentEndFrame : null
@@ -172,6 +167,14 @@
 		})();
 
 		function renderView(area){
+			/*
+			just a bit of a joke experiment.  We can scale down sort of.  the user needs to be accounted for too though
+			gameScale *= .999;
+			viewRange = {
+				width: Math.ceil(gameCanvas.width / (gameScale * cellSize)) + 1,
+				height: Math.ceil(gameCanvas.height / (gameScale * cellSize)) + 1
+			}
+			*/
 			var randomKey;
 			var tree1GreensSprite = new cSprite(sprites.tree1);
 			tree1GreensSprite.setScale(gameScale);
@@ -209,14 +212,9 @@
 					drawX = (x * cellSize - drawOffset.x) * gameScale;
 					drawY = (y * cellSize - drawOffset.y) * gameScale;
 			 
-					/*
-					// added for example.  this is where hidemap should be handled.  if the map is
-					// hidden here, rather than drawing a frame, we'll simply draw a blurry black
-					// blob.
-					if(area.hideMap[x][y]){
-
+					if(area.hideMap[mapX][mapY] == true){
+						continue;
 					}
-					*/
 					switch(area.map[mapX][mapY]){
 						case '.':
 							randomKey = Math.sin(mapX + mapY * viewRange.width) * 10000;
@@ -486,6 +484,35 @@
 				}
 			}
 		}
+
+		function checkOverlay(){
+			activeMap.playerPos.x
+
+			var x, y, cx, cy, opactiy, o, cell;
+			for(x = -8; x <= 8; x++){
+				cx = x + activeMap.playerPos.x;
+				if(cx >= 0 && cx < activeMap.width){
+					for(y = -8; y <= 8; y++){
+						cy = y + activeMap.playerPos.y;
+						if(cy >= 0 && cy < activeMap.height){
+							if(x * x + y * y < 16){
+								activeMap.hideMap[cx][cy] = false;
+							/*
+							}else{
+								opacity = (x * x + y * y) / 36;
+								o = cell.css('opacity');
+								if(o == undefined || o > opacity){
+									cell.css('opacity', opacity);
+								}
+							*/
+							}
+						}
+					}
+				}
+			}
+		}
+
+
 		function useEntrance(entrance){
 			if(entrance.target == undefined){
 				var mapIdx = maps.length;
@@ -523,6 +550,9 @@
 			}
 			activeMap = entrance.target;
 			player.setMapPos(activeMap.playerPos.x, activeMap.playerPos.y);
+			player.position.x += cellSize >> 1;
+			player.position.y += cellSize >> 1;
+			checkOverlay();
 			renderView(activeMap);
 		}
 
@@ -614,6 +644,7 @@
 						player.position.x = Math.floor(cellSize * (activeMap.playerPos.x));
 						player.position.y = Math.floor(cellSize * (activeMap.playerPos.y));
 
+						checkOverlay();
 						renderView(activeMap);
 
 						setTimeout(function(){this.doStep('initialize keyboard');}, 1);
