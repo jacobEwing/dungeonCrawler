@@ -3,44 +3,40 @@
 <head>
 	<link href="https://fonts.googleapis.com/css?family=VT323" rel="stylesheet">
 	<style type="text/css">
-		body{
+		* { margin: 0; padding: 0;}
+
+		body, html{
+			
+			height: 100%;
 			image-rendering: pixelated;
 			image-rendering: -moz-crisp-edges;
 			image-rendering: crisp-edges;
 			background-color: #000;
 		}
-		#gameMargin{
-			position: absolute;
-			top:0;
-			left:0;
-			margin: 0;
-			padding: 0;
-			width: 100%;
-			height: 100%;
-			overflow: hidden;
-		}
 
-		div.gameLayer{
-			position: absolute;
-			top: 0;
-			left: 0;
-			margin: auto;
-			width: 100%;
-			height: 100%;
+		#gameCanvas{
+			position:absolute;
+			width:100%;
+			height:100%;
 		}
 
 		#overlay{
 			font-size: 30px;
 			font-family: 'VT323', monospace;
+			position:absolute;
+			width:100%;
+			height:100%;
 		}
+		/*
 		div.darkness{
 			background-color: #000;
 			position: absolute;
 		}
+		*/
 	</style>
 	<script type="text/javascript" src="kbListener.js"></script>
 	<script type="text/javascript" src="generator.js"></script> 
-	<script type="text/javascript" src="elementSprite.js"></script>
+	<script type="text/javascript" src="canvasSprite.js"></script>
 	<script type="text/javascript" src="jquery.min.js"></script>
 	<script type="text/javascript">
 		var motionControls = {};
@@ -167,22 +163,22 @@
 		})();
 
 		function renderArea(area){
-			var tree1GreensSprite = new spriteClass(sprites.tree1);
+			var tree1GreensSprite = new cSprite(sprites.tree1);
 			tree1GreensSprite.setScale(gameScale);
 
-			var tree1Sprite = new spriteClass(sprites.tree1);
+			var tree1Sprite = new cSprite(sprites.tree1);
 			tree1Sprite.setScale(gameScale);
 
-			var grassSprite = new spriteClass(sprites.grass);
+			var grassSprite = new cSprite(sprites.grass);
 			grassSprite.setScale(gameScale);
 
-			var stoneSprite = new spriteClass(sprites.stone);
+			var stoneSprite = new cSprite(sprites.stone);
 			stoneSprite.setScale(gameScale);
 
-			var groundSprite = new spriteClass(sprites.ground);
+			var groundSprite = new cSprite(sprites.ground);
 			groundSprite.setScale(gameScale);
 
-			var dungeonElementsSprite = new spriteClass(sprites.dungeonElements);
+			var dungeonElementsSprite = new cSprite(sprites.dungeonElements);
 			dungeonElementsSprite.setScale(gameScale);
 
 			var x, y, drawX, drawY, n;
@@ -544,6 +540,18 @@
 				// one.
 				switch(step){
 					case 'initialize':
+						gameCanvas = document.getElementById('gameCanvas');
+						document.getElementById('gameCanvas').clientWidth
+
+						gameCanvas.width = window.innerWidth;
+						gameCanvas.height = window.innerHeight;
+
+						context = gameCanvas.getContext('2d');
+						context.webkitImageSmoothingEnabled = false;
+						context.mozImageSmoothingEnabled = false;
+						context.imageSmoothingEnabled = false; /// future
+
+						/*
 						mapLayer = document.getElementById('mapLayer');
 						overheadLayer = document.getElementById('overheadLayer');
 						overlay = document.getElementById('overlay');
@@ -556,6 +564,7 @@
 							this.doStep('load sprites');
 						}, 1);
 						break;
+						*/
 
 					case 'load sprites':
 						if(this.spriteList.length > 0){
@@ -574,9 +583,8 @@
 
 					case 'load player sprite':
 						playerSpriteSet.load("sprites/player.sprite", function(){
-							player.sprite = new spriteClass(this);
+							player.sprite = new cSprite(this);
 							player.sprite.setScale(gameScale);
-							player.sprite.appendTo(playerLayer);
 							player.sprite.setPosition(screenMiddle.x, screenMiddle.y, true);
 
 							player.sprite.setFrame('front_idle');
@@ -600,10 +608,11 @@
 
 						// quick random placement for now:
 						activeMap.playerPos = activeMap.findTextureSpot('.');
-						renderArea(activeMap);
+						console.log('Map loaded!');
 
-						scaleBlindTiles();
-						setTimeout(function(){this.doStep('initialize keyboard');}, 1);
+						//renderArea(activeMap);
+
+						//setTimeout(function(){this.doStep('initialize keyboard');}, 1);
 						break;
 
 					case 'initialize keyboard':
@@ -629,6 +638,9 @@
 	</script>
 </head>
 <body>
+	<canvas id="gameCanvas"></canvas>
+	<div id="overlay"></div>
+	<!--
 	<div id="gameMargin">
 		<div id="mapLayer" class="gameLayer alignToPlayer">
 		</div>
@@ -643,5 +655,6 @@
 		<div id="overlay" class="gameLayer">
 		</div>
 	</div>
+	-->
 </body>
 </html>
