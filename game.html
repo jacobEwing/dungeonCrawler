@@ -88,10 +88,8 @@
 					this.position.y = cellSize * y;
 				},
 				canWalkOn : function(posx, posy){
-					return true;
-
-					var roundX = Math.floor(posx / cellSize)
-					var roundY = Math.floor(posy / cellSize)
+					var roundX = Math.floor(1 * posx / cellSize)
+					var roundY = Math.floor(1 * posy / cellSize)
 					var map = activeMap.map;
 					var rval = true;
 					if(roundX < 0 || roundY < 0 || roundX >= map.length || roundY >= map[roundX].length){
@@ -159,7 +157,7 @@
 									this.position.x += sgndx;
 								}
 							}
-							if(this.canWalkOn(this.position.x, this.y + sgndy)){
+							if(this.canWalkOn(this.position.x, this.position.y + sgndy)){
 								this.position.y += sgndy;
 							}
 						}
@@ -249,15 +247,25 @@
 							grassSprite.rotate(Math.PI / 2);
 							grassSprite.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
 							break;
+							/*
 						default:
 							context.fillStyle = '#88AACC';
 							context.fillRect(drawX, drawY, cellSize * gameScale, cellSize * gameScale);
-							continue;
+							*/
 					}
 				}
 			}
-
-			player.sprite.draw(context, {x : screenMiddle.x / gameScale, y : screenMiddle.y / gameScale});
+			// this positioning is a hack that doesn't work on other scales
+			/*
+			player.sprite.draw(context, {
+				x : Math.floor(screenMiddle.x / gameScale - player.sprite.frameWidth / 2),
+				y : Math.floor(screenMiddle.y / gameScale - player.sprite.frameHeight + 1)
+			});
+			*/
+			player.sprite.draw(context, {
+				x : cellSize * Math.floor(screenMiddle.x / (gameScale * cellSize)) - (player.sprite.frameWidth >> 1),
+				y : cellSize * Math.floor(screenMiddle.y / (gameScale * cellSize)) - player.sprite.frameHeight + 1
+			});
 /*
 			for(var itemName in area.items){
 				for(n in area.items[itemName]){
@@ -543,7 +551,7 @@
 						screenMiddle = { x : gameCanvas.width >> 1, y : gameCanvas.height >> 1 };
 						viewRange = {
 							width: Math.ceil(gameCanvas.width / (gameScale * cellSize)) + 1,
-							height: Math.ceil(gameCanvas.height / (gameScale * cellSize))
+							height: Math.ceil(gameCanvas.height / (gameScale * cellSize)) + 1
 						}
 						context = gameCanvas.getContext('2d');
 						context.webkitImageSmoothingEnabled = false;

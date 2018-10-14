@@ -50,6 +50,8 @@ cSprite.prototype.setTemplate = function(template){
 	this.imageWidth = this.image.width;
 	this.imageHeight = this.image.height;
 
+	this.frameWidth = template.frameWidth;
+	this.frameHeight = template.frameHeight;
 };
 
 cSprite.prototype.setFrame = function(frameName){
