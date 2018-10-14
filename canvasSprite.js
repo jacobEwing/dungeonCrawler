@@ -72,7 +72,7 @@ cSprite.prototype.rotate = function(angle){
 };
 
 cSprite.prototype.drawRandomArea = function(context, drawx, drawy, width, height, randomKey){
-
+	// width and height are the pixel width and height, which are scaled up by this sprites current scale
 	var x, y;
 
 	width *= 1;
@@ -93,14 +93,15 @@ cSprite.prototype.drawRandomArea = function(context, drawx, drawy, width, height
 		randomKey -= Math.floor(randomKey);
 		y = Math.floor(randomKey * (this.imageHeight - height));
 	}
-	this.draw(context, {
-		x : drawx, 
-		y : drawy, 
-		frameX : x,
-		frameY : y,
-		frameWidth : width,
-		frameHeight : height
-	});
+	context.save();
+	context.drawImage(
+		this.image,
+		x, y,
+		width, height,
+		drawx, drawy,
+		width * this.scale, height * this.scale
+	);
+	context.restore();
 }
 
 cSprite.prototype.draw = function(context, params){
@@ -114,11 +115,11 @@ cSprite.prototype.draw = function(context, params){
 		var frameHeight = this.frame.height;
 	}
 	var n;
-	var drawScale = null;
+	var drawScale = this.scale;
 	for(n in params){
 		switch(n){
-			case 'x': x = params[n]; break;
-			case 'y': y = params[n]; break;
+			case 'x': x = params[n] + this.drawOffset.x; break;
+			case 'y': y = params[n] + this.drawOffset.y; break;
 			case 'scale' : drawScale = params[n]; break;
 			case 'frameWidth' : frameWidth = params[n]; break;
 			case 'frameHeight' : frameHeight = params[n]; break;
@@ -127,12 +128,9 @@ cSprite.prototype.draw = function(context, params){
 		}
 	}
 	context.save();
-	context.translate(x, y);
+	context.translate(x * drawScale, y * drawScale);
 	context.rotate(this.rotation);
 
-	if(drawScale == null){
-		drawScale = this.scale;
-	}
 	context.scale(drawScale, drawScale);
 	if(this.frame == null) {
 		context.translate(-this.template.centerx, -this.template.centery);
@@ -145,15 +143,13 @@ cSprite.prototype.draw = function(context, params){
 			this.children[n].draw(context);
 		}
 	}
-//	if(this.frame != null){
-		context.drawImage(
-			this.image,
-			frameX, frameY,
-			frameWidth, frameHeight,
-			0, 0,
-			frameWidth, frameHeight
-		);
-//	}
+	context.drawImage(
+		this.image,
+		frameX, frameY,
+		frameWidth, frameHeight,
+		0, 0,
+		frameWidth, frameHeight
+	);
 
 	for(n = 0; n < this.numChildren; n++){
 		if(this.children[n].zIndex <= this.zIndex){

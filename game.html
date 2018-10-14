@@ -53,7 +53,7 @@
 		var motionControls = {};
 		var playerSpriteSet = new spriteSet();
 		var player;
-		var gameScale = 6, cellSize = 12;
+		var gameScale = 2, cellSize = 12;
 		var sprites = {};
 		var maps = Array();
 		var activeMap;
@@ -198,6 +198,11 @@
 			
 			context.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
 
+			console.log(player.position.x + ', ' + player.position.y);
+			var drawOffset = {
+				x : player.position.x % cellSize,
+				y : player.position.y % cellSize
+			}
 			for(x = 0; x < viewRange.width; x++){
 				mapX = area.playerPos.x + x - Math.floor(screenMiddle.x / (gameScale * cellSize));
 				if(mapX < 0 || mapX > area.map.length - 1) continue;
@@ -205,8 +210,8 @@
 					mapY = area.playerPos.y + y - Math.floor(screenMiddle.y / (gameScale * cellSize));
 					if(mapY < 0 || mapY > area.map[mapX].length - 1) continue;
 
-					drawX = (x * cellSize) * gameScale;
-					drawY = (y * cellSize) * gameScale;
+					drawX = (x * cellSize - drawOffset.x) * gameScale;
+					drawY = (y * cellSize - drawOffset.y) * gameScale;
 			 
 					/*
 					// added for example.  this is where hidemap should be handled.  if the map is
@@ -221,7 +226,7 @@
 							randomKey = Math.sin(mapX + mapY * viewRange.width) * 10000;
 							randomKey -= Math.floor(randomKey);
 
-							groundSprite.rotate(Math.floor(randomKey * 4) * Math.PI / 2);
+							//groundSprite.rotate(Math.floor(randomKey * 4) * Math.PI / 2);
 							groundSprite.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
 							break;
 						case '#':
@@ -229,7 +234,7 @@
 							randomKey -= Math.floor(randomKey);
 
 							stoneSprite.setFrame(Math.floor(randomKey * 25));
-							stoneSprite.draw(context, {x : drawX, y : drawY});
+							stoneSprite.draw(context, {x : x * cellSize - drawOffset.x , y : y * cellSize - drawOffset.y});
 							break;
 						case 'T':
 							//grassSprite.rotate(Math.PI / 2);
@@ -246,14 +251,14 @@
 							grassSprite.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
 							break;
 						default:
-							context.fillStyle = '#AAAA88';
+							context.fillStyle = '#88AACC';
 							context.fillRect(drawX, drawY, cellSize * gameScale, cellSize * gameScale);
 							continue;
 					}
 				}
 			}
 
-			player.sprite.draw(context, {x : screenMiddle.x, y : screenMiddle.y});
+			player.sprite.draw(context, {x : screenMiddle.x / gameScale, y : screenMiddle.y / gameScale});
 /*
 			for(var itemName in area.items){
 				for(n in area.items[itemName]){

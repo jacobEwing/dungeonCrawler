@@ -2,8 +2,8 @@
 	"image" : "sprites/stonetiles.png",
 	"frameWidth" : 6,
 	"frameHeight" : 6,
-	"centerx" : 6,
-	"centery" : 6,
+	"centerx" : 0,
+	"centery" : 0,
 	"frames" : {
 		"0" : { "x" : 0, "y" : 0, "width" : 12, "height" : 12 },
 		"1" : { "x" : 0, "y" : 1, "width" : 12, "height" : 12 },
