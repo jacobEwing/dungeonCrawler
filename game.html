@@ -39,14 +39,26 @@
 	<script type="text/javascript" src="canvasSprite.js"></script>
 	<script type="text/javascript" src="jquery.min.js"></script>
 	<script type="text/javascript">
+		/*
+		Math.random = (function(){
+			var seed = 2;
+			return function() {
+				var x = Math.sin(seed++) * 10000;
+				return x - Math.floor(x);
+			}
+		})();
+		*/
+
+		var viewRange = {x : 0, y : 0};
 		var motionControls = {};
 		var playerSpriteSet = new spriteSet();
 		var player;
-		var gameScale = 4, cellSize = 12;
+		var gameScale = 6, cellSize = 12;
 		var sprites = {};
 		var maps = Array();
 		var activeMap;
 		var mapLayer;
+		var context;
 		var gameInterval; // <-- the animation interval object
 		var walkSpeed = 3;
 		var angSpeedRatio = {
@@ -155,14 +167,13 @@
 					}
 					checkOverlay();
 					var pos = this.mapPos();
-					alignLayersToPlayer();
 				},
 				currentSequence: null,
 				currentEndFrame : null
 			};
 		})();
 
-		function renderArea(area){
+		function renderView(area){
 			var tree1GreensSprite = new cSprite(sprites.tree1);
 			tree1GreensSprite.setScale(gameScale);
 
@@ -181,66 +192,78 @@
 			var dungeonElementsSprite = new cSprite(sprites.dungeonElements);
 			dungeonElementsSprite.setScale(gameScale);
 
-			var x, y, drawX, drawY, n;
-			for(x = 0; x < area.map.length; x++){
-				for(y = 0; y < area.map[x].length; y++){
-					drawX = x * cellSize * gameScale;
-					drawY = y * cellSize * gameScale;
+			var x, y, mapX, mapY, drawX, drawY, n;
+			console.log(area.playerPos.x + ', ' + area.playerPos.y);
+			for(x = 0; x < viewRange.width; x++){
+				mapX = area.playerPos.x + x - Math.floor(screenMiddle.x / (gameScale * cellSize));
+				if(mapX < 0 || mapX > area.map.length - 1) continue;
+				for(y = 0; y < viewRange.height; y++){
+					mapY = area.playerPos.y + y - Math.floor(screenMiddle.y / (gameScale * cellSize));
+					if(mapY < 0 || mapY > area.map[mapX].length - 1) continue;
 
-					switch(area.map[x][y]){
+					drawX = (x * cellSize) * gameScale;
+					drawY = (y * cellSize) * gameScale;
+			 
+					/*
+					// added for example.  this is where hidemap should be handled.  if the map is
+					// hidden here, rather than drawing a frame, we'll simply draw a blurry black
+					// blob.
+					if(area.hideMap[x][y]){
+
+					}
+					*/
+					switch(area.map[mapX][mapY]){
 						case '.':
 							groundSprite.rotate(Math.PI / 2);
-							groundSprite.drawRandomArea(mapLayer, drawX, drawY, cellSize, cellSize);
+							groundSprite.drawRandomArea(context, drawX, drawY, cellSize, cellSize);
 							break;
 						case '#':
-							stoneSprite.drawFrame(mapLayer, Math.floor(Math.random() * 25), drawX, drawY);
+							stoneSprite.setFrame(Math.floor(Math.random() * 25));
+							stoneSprite.draw(context, {x : drawX, y : drawY});
 							break;
 						case 'T':
-							grassSprite.rotate(Math.PI / 2);
-							grassSprite.drawRandomArea(mapLayer, drawX, drawY, cellSize, cellSize);
-							tree1GreensSprite.rotate(Math.random());
-							tree1GreensSprite.drawFrame(overheadLayer, 'greens', drawX, drawY);
-							tree1Sprite.drawFrame(unitsLayer, 'trunk', drawX, drawY);
+							//grassSprite.rotate(Math.PI / 2);
+							//grassSprite.drawRandomArea(mapLayer, drawX, drawY, cellSize, cellSize);
+							//tree1GreensSprite.rotate(Math.random());
+							//tree1GreensSprite.drawFrame(overheadLayer, 'greens', drawX, drawY);
+							//tree1Sprite.drawFrame(unitsLayer, 'trunk', drawX, drawY);
 							break;
 						case '"':
 							grassSprite.rotate(Math.PI / 2);
-							grassSprite.drawRandomArea(mapLayer, drawX, drawY, cellSize, cellSize);
+							grassSprite.drawRandomArea(context, drawX, drawY, cellSize, cellSize);
 							break;
 						default:
 							continue;
 					}
-					if(area.hideMap[x][y]){
-						//area.hideMap[x][y] = false;
-						$('<div id="darkness_' + x + '_' + y + '" class="darkness", style="top: ' + drawY + 'px; left:' + drawX + 'px"></div>').appendTo($('#blindness'));
-					}
 				}
 			}
-
+/*
 			for(var itemName in area.items){
 				for(n in area.items[itemName]){
 					item = area.items[itemName][n];
-					drawX = item.x * cellSize * gameScale;
-					drawY = item.y * cellSize * gameScale;
+					drawX = (item.x * cellSize - player.position.x) * gameScale;
+					drawY = (item.y * cellSize - player.position.x) * gameScale;
 					switch(item.content){
 						case 'stairup':
-							dungeonElementsSprite.drawFrame(unitsLayer, 'stairsUp', drawX, drawY);
+							dungeonElementsSprite.setFrame('stairsUp');
+							dungeonElementsSprite.draw(context, {x : drawX, y : drawY});
 							break;
 						case 'stairdown':
-							dungeonElementsSprite.drawFrame(unitsLayer, 'stairsDown', drawX, drawY);
+							dungeonElementsSprite.setFrame('stairsDown');
+							dungeonElementsSprite.draw(context, {x : drawX, y : drawY});
 							break;
 					}
 				}
-				//debugger;
 			}
+*/			
 
 
-
+/*
 			player.setMapPos(area.playerPos.x, area.playerPos.y);
-			scaleBlindTiles();
-			alignLayersToPlayer();
 			checkOverlay();
+*/
 		}
-
+/*
 		function checkOverlay(){
 			var x, y, cx, cy, opactiy, o, cell;
 			var pos = player.mapPos();
@@ -266,16 +289,7 @@
 				}
 			}
 		}
-
-		function alignLayersToPlayer(){
-			$('.alignToPlayer').css({'top' : -player.position.y * gameScale + 'px', 'left': -player.position.x * gameScale + 'px'});
-			/*
-			$('#mapLayer').css({'top' : -player.position.y * gameScale + 'px', 'left': -player.position.x * gameScale + 'px'});
-			$('#unitsLayer').css({'top' : -player.position.y * gameScale + 'px', 'left': -player.position.x * gameScale + 'px'});
-			$('#blindness').css({'top' : -player.position.y * gameScale + 'px', 'left': -player.position.x * gameScale + 'px'});
-			*/
-		}
-
+*/
 		function writeText(x, y, text){
 			$('<span></span>').html(text).css({position:'absolute', 'top': (y + 2), 'left': (x + 2), 'color' : '#000'}).appendTo($('#overlay'));
 			$('<span></span>').html(text).css({position:'absolute', 'top': y, 'left': x, 'color' : '#EFE'}).appendTo($('#overlay'));
@@ -478,11 +492,6 @@
 				entrance.target = maps[mapIdx];
 			}
 
-			document.getElementById("mapLayer").innerHTML = '';
-			document.getElementById("unitsLayer").innerHTML = '';
-			document.getElementById("overlay").innerHTML = '';
-			document.getElementById("blindness").innerHTML = '';
-			document.getElementById("overheadLayer").innerHTML = '';
 			switch(entrance.content){
 				case 'stairup':
 					entrance.target.playerPos = {
@@ -504,21 +513,7 @@
 					break;
 			}
 			activeMap = entrance.target;
-			renderArea(activeMap);
-		}
-
-		function scaleBlindTiles(){
-			var n;
-			var size = gameScale * cellSize + 'px';
-			var list = document.getElementsByClassName('darkness');
-			for(n = 0; n < list.length; n++){
-				try{
-					list[n].style.width = size;
-					list[n].style.height = size;
-				}catch(e){
-					debugger;
-				}
-			}
+			renderView(activeMap);
 		}
 
 		initialize = function(){
@@ -541,30 +536,27 @@
 				switch(step){
 					case 'initialize':
 						gameCanvas = document.getElementById('gameCanvas');
-						document.getElementById('gameCanvas').clientWidth
-
 						gameCanvas.width = window.innerWidth;
 						gameCanvas.height = window.innerHeight;
 
+						screenMiddle = { x : gameCanvas.width >> 1, y : gameCanvas.height >> 1 };
+						viewRange = {
+							width: Math.ceil(gameCanvas.width / (gameScale * cellSize)),
+							height: Math.ceil(gameCanvas.height / (gameScale * cellSize))
+						}
 						context = gameCanvas.getContext('2d');
 						context.webkitImageSmoothingEnabled = false;
 						context.mozImageSmoothingEnabled = false;
 						context.imageSmoothingEnabled = false; /// future
 
-						/*
-						mapLayer = document.getElementById('mapLayer');
-						overheadLayer = document.getElementById('overheadLayer');
 						overlay = document.getElementById('overlay');
-						screenMiddle = {
-							x : gameMargin.offsetWidth / (2 * gameScale),
-							y : gameMargin.offsetHeight / (2 * gameScale)
-						};
+						
 						writeText(5, 5, "DungeonCrawler v.0.0");
 						setTimeout(function(){
 							this.doStep('load sprites');
 						}, 1);
 						break;
-						*/
+					
 
 					case 'load sprites':
 						if(this.spriteList.length > 0){
@@ -597,9 +589,9 @@
 						maps[mapIdx] = new mapBuilder();
 						maps[mapIdx].build({
 							category : 'dungeon',
-							width : 30,
-							height: 30,
-							roomscale: .8,
+							width : 20,
+							height: 20,
+							roomscale: .2,
 							//stairup: true,
 							stairdown: true,
 							//startTexture: '<'
@@ -608,11 +600,10 @@
 
 						// quick random placement for now:
 						activeMap.playerPos = activeMap.findTextureSpot('.');
-						console.log('Map loaded!');
 
-						//renderArea(activeMap);
+						renderView(activeMap);
 
-						//setTimeout(function(){this.doStep('initialize keyboard');}, 1);
+						setTimeout(function(){this.doStep('initialize keyboard');}, 1);
 						break;
 
 					case 'initialize keyboard':
@@ -640,21 +631,5 @@
 <body>
 	<canvas id="gameCanvas"></canvas>
 	<div id="overlay"></div>
-	<!--
-	<div id="gameMargin">
-		<div id="mapLayer" class="gameLayer alignToPlayer">
-		</div>
-		<div id="unitsLayer" class="gameLayer alignToPlayer">
-		</div>
-		<div id="playerLayer" class="gameLayer">
-		</div>
-		<div id="overheadLayer" class="gameLayer alignToPlayer">
-		</div>
-		<div id="blindness" class="gameLayer alignToPlayer">
-		</div>
-		<div id="overlay" class="gameLayer">
-		</div>
-	</div>
-	-->
 </body>
 </html>

@@ -34,6 +34,9 @@ cSprite.defaults = {
 	currentSequence : null,
 	currentSequenceName : null,
 	animating : null,
+	imageWidth : 0,
+	imageHeight : 0,
+
 
 	// parent/child sprite management variables
 	numChildren : 0,
@@ -43,6 +46,10 @@ cSprite.defaults = {
 cSprite.prototype.setTemplate = function(template){
 	this.template = template;
 	this.image = template.image;
+
+	this.imageWidth = this.image.width;
+	this.imageHeight = this.image.height;
+
 };
 
 cSprite.prototype.setFrame = function(frameName){
@@ -64,10 +71,39 @@ cSprite.prototype.rotate = function(angle){
 	this.rotation += angle;
 };
 
+cSprite.prototype.drawRandomArea = function(context, drawx, drawy, width, height){
+
+	
+	width *= 1;
+	width = width > this.imageWidth ? this.imageWidth : (width < 0 ? 0 : width);
+
+	height *= 1;
+	height = height > this.imageHeight ? this.imageHeight : (height < 0 ? 0 : height);
+
+	if(width == 0 || height == 0) return;
+
+	var x = Math.floor(Math.random() * (this.imageWidth - width));
+	var y = Math.floor(Math.random() * (this.imageHeight - height));
+	this.draw(context, {
+		x : drawx, 
+		y : drawy, 
+		frameX : x,
+		frameY : y,
+		frameWidth : width,
+		frameHeight : height
+	});
+}
+
 cSprite.prototype.draw = function(context, params){
 	if(params == undefined) params = {};
 	var x = this.position.x + this.drawOffset.x;
 	var y = this.position.y + this.drawOffset.y;
+	if(this.frame != undefined){
+		var frameX = this.frame.x;
+		var frameY = this.frame.y;
+		var frameWidth = this.frame.width;
+		var frameHeight = this.frame.height;
+	}
 	var n;
 	var drawScale = null;
 	for(n in params){
@@ -75,6 +111,10 @@ cSprite.prototype.draw = function(context, params){
 			case 'x': x = params[n]; break;
 			case 'y': y = params[n]; break;
 			case 'scale' : drawScale = params[n]; break;
+			case 'frameWidth' : frameWidth = params[n]; break;
+			case 'frameHeight' : frameHeight = params[n]; break;
+			case 'frameX' : frameX = params[n]; break;
+			case 'frameY' : frameY = params[n]; break;
 		}
 	}
 	context.save();
@@ -85,22 +125,26 @@ cSprite.prototype.draw = function(context, params){
 		drawScale = this.scale;
 	}
 	context.scale(drawScale, drawScale);
-	if(this.frame != null) context.translate(-this.frame.centerx, -this.frame.centery);
+	if(this.frame == null) {
+		context.translate(-this.template.centerx, -this.template.centery);
+	}else{
+		context.translate(-this.frame.centerx, -this.frame.centery);
+	}
 
 	for(n = 0; n < this.numChildren; n++){
 		if(this.children[n].zIndex > this.zIndex){
 			this.children[n].draw(context);
 		}
 	}
-	if(this.frame != null){
+//	if(this.frame != null){
 		context.drawImage(
 			this.image,
-			this.frame.x + 0.5, this.frame.y + 0.5,
-			this.frame.width - 1, this.frame.height - 1,
+			frameX, frameY,
+			frameWidth, frameHeight,
 			0, 0,
-			this.frame.width, this.frame.height
+			frameWidth, frameHeight
 		);
-	}
+//	}
 
 	for(n = 0; n < this.numChildren; n++){
 		if(this.children[n].zIndex <= this.zIndex){
