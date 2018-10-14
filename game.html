@@ -53,7 +53,7 @@
 		var motionControls = {};
 		var playerSpriteSet = new spriteSet();
 		var player;
-		var gameScale = 2, cellSize = 12;
+		var gameScale = 5, cellSize = 12;
 		var sprites = {};
 		var maps = Array();
 		var activeMap;
@@ -198,7 +198,6 @@
 			
 			context.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
 
-			console.log(player.position.x + ', ' + player.position.y);
 			var drawOffset = {
 				x : player.position.x % cellSize,
 				y : player.position.y % cellSize
@@ -428,9 +427,11 @@
 
 				if(sequence == null){
 					if(player.currentSequence != null){
-//						player.sprite.stopSequence(player.currentSequence);
+						//player.sprite.stopSequence(player.currentSequence);
 						player.sprite.setFrame(player.currentEndFrame);
 						player.currentSequence = null;
+						player.sprite.currentSequence = null;
+						player.sprite.animating = false;
 					}
 					// this should be replaced with a call to a function that builds a menu of
 					// actions available (e.g, "go down", "take food", "take weapon", etc.).  That
@@ -541,7 +542,7 @@
 
 						screenMiddle = { x : gameCanvas.width >> 1, y : gameCanvas.height >> 1 };
 						viewRange = {
-							width: Math.ceil(gameCanvas.width / (gameScale * cellSize)),
+							width: Math.ceil(gameCanvas.width / (gameScale * cellSize)) + 1,
 							height: Math.ceil(gameCanvas.height / (gameScale * cellSize))
 						}
 						context = gameCanvas.getContext('2d');
@@ -591,7 +592,8 @@
 							category : 'dungeon',
 							width : 20,
 							height: 20,
-							roomscale: .2,
+							roomscale: 1,
+							gridScale: 8,
 							//stairup: true,
 							stairdown: true,
 							//startTexture: '<'
@@ -600,8 +602,8 @@
 
 						// quick random placement for now:
 						activeMap.playerPos = activeMap.findTextureSpot('.');
-						player.position.x = Math.floor(cellSize * (activeMap.playerPos.x - .5));
-						player.position.y = Math.floor(cellSize * (activeMap.playerPos.y - .5));
+						player.position.x = Math.floor(cellSize * (activeMap.playerPos.x));
+						player.position.y = Math.floor(cellSize * (activeMap.playerPos.y));
 
 						renderView(activeMap);
 

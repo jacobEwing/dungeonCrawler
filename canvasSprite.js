@@ -128,6 +128,8 @@ cSprite.prototype.draw = function(context, params){
 		}
 	}
 	context.save();
+	x += this.frame.drawOffset.x;
+	y += this.frame.drawOffset.y;
 	context.translate(x * drawScale, y * drawScale);
 	context.rotate(this.rotation);
 
@@ -485,11 +487,12 @@ spriteSet.prototype.load_frames = function(data){
 			'width': this.frameWidth,
 			'height': this.frameHeight,
 			'centerx': this.centerx,
-			'centery': this.centery
+			'centery': this.centery,
+			'drawOffset' : {x : 0, y : 0}
 		};
 		this.frameNames[this.frameNames.length] = name;
 		for(arg in data[name]){
-			switch(arg){
+			switch(arg.toLowerCase()){
 				case 'width': case 'height':
 					this.frames[name][arg] = 1 * data[name][arg];
 					break;
