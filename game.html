@@ -175,6 +175,7 @@
 		})();
 
 		function renderView(area){
+			var playerLayer = Array();
 			var topLayer = Array();
 			/*
 			just a bit of a joke experiment.  We can scale down sort of.  the user needs to be accounted for too though
@@ -208,10 +209,10 @@
 				x : player.position.x % cellSize,
 				y : player.position.y % cellSize
 			}
-			for(y = -1; y <= viewRange.height; y++){
+			for(y = -1; y <= viewRange.height + 1; y++){
 				mapY = area.playerPos.y + y - Math.floor(screenMiddle.y / (gameScale * cellSize));
 				if(mapY < 0 || mapY > area.map[0].length - 1) continue;
-				for(x = -1; x <= viewRange.width; x++){
+				for(x = -1; x <= viewRange.width + 1; x++){
 					mapX = area.playerPos.x + x - Math.floor(screenMiddle.x / (gameScale * cellSize));
 					if(mapX < 0 || mapX > area.map.length - 1) continue;
 
@@ -257,17 +258,21 @@
 							}else{
 								treeFrame = 3;
 							}
-
+							var offset = Math.floor(2 * gameScale * randomKey - gameScale);
 							// now the tree trunk
-							treeSprite.setFrame('trunk' + treeFrame);
-							treeSprite.draw(context, {x : drawX / gameScale, y : drawY / gameScale});
+							playerLayer[playerLayer.length] = {
+								sprite : treeSprite,
+								frame : 'trunk' + treeFrame,
+								x : offset + drawX / gameScale,
+								y : offset + drawY / gameScale
+							};
 
 							// and queue up the greens for a second run
 							topLayer[topLayer.length] = {
 								sprite : treeSprite,
 								frame : 'greens' + treeFrame,
-								x : drawX / gameScale,
-								y : drawY / gameScale
+								x : offset + drawX / gameScale,
+								y : offset + drawY / gameScale
 							};
 							
 
@@ -306,6 +311,13 @@
 					}
 
 				}
+			}
+			for(n in playerLayer){
+				playerLayer[n].sprite.setFrame(playerLayer[n].frame);
+				playerLayer[n].sprite.draw(context, {
+					x : playerLayer[n].x, 
+					y : playerLayer[n].y
+				});
 			}
 			player.sprite.draw(context, {
 				x : cellSize * Math.floor(screenMiddle.x / (gameScale * cellSize)) - (player.sprite.frameWidth >> 1),
@@ -691,6 +703,13 @@
 
 						checkOverlay();
 						renderView(activeMap);
+						
+						// make the whole map visible
+						for(x = 0; x < activeMap.width; x++){
+							for(y = 0; y < activeMap.height; y++){
+								activeMap.hideMap[x][y] = false;
+							}
+						}
 
 						setTimeout(function(){this.doStep('initialize keyboard');}, 1);
 						break;
