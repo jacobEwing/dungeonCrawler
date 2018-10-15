@@ -399,22 +399,22 @@
 			dirCombo += checkKeyControl('right') ? 8 : 0;
 
 			switch(dirCombo){
-				case 1: // up
+				case 1: case 13: // up
 					sequence = 'walkup';
 					endFrame = 'back_idle';
 					player.direction = 'up';
 					break;
-				case 2: // down
+				case 2: case 14: // down
 					sequence = 'walkdown';
 					endFrame = 'front_idle';
 					player.direction = 'down';
 					break;
-				case 4: // left
+				case 4: case 7: // left
 					sequence = 'walkleft';
 					endFrame = 'left_idle';
 					player.direction = 'left';
 					break;
-				case 8: // right
+				case 8: case 11:// right
 					sequence = 'walkright';
 					endFrame = 'right_idle';
 					player.direction = 'right';
