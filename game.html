@@ -175,6 +175,7 @@
 		})();
 
 		function renderView(area){
+			var topLayer = Array();
 			/*
 			just a bit of a joke experiment.  We can scale down sort of.  the user needs to be accounted for too though
 			gameScale *= .999;
@@ -184,11 +185,8 @@
 			}
 			*/
 			var randomKey;
-			var tree1GreensSprite = new cSprite(sprites.tree1);
-			tree1GreensSprite.setScale(gameScale);
-
-			var tree1Sprite = new cSprite(sprites.tree1);
-			tree1Sprite.setScale(gameScale);
+			var treeSprite = new cSprite(sprites.trees);
+			treeSprite.setScale(gameScale);
 
 			var grassSprite = new cSprite(sprites.grass);
 			grassSprite.setScale(gameScale);
@@ -210,12 +208,12 @@
 				x : player.position.x % cellSize,
 				y : player.position.y % cellSize
 			}
-			for(x = 0; x < viewRange.width; x++){
-				mapX = area.playerPos.x + x - Math.floor(screenMiddle.x / (gameScale * cellSize));
-				if(mapX < 0 || mapX > area.map.length - 1) continue;
-				for(y = 0; y < viewRange.height; y++){
-					mapY = area.playerPos.y + y - Math.floor(screenMiddle.y / (gameScale * cellSize));
-					if(mapY < 0 || mapY > area.map[mapX].length - 1) continue;
+			for(y = -1; y <= viewRange.height; y++){
+				mapY = area.playerPos.y + y - Math.floor(screenMiddle.y / (gameScale * cellSize));
+				if(mapY < 0 || mapY > area.map[0].length - 1) continue;
+				for(x = -1; x <= viewRange.width; x++){
+					mapX = area.playerPos.x + x - Math.floor(screenMiddle.x / (gameScale * cellSize));
+					if(mapX < 0 || mapX > area.map.length - 1) continue;
 
 					drawX = (x * cellSize - drawOffset.x) * gameScale;
 					drawY = (y * cellSize - drawOffset.y) * gameScale;
@@ -240,11 +238,38 @@
 							stoneSprite.draw(context, {x : drawX / gameScale, y : drawY / gameScale});
 							break;
 						case 'T':
-							//grassSprite.rotate(Math.PI / 2);
-							//grassSprite.drawRandomArea(mapLayer, drawX, drawY, cellSize, cellSize);
-							//tree1GreensSprite.rotate(Math.random());
-							//tree1GreensSprite.drawFrame(overheadLayer, 'greens', drawX, drawY);
-							//tree1Sprite.drawFrame(unitsLayer, 'trunk', drawX, drawY);
+
+							
+							// first we draw some grass
+							randomKey = Math.sin(mapX + mapY * viewRange.width) * 10000;
+							randomKey -= Math.floor(randomKey);
+
+							grassSprite.rotate(Math.PI / 2);
+							grassSprite.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
+
+							randomKey = Math.sin(randomKey) * 10000;
+							randomKey -= Math.floor(randomKey);
+
+							if(randomKey > 0.5){
+								treeFrame = 1;
+							}else{
+								treeFrame = 2;
+							}
+
+							// now the tree trunk
+							treeSprite.setFrame('trunk' + treeFrame);
+							treeSprite.draw(context, {x : drawX / gameScale, y : drawY / gameScale});
+
+							// and queue up the greens for a second run
+							topLayer[topLayer.length] = {
+								sprite : treeSprite,
+								frame : 'greens' + treeFrame,
+								x : drawX / gameScale,
+								y : drawY / gameScale
+							};
+							
+
+
 							break;
 						case '"':
 							randomKey = Math.sin(mapX + mapY * viewRange.width) * 10000;
@@ -284,6 +309,15 @@
 				x : cellSize * Math.floor(screenMiddle.x / (gameScale * cellSize)) - (player.sprite.frameWidth >> 1),
 				y : cellSize * Math.floor(screenMiddle.y / (gameScale * cellSize)) - player.sprite.frameHeight + 1
 			});
+
+			for(n in topLayer){
+				topLayer[n].sprite.setFrame(topLayer[n].frame);
+				topLayer[n].sprite.draw(context, {
+					x : topLayer[n].x, 
+					y : topLayer[n].y
+				});
+			}
+
 		}
 
 		function writeText(x, y, text){
@@ -503,7 +537,7 @@
 					for(y = -8; y <= 8; y++){
 						cy = y + activeMap.playerPos.y;
 						if(cy >= 0 && cy < activeMap.height){
-							if(x * x + y * y < 16){
+							if(x * x + y * y < player.sightRadius * player.sightRadius){
 								activeMap.hideMap[cx][cy] = false;
 							/*
 							}else{
@@ -568,7 +602,7 @@
 
 			this.spriteList = Array(
 				{'name' : 'grass', 'file' : 'grass.sprite'},
-				{'name' : 'tree1', 'file' : 'tree1.sprite'},
+				{'name' : 'trees', 'file' : 'tree.sprite'},
 				{'name' : 'stone', 'file': 'stone.sprite'},
 				{'name' : 'ground', 'file' : 'ground.sprite'},
 				{'name' : 'dungeonElements', 'file' : 'dungeonElements.sprite'}
@@ -636,9 +670,9 @@
 						var mapIdx = maps.length;
 						maps[mapIdx] = new mapBuilder();
 						maps[mapIdx].build({
-							category : 'dungeon',
-							width : 20,
-							height: 20,
+							category : 'forest',
+							width : 500,
+							height: 500,
 							roomscale: 1,
 							gridScale: 8,
 							//stairup: true,
@@ -648,9 +682,10 @@
 						activeMap = maps[mapIdx];
 
 						// quick random placement for now:
-						activeMap.playerPos = activeMap.findTextureSpot('.');
+						activeMap.playerPos = activeMap.findTextureSpot('T');
 						player.position.x = Math.floor(cellSize * (activeMap.playerPos.x));
 						player.position.y = Math.floor(cellSize * (activeMap.playerPos.y));
+						player.sightRadius = 6;
 
 						checkOverlay();
 						renderView(activeMap);

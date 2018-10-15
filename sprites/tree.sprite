@@ -1,0 +1,48 @@
+{
+	"image" : "sprites/trees.png",
+	"frameWidth" : 6,
+	"frameHeight" : 6,
+	"centerx" : 0,
+	"centery" : 0,
+	"frames" : {
+		"trunk1" : { 
+			"xoffset" : 30, 
+			"yoffset" : 18, 
+			"width" : 7, 
+			"height" : 19, 
+			"drawOffset" :  { 
+				"x" : 2, 
+				"y" : -10
+			}
+		},
+		"greens1" : { 
+			"width" : 26, 
+			"height" : 23, 
+			"drawoffset" : { 
+				"x" : -8, 
+				"y" : -27 
+			}
+		},
+
+		"trunk2" : { 
+			"xoffset" : 27, 
+			"yoffset" : 51, 
+			"width" : 10, 
+			"height" : 23, 
+			"drawOffset" :  { 
+				"x" : 2, 
+				"y" : -12
+			}
+		},
+		"greens2" : {
+			"xoffset" : 0,
+			"yoffset" : 37,
+			"width" : 26, 
+			"height" : 31, 
+			"drawoffset" : { 
+				"x" : -8, 
+				"y" : -27 
+			}
+		}
+	}
+}
