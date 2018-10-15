@@ -43,6 +43,28 @@
 				"x" : -8, 
 				"y" : -27 
 			}
+		},
+
+
+		"trunk3" : { 
+			"xoffset" : 64, 
+			"yoffset" : 6, 
+			"width" : 8, 
+			"height" : 25, 
+			"drawOffset" :  { 
+				"x" : 0, 
+				"y" : -12
+			}
+		},
+		"greens3" : {
+			"xoffset" : 40,
+			"yoffset" : 0,
+			"width" : 22, 
+			"height" : 25, 
+			"drawoffset" : { 
+				"x" : -8, 
+				"y" : -24 
+			}
 		}
 	}
 }

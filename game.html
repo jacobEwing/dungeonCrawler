@@ -250,10 +250,12 @@
 							randomKey = Math.sin(randomKey) * 10000;
 							randomKey -= Math.floor(randomKey);
 
-							if(randomKey > 0.5){
+							if(randomKey < 0.4){
 								treeFrame = 1;
-							}else{
+							}else if(randomKey < .6){
 								treeFrame = 2;
+							}else{
+								treeFrame = 3;
 							}
 
 							// now the tree trunk
