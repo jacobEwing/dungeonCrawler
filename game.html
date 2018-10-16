@@ -251,14 +251,16 @@
 							randomKey = Math.sin(randomKey) * 10000;
 							randomKey -= Math.floor(randomKey);
 
-							if(randomKey < 0.25){
+							if(randomKey < 0.2){
 								treeFrame = 1;
-							}else if(randomKey < .5){
+							}else if(randomKey < .4){
 								treeFrame = 2;
-							}else if(randomKey < .75){
+							}else if(randomKey < .6){
 								treeFrame = 3;
-							}else{
+							}else if(randomKey < .8){
 								treeFrame = 4;
+							}else{
+								treeFrame = 5;
 							}
 							var offset = Math.floor(2 * gameScale * randomKey - gameScale);
 							// now the tree trunk

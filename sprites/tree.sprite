@@ -86,6 +86,28 @@
 				"x" : -3, 
 				"y" : -20 
 			}
+		},
+
+		"trunk5" : { 
+			"xoffset" : 102, 
+			"yoffset" : 0, 
+			"width" : 7, 
+			"height" : 19, 
+			"drawOffset" :  { 
+				"x" : 2, 
+				"y" : -10
+			}
+		},
+		"greens5" : { 
+			"xoffset" : 77, 
+			"yoffset" : 0, 
+			"width" : 25, 
+			"height" : 20, 
+			"drawoffset" : { 
+				"x" : -8, 
+				"y" : -27 
+			}
 		}
+
 	}
 }
