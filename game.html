@@ -40,6 +40,7 @@
 	<script type="text/javascript" src="generator.js"></script> 
 	<script type="text/javascript" src="canvasSprite.js"></script>
 	<script type="text/javascript">
+		'use strict';
 		/*
 		Math.random = (function(){
 			var seed = 2;
@@ -49,16 +50,16 @@
 			}
 		})();
 		*/
-
-		var viewRange = {x : 0, y : 0};
+		var keyboard;
+		var gameCanvas;
+		var viewRange = {};
 		var motionControls = {};
 		var playerSpriteSet = new spriteSet();
 		var player;
-		var gameScale = 4, cellSize = 12;
+		var gameScale = 6, cellSize = 12;
 		var sprites = {};
 		var maps = Array();
 		var activeMap;
-		var mapLayer;
 		var context;
 		var gameInterval; // <-- the animation interval object
 		var walkSpeed = 3;
@@ -186,8 +187,13 @@
 			}
 			*/
 			var randomKey;
+
+			var treeFrame;
 			var treeSprite = new cSprite(sprites.trees);
 			treeSprite.setScale(gameScale);
+
+			var longgrassSprite = new cSprite(sprites.longgrass);
+			longgrassSprite.setScale(gameScale);
 
 			var grassSprite = new cSprite(sprites.grass);
 			grassSprite.setScale(gameScale);
@@ -200,6 +206,9 @@
 
 			var dungeonElementsSprite = new cSprite(sprites.dungeonElements);
 			dungeonElementsSprite.setScale(gameScale);
+
+			var caveEntranceSprite = new cSprite(sprites.caveEntrance);
+			caveEntranceSprite.setScale(gameScale);
 
 			var x, y, mapX, mapY, drawX, drawY, n;
 			
@@ -222,17 +231,16 @@
 					if(area.hideMap[mapX][mapY] == true){
 						continue;
 					}
+
+					randomKey = Math.abs(Math.sin(mapX + mapY * viewRange.width) * 10000);
+					randomKey -= Math.floor(randomKey);
 					switch(area.map[mapX][mapY]){
 						case '.':
-							randomKey = Math.sin(mapX + mapY * viewRange.width) * 10000;
-							randomKey -= Math.floor(randomKey);
 
 							//groundSprite.rotate(Math.floor(randomKey * 4) * Math.PI / 2);
 							groundSprite.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
 							break;
 						case '#':
-							randomKey = Math.sin(mapX + mapY * viewRange.width) * 10000;
-							randomKey -= Math.floor(randomKey);
 
 							stoneSprite.setFrame(Math.floor(randomKey * 25));
 							//stoneSprite.draw(context, {x : x * cellSize - drawOffset.x , y : y * cellSize - drawOffset.y});
@@ -242,14 +250,10 @@
 
 							
 							// first we draw some grass
-							randomKey = Math.sin(mapX + mapY * viewRange.width) * 10000;
-							randomKey -= Math.floor(randomKey);
 
 							grassSprite.rotate(Math.PI / 2);
 							grassSprite.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
 
-							randomKey = Math.sin(randomKey) * 10000;
-							randomKey -= Math.floor(randomKey);
 
 							if(randomKey < 0.1){
 								treeFrame = 1;
@@ -262,7 +266,6 @@
 							}else{
 								treeFrame = 5;
 							}
-							var offset = Math.floor(2 * gameScale * randomKey - gameScale);
 							// now the tree trunk
 							playerLayer[playerLayer.length] = {
 								sprite : treeSprite,
@@ -283,11 +286,21 @@
 
 							break;
 						case '"':
-							randomKey = Math.sin(mapX + mapY * viewRange.width) * 10000;
-							randomKey -= Math.floor(randomKey);
 
 							grassSprite.rotate(Math.PI / 2);
 							grassSprite.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
+
+							if(randomKey < 2){
+								var brushFrame = Math.abs(Math.floor(9 * Math.sin(mapX + mapY + viewRange.width + randomKey))) + 1;
+								playerLayer[playerLayer.length] = {
+									sprite : longgrassSprite,
+									frame : brushFrame,
+									x : drawX / gameScale,
+									y : drawY / gameScale
+								};
+							}
+							
+
 							break;
 							/*
 						default:
@@ -616,18 +629,19 @@
 			renderView(activeMap);
 		}
 
-		initialize = function(){
-
-			this.spriteList = Array(
+		var initialize = function(){
+			var spriteList = Array(
 				{'name' : 'grass', 'file' : 'grass.sprite'},
 				{'name' : 'trees', 'file' : 'tree.sprite'},
 				{'name' : 'stone', 'file': 'stone.sprite'},
 				{'name' : 'ground', 'file' : 'ground.sprite'},
-				{'name' : 'dungeonElements', 'file' : 'dungeonElements.sprite'}
+				{'name' : 'dungeonElements', 'file' : 'dungeonElements.sprite'},
+				{'name' : 'longgrass', 'file' : 'longgrass.sprite'},
+				{'name' : 'caveEntrance' , 'file' : 'caveEntrance.sprite'}
 			);
 
-		
-			this.doStep = function(step){
+			var doStep = function(step){
+				var x, y;
 				var dat;
 				// pre-load any data we need to get the game started.
 				// Note that using callbacks on this method prevents it from building a stack.
@@ -649,26 +663,24 @@
 						context.mozImageSmoothingEnabled = false;
 						context.imageSmoothingEnabled = false; /// future
 
-						overlay = document.getElementById('overlay');
-						
 						writeText(5, 5, "DungeonCrawler v.0.0");
 						setTimeout(function(){
-							this.doStep('load sprites');
+							doStep('load sprites');
 						}, 1);
 						break;
 					
 
 					case 'load sprites':
-						if(this.spriteList.length > 0){
-							dat = this.spriteList.pop();
+						if(spriteList.length > 0){
+							dat = spriteList.pop();
 							sprites[dat.name] = new spriteSet('sprites/' + dat.file, function(){
 								setTimeout(function(){
-									this.doStep('load sprites');
+									doStep('load sprites');
 								}, 1);
 							});
 
 						}else{
-							this.doStep('load player sprite');
+							doStep('load player sprite');
 						}
 						break;
 
@@ -680,7 +692,7 @@
 							player.sprite.setPosition(screenMiddle.x, screenMiddle.y, true);
 
 							player.sprite.setFrame('front_idle');
-							setTimeout(function(){this.doStep('load map');}, 0);
+							setTimeout(function(){doStep('load map');}, 0);
 						});
 						break;
 
@@ -689,8 +701,8 @@
 						maps[mapIdx] = new mapBuilder();
 						maps[mapIdx].build({
 							category : 'forest',
-							width : 500,
-							height: 500,
+							width : 1000,
+							height: 1000,
 							roomscale: 1,
 							gridScale: 8,
 							//stairup: true,
@@ -703,6 +715,7 @@
 						activeMap.playerPos = activeMap.findTextureSpot('T');
 						player.position.x = Math.floor(cellSize * (activeMap.playerPos.x));
 						player.position.y = Math.floor(cellSize * (activeMap.playerPos.y));
+
 						player.sightRadius = 6;
 
 						checkOverlay();
@@ -715,7 +728,7 @@
 							}
 						}
 
-						setTimeout(function(){this.doStep('initialize keyboard');}, 1);
+						setTimeout(function(){doStep('initialize keyboard');}, 1);
 						break;
 
 					case 'initialize keyboard':
@@ -723,7 +736,7 @@
 						keyboard = new kbListener();
 						keyboard.listen();
 						loadDefaultMotionControls();
-						setTimeout(function(){this.doStep('finish');}, 1);
+						setTimeout(function(){doStep('finish');}, 1);
 						break;
 
 					case 'finish':
@@ -731,7 +744,7 @@
 						gameInterval = setInterval(playGame, 70);
 				}
 			}
-			this.doStep('initialize');
+			doStep('initialize');
 		};
 
 		window.onload = function(){

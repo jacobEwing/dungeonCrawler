@@ -1,0 +1,10 @@
+{
+	"image" : "sprites/caveEntrance.png",
+	"frameWidth" : 12,
+	"frameHeight" : 12,
+	"centerx" : 0,
+	"centery" : 0,
+	"frames" : {
+		"entrance" : {"x" : 0, "y" : 0}
+	}
+}

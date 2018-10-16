@@ -55,8 +55,14 @@ cSprite.prototype.setTemplate = function(template){
 };
 
 cSprite.prototype.setFrame = function(frameName){
-	this.frameName = frameName;
-	this.frame = this.template.frames[frameName];
+	try{
+		this.frameName = frameName;
+		this.frame = this.template.frames[frameName];
+	}catch(e){
+		console.log(e);
+		debugger;
+		
+	}
 };
 
 cSprite.prototype.startSequence = function(sequenceName){

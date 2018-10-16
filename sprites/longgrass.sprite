@@ -1,0 +1,18 @@
+{
+	"image" : "sprites/longGrassPatches.png",
+	"frameWidth" : 12,
+	"frameHeight" : 12,
+	"centerx" : 0,
+	"centery" : 0,
+	"frames" : {
+		"1" : {"x" : 0, "y" : 0},
+		"2" : {"x" : 1, "y" : 0, "xOffset" : 1},
+		"3" : {"x" : 2, "y" : 0, "xOffset" : 2},
+		"4" : {"x" : 0, "y" : 1, "yOffset" : 1},
+		"5" : {"x" : 1, "y" : 1, "xOffset" : 1, "yOffset" : 1},
+		"6" : {"x" : 2, "y" : 1, "xOffset" : 2, "yOffset" : 1},
+		"7" : {"x" : 0, "y" : 2, "yOffset" : 2},
+		"8" : {"x" : 1, "y" : 2, "xOffset" : 1, "yOffset" : 2},
+		"9" : {"x" : 2, "y" : 2, "xOffset" : 2, "yOffset" : 2}
+	}
+}
