@@ -170,7 +170,7 @@ function renderView(area){
 	caveEntranceSprite.setScale(gameScale);
 
 	var x, y, mapX, mapY, drawX, drawY, n;
-	
+
 	context.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
 
 	var drawOffset = {
@@ -207,7 +207,7 @@ function renderView(area){
 					break;
 				case 'T':
 
-					
+
 					// first we draw some grass
 
 					grassSprite.rotate(Math.PI / 2);
@@ -240,7 +240,7 @@ function renderView(area){
 						x : drawX / gameScale,
 						y : drawY / gameScale
 					};
-					
+
 
 
 					break;
@@ -258,7 +258,7 @@ function renderView(area){
 							y : drawY / gameScale
 						};
 					}
-					
+
 
 					break;
 					/*
@@ -610,7 +610,7 @@ function useEntrance(entrance){
 				break;
 		}
 	}
-	
+
 	activeMap = entrance.target;
 	player.setMapPos(activeMap.playerPos.x, activeMap.playerPos.y);
 	player.position.x += cellSize >> 1;
@@ -658,7 +658,7 @@ var initialize = function(){
 					doStep('load sprites');
 				}, 1);
 				break;
-			
+
 
 			case 'load sprites':
 				if(spriteList.length > 0){
@@ -689,10 +689,38 @@ var initialize = function(){
 			case 'load map':
 				var mapIdx = maps.length;
 				maps[mapIdx] = new mapBuilder();
+				maps[mapIdx].loadImageMap('maps/test.map', function(){
+					activeMap = maps[mapIdx];
+					player.position.x = Math.floor(cellSize * activeMap.playerPos.x);
+					player.position.y = Math.floor(cellSize * activeMap.playerPos.y);
+					player.sightRadius = 5;
+
+
+
+
+				// make the whole map visible
+				for(x = 0; x < activeMap.width; x++){
+					for(y = 0; y < activeMap.height; y++){
+						activeMap.hideMap[x][y] = false;
+					}
+				}
+
+					//checkOverlay();
+					renderView(activeMap);
+
+					doStep('initialize keyboard');
+				});
+				break;
+
+
+/*
+
+				var mapIdx = maps.length;
+				maps[mapIdx] = new mapBuilder();
 				maps[mapIdx].build({
 					category : 'forest',
-					width : 30,
-					height: 30,
+					width : 100,
+					height: 100,
 					roomscale: 1,
 					gridScale: 8,
 					//stairup: true,
@@ -706,23 +734,23 @@ var initialize = function(){
 				player.position.x = Math.floor(cellSize * (activeMap.playerPos.x));
 				player.position.y = Math.floor(cellSize * (activeMap.playerPos.y));
 
-				
+
 
 				player.sightRadius = 5;
 
-				checkOverlay();
-				renderView(activeMap);
-				
+
 				// make the whole map visible
 				for(x = 0; x < activeMap.width; x++){
 					for(y = 0; y < activeMap.height; y++){
 						activeMap.hideMap[x][y] = false;
 					}
 				}
+				//checkOverlay();
+				renderView(activeMap);
 
 				setTimeout(function(){doStep('initialize keyboard');}, 1);
 				break;
-
+*/
 			case 'initialize keyboard':
 				// the functions used here are defined in keyboard.js
 				keyboard = new kbListener();

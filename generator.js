@@ -43,6 +43,7 @@ roomClass.prototype.setArea = function(x, y, gridStep, zoom){
 var mapBuilder = function(){
 	this.width = this.height = 0;
 	this.rooms = Array();
+	// items and mappedItems hold the same data, but indexed differently for convenience
 	this.mappedItems = Array();
 	this.items = {};//Array();
 	this.defaultParams = {
@@ -57,6 +58,115 @@ var mapBuilder = function(){
 		'waterChance' : 20,
 		'reedChance' : 80
 	}
+};
+
+mapBuilder.prototype.loadImageMap = function(mapFile, callback){
+	/*
+	expecting the following structure:
+	{
+		"image" : "filename.png",
+		"colourmap" : {
+			"66FF00" : '.',
+			"324238" : 'T',
+			etc.
+		}
+		"items"{
+			0 : {
+				"type" : "dungeonEntrance",
+				"position" : {"x" : 34234, "y" : 2324}
+			},
+			1 : {
+				"type" : "boat",
+				"position" : {"x" : 34, "y" : 24}
+			},
+			etc.
+		},
+		"startingpoint" : {
+			"x" : 234,
+			"y" : 908
+		}
+	}
+	*/
+
+	this.width = this.height = 0;
+	this.mappedItems = Array();
+	this.items = {};//Array();
+
+	var me = this;
+
+
+
+	var loc = window.location.pathname;
+	var dir = loc.substring(0, loc.lastIndexOf('/'));
+	var client = new XMLHttpRequest();
+
+	client.onreadystatechange = function() {
+		if (this.readyState == 4 && this.status == 200) {
+
+			try{
+				data = JSON.parse(this.responseText);
+				var img = new Image();
+				img.onload = function(){
+					var x, y, n, c, hexcode, decvals;
+					me.width = this.width;
+					me.height = this.height;
+					me.map = me.makeEmptyMap(' ', me.width, me.height);
+
+					if(data.playerPos != undefined){
+						me.playerPos = {
+							x : data.playerPos.x,
+							y : data.playerPos.y
+						};
+						console.log('assigned playerpos');
+					}
+
+					var canvas = document.createElement('canvas');
+					var context = canvas.getContext('2d');
+
+					context.drawImage(img, 0, 0);
+
+					for(x = 0; x < me.width; x++){
+						for(y = 0; y < me.height; y++){
+							decvals = context.getImageData(x, y, 1, 1).data;
+							hexCode = '';
+							for(n = 0 ; n < 3; n++){
+								hexCode += ("0" + (Number(decvals[n]).toString(16))).slice(-2).toLowerCase();
+							}
+
+							c = data.colourmap[hexCode];
+							if(c != undefined){
+								me.map[x][y] = c;
+							}
+
+						}
+					}
+					me.hideMap();
+					if(typeof(callback) == 'function'){
+						setTimeout(callback, 0);
+					}
+					//context.getImageData(x, y, 1, 1).data;
+				}
+				img.src = 'maps/' + data.image;
+			}catch(e){
+				throw "spriteSet::load: " + e;
+			}
+		}
+	}
+	client.open('GET', dir + '/' + mapFile);
+	client.send();
+
+/*
+
+
+
+	var img = new Image();
+	img.src = 'maps/' + map.image;
+	var canvas = document.createElement('canvas');
+	var context = canvas.getContext('2d');
+	context.drawImage(img, 0, 0);
+	return context.getImageData(x, y, 1, 1).data;
+*/
+
 };
 
 mapBuilder.prototype.build = function(params){
@@ -93,7 +203,7 @@ mapBuilder.prototype.readParams = function(){
 	}
 	for(param in this.defaultParams){
 		defaultval = this.defaultParams[param];
-		
+
 		if(arguments[0][param] != undefined){
 			quote = typeof(arguments[0][param]) == 'string' ? '"' : '';
 			eval('this.' + param + ' = ' + quote + arguments[0][param] + quote); 
@@ -333,7 +443,7 @@ mapBuilder.prototype.placeRandomlyOnTexture = function(content, emptyTarget, tar
 	}
 
 	if(this.map[x][y] == targetTexture){
-		
+
 		itemDat = {
 			x : x,
 			y : y,
@@ -446,7 +556,7 @@ mapBuilder.prototype.buildSwamp = function(){
 	var xGrid = Math.floor(this.width / gridStep);
 	var yGrid = Math.floor(this.height / gridStep);
 	var x, y, dx, dy, drawchar, chance;
-	
+
 	var totalChance = this.treeChance + this.waterChance + this.reedChance;
 
 	for(x = 0; x < xGrid; x++){

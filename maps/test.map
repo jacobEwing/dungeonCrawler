@@ -1,0 +1,13 @@
+{
+	"image" : "testMap.png",
+	"colourmap" : {
+		"006d06" : "T",
+		"46ff1a" : "\"",
+		"d68b1c" : ".",
+		"8a8a8a" : "#"
+	},
+	"playerPos" : {
+		"x" : 45,
+		"y" : 35
+	}
+}
