@@ -208,7 +208,7 @@ mapBuilder.prototype.placeinRandomRoom = function(content, emptyTarget, targetTe
 		});
 	}else{
 		// fuck it then, go for any existing floor cell
-		this.placeRandomlyOnTexture(content, emptyTarget, targetTexture)
+		this.placeRandomlyOnTexture(content, emptyTarget, targetTexture);
 	}
 }
 
@@ -308,11 +308,11 @@ mapBuilder.prototype.encloseWithBricks = function(){
 }
 
 // changes a random character on the map of the value from, to the value to.
-// Returns true if successful, false otherwise
+// Returns mapped item data if successful, null otherwise
 mapBuilder.prototype.placeRandomlyOnTexture = function(content, emptyTarget, targetTexture){
 	var width = this.map.length;
 	var height = this.map[0].length;
-	var rval = false;
+	var rval = null;
 	var itemDat;
 	console.log('picking a random spot');
 
@@ -340,7 +340,7 @@ mapBuilder.prototype.placeRandomlyOnTexture = function(content, emptyTarget, tar
 			content : content
 		};
 		this.addItem(itemDat);
-		rval = true;
+		rval = itemDat;
 	}
 	return rval;
 };
@@ -409,6 +409,27 @@ mapBuilder.prototype.buildForest = function(){
 
 	// let's run the game of life on it to give it a more chaotic look
 	this.life(8, '"');
+
+	if(this.stairdown){
+		// clear some brush and add a dungeon entrance.
+		var entrance = this.placeRandomlyOnTexture('stairdown', false, '"');
+		if(entrance != null){
+			for(x = entrance.x - 3; x <= entrance.x + 3; x++){
+				for(y = entrance.y -3; y <= entrance.y + 3; y++){
+					// round the corners
+					if(Math.abs(x - entrance.x) + Math.abs(y - entrance.y) >= 5){
+						continue;
+					}
+
+					if(x >= 0 && x < this.width && y >= 0 && y < this.height){
+						console.log('clearing ' + x + ', ' + y);
+						this.map[x][y] = '"';
+					}
+				}
+			}
+		}
+	}
+
 	return this.map;
 }
 

@@ -176,6 +176,7 @@
 		})();
 
 		function renderView(area){
+			var item, frameName;
 			var playerLayer = Array();
 			var topLayer = Array();
 			/*
@@ -701,8 +702,8 @@
 						maps[mapIdx] = new mapBuilder();
 						maps[mapIdx].build({
 							category : 'forest',
-							width : 1000,
-							height: 1000,
+							width : 30,
+							height: 30,
 							roomscale: 1,
 							gridScale: 8,
 							//stairup: true,
@@ -712,9 +713,11 @@
 						activeMap = maps[mapIdx];
 
 						// quick random placement for now:
-						activeMap.playerPos = activeMap.findTextureSpot('T');
+						activeMap.playerPos = activeMap.findTextureSpot('"');
 						player.position.x = Math.floor(cellSize * (activeMap.playerPos.x));
 						player.position.y = Math.floor(cellSize * (activeMap.playerPos.y));
+
+						
 
 						player.sightRadius = 6;
 
