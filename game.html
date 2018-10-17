@@ -56,7 +56,7 @@
 		var motionControls = {};
 		var playerSpriteSet = new spriteSet();
 		var player;
-		var gameScale = 6, cellSize = 12;
+		var gameScale = 5, cellSize = 12;
 		var sprites = {};
 		var maps = Array();
 		var activeMap;
@@ -315,14 +315,18 @@
 							if(item.x == mapX && item.y == mapY){
 								frameName = {
 									'stairup' : 'stairsUp',
-									'stairdown' : 'stairsDown'
+									'stairdown' : 'stairsDown',
+									'caveEntrance' : 'caveEntrance'
 								}[item.content];
 								switch(frameName){
-									case 'stairsUp': case 'stairsDown':
+									case 'stairsUp': case 'stairsDown': 
 										dungeonElementsSprite.setFrame(frameName);
 										//dungeonElementsSprite.draw(context, {x : x * cellSize - drawOffset.x , y : y * cellSize - drawOffset.y});
 										dungeonElementsSprite.draw(context, {x : drawX / gameScale, y : drawY / gameScale});
 										break;
+									case 'caveEntrance':
+										caveEntranceSprite.setFrame(frameName);
+										caveEntranceSprite.draw(context, {x : drawX / gameScale, y : drawY / gameScale});
 								}
 							}
 						}
@@ -533,6 +537,11 @@
 									useEntrance(touchingItems[n]);
 								}
 								break;
+							case 'caveEntrance':
+								if(checkKeyControl('enter')){
+									useEntrance(touchingItems[n]);
+								}
+								break;
 							default:
 								console.log(touchingItems[n].content);
 						}
@@ -588,6 +597,18 @@
 
 
 		function useEntrance(entrance){
+
+			/*
+				This entire if structure needs to be replaced with something better.
+
+				This is where the code decides the new location of the player in the new area.
+				And it's done terribly.  It simply generates the area and says "ok, find an exit
+				that goes in the opposite direction of this entrance".  It should be far better
+				engineered than that.  Truthfully, I think perhaps the mapBuilder class should
+				let the current level generate the child.  That would allow more relevant
+				handling of the linking.
+
+			*/
 			if(entrance.target == undefined){
 				var mapIdx = maps.length;
 				maps[mapIdx] = new mapBuilder();
@@ -600,28 +621,38 @@
 					stairdown: true
 				});
 				entrance.target = maps[mapIdx];
-			}
 
-			switch(entrance.content){
-				case 'stairup':
-					entrance.target.playerPos = {
-						x : entrance.target.items['stairdown'][0].x,
-						y : entrance.target.items['stairdown'][0].y
-					};
-					if(entrance.target.items['stairdown'][0].target == undefined){
-						entrance.target.items['stairdown'][0].target = activeMap;
-					}
-					break;
-				case 'stairdown':
-					entrance.target.playerPos = {
-						x : entrance.target.items['stairup'][0].x,
-						y : entrance.target.items['stairup'][0].y
-					};
-					if(entrance.target.items['stairdown'][0].target == undefined){
-						entrance.target.items['stairup'][0].target = activeMap;
-					}
-					break;
+				switch(entrance.content){
+					case 'stairup':
+						entrance.target.playerPos = {
+							x : entrance.target.items['stairdown'][0].x,
+							y : entrance.target.items['stairdown'][0].y
+						};
+						if(entrance.target.items['stairdown'][0].target == undefined){
+							entrance.target.items['stairdown'][0].target = activeMap;
+						}
+						break;
+					case 'stairdown':
+						entrance.target.playerPos = {
+							x : entrance.target.items['stairup'][0].x,
+							y : entrance.target.items['stairup'][0].y
+						};
+						if(entrance.target.items['stairup'][0].target == undefined){
+							entrance.target.items['stairup'][0].target = activeMap;
+						}
+						break;
+					case 'caveEntrance':
+						entrance.target.playerPos = {
+							x : entrance.target.items['stairup'][0].x,
+							y : entrance.target.items['stairup'][0].y
+						};
+						if(entrance.target.items['stairup'][0].target == undefined){
+							entrance.target.items['stairup'][0].target = activeMap;
+						}
+						break;
+				}
 			}
+			
 			activeMap = entrance.target;
 			player.setMapPos(activeMap.playerPos.x, activeMap.playerPos.y);
 			player.position.x += cellSize >> 1;
@@ -719,7 +750,7 @@
 
 						
 
-						player.sightRadius = 6;
+						player.sightRadius = 5;
 
 						checkOverlay();
 						renderView(activeMap);

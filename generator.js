@@ -412,7 +412,7 @@ mapBuilder.prototype.buildForest = function(){
 
 	if(this.stairdown){
 		// clear some brush and add a dungeon entrance.
-		var entrance = this.placeRandomlyOnTexture('stairdown', false, '"');
+		var entrance = this.placeRandomlyOnTexture('caveEntrance', false, '"');
 		if(entrance != null){
 			for(x = entrance.x - 3; x <= entrance.x + 3; x++){
 				for(y = entrance.y -3; y <= entrance.y + 3; y++){
