@@ -13,9 +13,9 @@ var gameCanvas;
 var viewRange = {};
 var motionControls = {};
 var playerSpriteSet = new spriteSet();
+var spriteSets = {}, sprites = {};
 var player;
 var gameScale = 5, cellSize = 12;
-var sprites = {};
 var maps = Array();
 var activeMap;
 var context;
@@ -132,7 +132,7 @@ var player = (function(){
 		currentEndFrame : null
 	};
 })();
-
+var waterframe = 0;
 function renderView(area){
 	var item, frameName;
 	var playerLayer = Array();
@@ -148,28 +148,8 @@ function renderView(area){
 	var randomKey;
 
 	var treeFrame;
-	var treeSprite = new cSprite(sprites.trees);
-	treeSprite.setScale(gameScale);
 
-	var longgrassSprite = new cSprite(sprites.longgrass);
-	longgrassSprite.setScale(gameScale);
-
-	var grassSprite = new cSprite(sprites.grass);
-	grassSprite.setScale(gameScale);
-
-	var stoneSprite = new cSprite(sprites.stone);
-	stoneSprite.setScale(gameScale);
-
-	var groundSprite = new cSprite(sprites.ground);
-	groundSprite.setScale(gameScale);
-
-	var dungeonElementsSprite = new cSprite(sprites.dungeonElements);
-	dungeonElementsSprite.setScale(gameScale);
-
-	var caveEntranceSprite = new cSprite(sprites.caveEntrance);
-	caveEntranceSprite.setScale(gameScale);
-
-	var x, y, mapX, mapY, drawX, drawY, n;
+	var x, y, mapX, mapY, gridX, gridY, drawX, drawY, n;
 
 	context.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
 
@@ -177,6 +157,8 @@ function renderView(area){
 		x : player.position.x % cellSize,
 		y : player.position.y % cellSize
 	}
+	waterframe = (waterframe + 1)% 6;
+	sprites.waterWaves.setFrame('wat_' + waterframe);
 	for(y = -1; y <= viewRange.height + 1; y++){
 		mapY = area.playerPos.y + y - Math.floor(screenMiddle.y / (gameScale * cellSize));
 		if(mapY < 0 || mapY > area.map[0].length - 1) continue;
@@ -184,8 +166,10 @@ function renderView(area){
 			mapX = area.playerPos.x + x - Math.floor(screenMiddle.x / (gameScale * cellSize));
 			if(mapX < 0 || mapX > area.map.length - 1) continue;
 
-			drawX = (x * cellSize - drawOffset.x) * gameScale;
-			drawY = (y * cellSize - drawOffset.y) * gameScale;
+			gridX = x * cellSize - drawOffset.x;
+			gridY = y * cellSize - drawOffset.y;
+			drawX = gridX * gameScale;
+			drawY = gridY * gameScale;
 	 
 			if(area.hideMap[mapX][mapY] == true){
 				continue;
@@ -193,25 +177,34 @@ function renderView(area){
 
 			randomKey = Math.abs(Math.sin(mapX + mapY * viewRange.width) * 10000);
 			randomKey -= Math.floor(randomKey);
-			switch(area.map[mapX][mapY]){
-				case '.':
-
-					//groundSprite.rotate(Math.floor(randomKey * 4) * Math.PI / 2);
-					groundSprite.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
+			switch(area.spritemap[area.map[mapX][mapY]]){
+				/*
+				case textures.water:
+					
 					break;
-				case '#':
-
-					stoneSprite.setFrame(Math.floor(randomKey * 25));
-					//stoneSprite.draw(context, {x : x * cellSize - drawOffset.x , y : y * cellSize - drawOffset.y});
-					stoneSprite.draw(context, {x : drawX / gameScale, y : drawY / gameScale});
+				*/
+				case 'water':
+					sprites.waterWaves.setPosition(gridX, gridY, false);
+					sprites.waterWaves.draw(context);
 					break;
-				case 'T':
+				case 'stone floor':
+
+					//sprites.ground.rotate(Math.floor(randomKey * 4) * Math.PI / 2);
+					sprites.ground.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
+					break;
+				case 'stone wall':
+
+					sprites.stone.setFrame(Math.floor(randomKey * 25));
+					//sprites.stone.draw(context, {x : x * cellSize - drawOffset.x , y : y * cellSize - drawOffset.y});
+					sprites.stone.draw(context, {x : gridX, y : gridY});
+					break;
+				case 'trees':
 
 
 					// first we draw some grass
 
-					grassSprite.rotate(Math.PI / 2);
-					grassSprite.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
+					sprites.grass.rotate(Math.PI / 2);
+					sprites.grass.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
 
 
 					if(randomKey < 0.1){
@@ -227,7 +220,8 @@ function renderView(area){
 					}
 					// now the tree trunk
 					playerLayer[playerLayer.length] = {
-						sprite : treeSprite,
+						doing : 'tree',
+						sprite : sprites.tree,
 						frame : 'trunk' + treeFrame,
 						x : drawX / gameScale,
 						y : drawY / gameScale
@@ -235,7 +229,7 @@ function renderView(area){
 
 					// and queue up the greens for a second run
 					topLayer[topLayer.length] = {
-						sprite : treeSprite,
+						sprite : sprites.tree,
 						frame : 'greens' + treeFrame,
 						x : drawX / gameScale,
 						y : drawY / gameScale
@@ -244,21 +238,21 @@ function renderView(area){
 
 
 					break;
-				case '"':
+				case 'grass':
 
-					grassSprite.rotate(Math.PI / 2);
-					grassSprite.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
+					sprites.grass.rotate(Math.PI / 2);
+					sprites.grass.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
 
-					if(randomKey < 2){
-						var brushFrame = Math.abs(Math.floor(9 * Math.sin(mapX + mapY + viewRange.width + randomKey))) + 1;
+					if(randomKey < .5){
+						var brushFrame = Math.floor(Math.abs(9 * Math.sin(mapX + mapY + viewRange.width + randomKey)));
 						playerLayer[playerLayer.length] = {
-							sprite : longgrassSprite,
+							doing : 'grass',
+							sprite : sprites.longgrass,
 							frame : brushFrame,
 							x : drawX / gameScale,
 							y : drawY / gameScale
 						};
 					}
-
 
 					break;
 					/*
@@ -278,13 +272,13 @@ function renderView(area){
 						}[item.content];
 						switch(frameName){
 							case 'stairsUp': case 'stairsDown': 
-								dungeonElementsSprite.setFrame(frameName);
-								//dungeonElementsSprite.draw(context, {x : x * cellSize - drawOffset.x , y : y * cellSize - drawOffset.y});
-								dungeonElementsSprite.draw(context, {x : drawX / gameScale, y : drawY / gameScale});
+								sprites.dungeonElements.setFrame(frameName);
+								//sprites.dungeonElements.draw(context, {x : x * cellSize - drawOffset.x , y : y * cellSize - drawOffset.y});
+								sprites.dungeonElements.draw(context, {x : drawX / gameScale, y : drawY / gameScale});
 								break;
 							case 'caveEntrance':
-								caveEntranceSprite.setFrame(frameName);
-								caveEntranceSprite.draw(context, {x : drawX / gameScale, y : drawY / gameScale});
+								sprites.caveEntrance.setFrame(frameName);
+								sprites.caveEntrance.draw(context, {x : drawX / gameScale, y : drawY / gameScale});
 						}
 					}
 				}
@@ -294,6 +288,9 @@ function renderView(area){
 	}
 	for(n in playerLayer){
 		playerLayer[n].sprite.setFrame(playerLayer[n].frame);
+		if(playerLayer[n].sprite.frame == undefined){
+			debugger;
+		}
 		playerLayer[n].sprite.draw(context, {
 			x : playerLayer[n].x, 
 			y : playerLayer[n].y
@@ -627,7 +624,8 @@ var initialize = function(){
 		{'name' : 'ground', 'file' : 'ground.sprite'},
 		{'name' : 'dungeonElements', 'file' : 'dungeonElements.sprite'},
 		{'name' : 'longgrass', 'file' : 'longgrass.sprite'},
-		{'name' : 'caveEntrance' , 'file' : 'caveEntrance.sprite'}
+		{'name' : 'caveEntrance' , 'file' : 'caveEntrance.sprite'},
+		{'name' : 'waterwaves' , 'file' : 'waterwaves.sprite'}
 	);
 
 	var doStep = function(step){
@@ -637,6 +635,7 @@ var initialize = function(){
 		// Note that using callbacks on this method prevents it from building a stack.
 		// It also allows us to wait for each step to complete before calling the next
 		// one.
+		console.log('doing step "' + step + '"');
 		switch(step){
 			case 'initialize':
 				gameCanvas = document.getElementById('gameCanvas');
@@ -655,21 +654,46 @@ var initialize = function(){
 
 				writeText(5, 5, "DungeonCrawler v.0.0");
 				setTimeout(function(){
-					doStep('load sprites');
+					doStep('load spriteSets');
 				}, 1);
 				break;
 
 
-			case 'load sprites':
+			case 'load spriteSets':
 				if(spriteList.length > 0){
 					dat = spriteList.pop();
-					sprites[dat.name] = new spriteSet('sprites/' + dat.file, function(){
+					spriteSets[dat.name] = new spriteSet('sprites/' + dat.file, function(){
 						setTimeout(function(){
-							doStep('load sprites');
+							doStep('load spriteSets');
 						}, 1);
 					});
 
 				}else{
+					sprites.tree = new cSprite(spriteSets.trees);
+					sprites.tree.setScale(gameScale);
+
+					sprites.longgrass = new cSprite(spriteSets.longgrass);
+					sprites.longgrass.setScale(gameScale);
+
+					sprites.grass = new cSprite(spriteSets.grass);
+					sprites.grass.setScale(gameScale);
+
+					sprites.stone = new cSprite(spriteSets.stone);
+					sprites.stone.setScale(gameScale);
+
+					sprites.ground = new cSprite(spriteSets.ground);
+					sprites.ground.setScale(gameScale);
+
+					sprites.dungeonElements = new cSprite(spriteSets.dungeonElements);
+					sprites.dungeonElements.setScale(gameScale);
+
+					sprites.caveEntrance = new cSprite(spriteSets.caveEntrance);
+					sprites.caveEntrance.setScale(gameScale);
+
+					sprites.waterWaves = new cSprite(spriteSets.waterwaves);
+					sprites.waterWaves.setScale(gameScale);
+					sprites.waterWaves.setFrame('0');
+
 					doStep('load player sprite');
 				}
 				break;
@@ -689,23 +713,25 @@ var initialize = function(){
 			case 'load map':
 				var mapIdx = maps.length;
 				maps[mapIdx] = new mapBuilder();
-				maps[mapIdx].loadImageMap('maps/test.map', function(){
+				console.log('calling loadImageMap');
+				maps[mapIdx].loadImageMap('maps/Map2.map', function(){
+					console.log('map loaded, placing player');
 					activeMap = maps[mapIdx];
+
 					player.position.x = Math.floor(cellSize * activeMap.playerPos.x);
 					player.position.y = Math.floor(cellSize * activeMap.playerPos.y);
 					player.sightRadius = 5;
 
 
-
-
-				// make the whole map visible
-				for(x = 0; x < activeMap.width; x++){
-					for(y = 0; y < activeMap.height; y++){
-						activeMap.hideMap[x][y] = false;
+					// make the whole map visible
+					for(x = 0; x < activeMap.width; x++){
+						for(y = 0; y < activeMap.height; y++){
+							activeMap.hideMap[x][y] = false;
+						}
 					}
-				}
 
-					//checkOverlay();
+
+//					checkOverlay();
 					renderView(activeMap);
 
 					doStep('initialize keyboard');
@@ -713,8 +739,8 @@ var initialize = function(){
 				break;
 
 
-/*
 
+/*
 				var mapIdx = maps.length;
 				maps[mapIdx] = new mapBuilder();
 				maps[mapIdx].build({

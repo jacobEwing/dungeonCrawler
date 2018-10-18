@@ -311,6 +311,9 @@ var spriteSet = function(filename, callback){
 	for(var n in spriteSet.defaults){
 		this[n] = spriteSet.defaults[n];
 	}
+	this.frames = [];
+	this.frameNames = [];
+	this.sequences = {};
 
 	if(filename != undefined){
 		this.load(filename, callback);
@@ -319,9 +322,6 @@ var spriteSet = function(filename, callback){
 }
 
 spriteSet.defaults = {
-	frames : [],
-	frameNames : [],
-	sequences : {},
 	defaultFrameRate : 40,
 	centerx : 0,
 	centery : 0,

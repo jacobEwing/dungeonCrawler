@@ -104,9 +104,11 @@ mapBuilder.prototype.loadImageMap = function(mapFile, callback){
 		if (this.readyState == 4 && this.status == 200) {
 
 			try{
+				console.log('loading map');
 				data = JSON.parse(this.responseText);
 				var img = new Image();
 				img.onload = function(){
+					console.log('map loaded');
 					var x, y, n, c, hexcode, decvals;
 					me.width = this.width;
 					me.height = this.height;
@@ -117,14 +119,19 @@ mapBuilder.prototype.loadImageMap = function(mapFile, callback){
 							x : data.playerPos.x,
 							y : data.playerPos.y
 						};
-						console.log('assigned playerpos');
+						console.log('assigned player position');
 					}
+					me.spritemap = data.spritemap;
+					console.log('got map legend');
 
 					var canvas = document.createElement('canvas');
+					canvas.width = me.width;
+					canvas.height = me.height;
 					var context = canvas.getContext('2d');
 
 					context.drawImage(img, 0, 0);
 
+					console.log('reading map');
 					for(x = 0; x < me.width; x++){
 						for(y = 0; y < me.height; y++){
 							decvals = context.getImageData(x, y, 1, 1).data;
@@ -140,6 +147,7 @@ mapBuilder.prototype.loadImageMap = function(mapFile, callback){
 
 						}
 					}
+					console.log('data loaded');
 					me.hideMap();
 					if(typeof(callback) == 'function'){
 						setTimeout(callback, 0);
