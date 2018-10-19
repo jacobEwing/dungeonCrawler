@@ -101,10 +101,15 @@ cSprite.prototype.drawRandomArea = function(context, drawx, drawy, width, height
 		randomKey -= Math.floor(randomKey);
 		y = Math.floor(randomKey * (this.imageHeight - height));
 	}
+
+	this.drawArea(context, drawx, drawy, x, y, width, height);
+}
+
+cSprite.prototype.drawArea = function(context, drawx, drawy, readx1, ready1, width, height){
 	context.save();
 	context.drawImage(
 		this.image,
-		x, y,
+		readx1, ready1,
 		width, height,
 		drawx, drawy,
 		width * this.scale, height * this.scale

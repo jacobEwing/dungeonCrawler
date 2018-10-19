@@ -61,33 +61,6 @@ var mapBuilder = function(){
 };
 
 mapBuilder.prototype.loadImageMap = function(mapFile, callback){
-	/*
-	expecting the following structure:
-	{
-		"image" : "filename.png",
-		"colourmap" : {
-			"66FF00" : '.',
-			"324238" : 'T',
-			etc.
-		}
-		"items"{
-			0 : {
-				"type" : "dungeonEntrance",
-				"position" : {"x" : 34234, "y" : 2324}
-			},
-			1 : {
-				"type" : "boat",
-				"position" : {"x" : 34, "y" : 24}
-			},
-			etc.
-		},
-		"startingpoint" : {
-			"x" : 234,
-			"y" : 908
-		}
-	}
-	*/
-
 	this.width = this.height = 0;
 	this.mappedItems = Array();
 	this.items = {};//Array();
@@ -147,6 +120,9 @@ mapBuilder.prototype.loadImageMap = function(mapFile, callback){
 
 						}
 					}
+					for(n in data.items){
+						me.addItem(data.items[n]);
+					}
 					console.log('data loaded');
 					me.hideMap();
 					if(typeof(callback) == 'function'){
@@ -192,6 +168,13 @@ mapBuilder.prototype.build = function(params){
 		default:
 			throw "invalied map type";
 	}
+	this.spritemap = {
+		"T" : "trees",
+		"\"" : "grass",
+		"." : "stone floor",
+		"#" : "stone wall",
+		"W" : "water"
+	};
 	this.hideMap();
 }
 

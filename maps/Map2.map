@@ -17,7 +17,13 @@
 		"." : "stone floor",
 		"#" : "stone wall",
 		"W" : "water"
-		
-	}
+	},
+	"items" : [
+		{
+			"x" : 48,
+			"y" : 70,
+			"content" : "caveEntrance"
+		}
+	]
 }
 

@@ -54,7 +54,7 @@ var player = (function(){
 			var rval = true;
 			if(roundX < 0 || roundY < 0 || roundX >= map.length || roundY >= map[roundX].length){
 				rval = false;
-			}else if({'#' : 1}[map[roundX][roundY]] != undefined){
+			}else if({'#' : 1, 'W' : 1}[map[roundX][roundY]] != undefined){
 				rval = false;
 			}
 			return rval;
@@ -158,7 +158,7 @@ function renderView(area){
 		y : player.position.y % cellSize
 	}
 	waterframe = (waterframe + 1)% 6;
-	sprites.waterWaves.setFrame('wat_' + waterframe);
+
 	for(y = -1; y <= viewRange.height + 1; y++){
 		mapY = area.playerPos.y + y - Math.floor(screenMiddle.y / (gameScale * cellSize));
 		if(mapY < 0 || mapY > area.map[0].length - 1) continue;
@@ -185,6 +185,7 @@ function renderView(area){
 				*/
 				case 'water':
 					sprites.waterWaves.setPosition(gridX, gridY, false);
+					sprites.waterWaves.setFrame(waterframe);
 					sprites.waterWaves.draw(context);
 					break;
 				case 'stone floor':

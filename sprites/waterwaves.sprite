@@ -5,27 +5,16 @@
 	"centerx" : 0,
 	"centery" : 0,
 	"frames" : {
-		"wat_0" : {"xoffset" : 0, "yoffset" : 0},
-		"wat_1" : {"xoffset" : 0, "yoffset" : 1},
-		"wat_2" : {"xoffset" : 0, "yoffset" : 2},
-		"wat_3" : {"xoffset" : 0, "yoffset" : 3},
-		"wat_4" : {"xoffset" : 0, "yoffset" : 4},
-		"wat_5" : {"xoffset" : 0, "yoffset" :5},
-		"wat_6" : {"xoffset" : 0, "yoffset" : 6},
-		"wat_7" : {"xoffset" : 0, "yoffset" : 7},
-		"wat_8" : {"xoffset" : 0, "yoffset" : 8},
-		"wat_9" : {"xoffset" : 0, "yoffset" : 9},
-		"wat_10" : {"xoffset" : 0, "yoffset" : 19},
-		"wat_11" : {"xoffset" : 0, "yoffset" : 1}
+		"0" : {"x" : 0, "y" : 0},
+		"1" : {"x" : 1, "y" : 0},
+		"2" : {"x" : 2, "y" : 0},
+		"3" : {"x" : 0, "y" : 1},
+		"4" : {"x" : 1, "y" : 1},
+		"5" : {"x" : 2, "y" : 1}
 	},
 	"sequences" : {
 		"wave" : {
-			"frames" : [
-				"wat_0", "wat_1", "wat_2", 
-				"wat_3", "wat_4", "wat_5",
-				"wat_6", "wat_7", "wat_8",
-				"wat_9", "wat_10", "wat_11"
-			],
+			"frames" : ["0", "1", "2", "3", "4", "5"],
 			"framerate" : 60
 		}
 	}
