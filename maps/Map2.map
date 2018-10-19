@@ -14,7 +14,7 @@
 	"spritemap" : {
 		"T" : "trees",
 		"\"" : "grass",
-		"." : "stone floor",
+		"." : "sand",
 		"#" : "stone wall",
 		"W" : "water"
 	},

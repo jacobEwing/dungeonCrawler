@@ -137,6 +137,11 @@ function renderView(area){
 	var item, frameName;
 	var playerLayer = Array();
 	var topLayer = Array();
+	var randomKey, drawOffset, treeFrame;
+	var x, y, mapX, mapY, gridX, gridY, drawX, drawY, n;
+	var neighbourList, bitsum, readX, readY;
+
+
 	/*
 	just a bit of a joke experiment.  We can scale down sort of.  the user needs to be accounted for too though
 	gameScale *= .999;
@@ -145,18 +150,23 @@ function renderView(area){
 		height: Math.ceil(gameCanvas.height / (gameScale * cellSize)) + 1
 	}
 	*/
-	var randomKey;
 
-	var treeFrame;
 
-	var x, y, mapX, mapY, gridX, gridY, drawX, drawY, n;
+	drawOffset = {
+		x : player.position.x % cellSize,
+		y : player.position.y % cellSize
+	};
+
+	neighbourList = {
+		1 : {dx : 0, dy : -1},
+		2 : {dx : -1, dy : 0},
+		4 : {dx : 1, dy : 0},
+		8 : {dx : 0, dy : 1}
+	};
+
 
 	context.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
 
-	var drawOffset = {
-		x : player.position.x % cellSize,
-		y : player.position.y % cellSize
-	}
 	waterframe = (waterframe + 1)% 6;
 
 	for(y = -1; y <= viewRange.height + 1; y++){
@@ -187,6 +197,135 @@ function renderView(area){
 					sprites.waterWaves.setPosition(gridX, gridY, false);
 					sprites.waterWaves.setFrame(waterframe);
 					sprites.waterWaves.draw(context);
+					break;
+				case 'sand':
+					var otherTexture = 'sand';
+					bitsum = 0;
+					for(n in neighbourList){
+						readX = mapX + neighbourList[n].dx;
+						readY = mapY + neighbourList[n].dy;
+						if(readX < 0 || readY < 0 || readX > area.map.length || readY > area.map[0].length){
+							bitsum += 1 * n;
+						}else if(area.spritemap[area.map[readX][readY]] == 'sand'){
+							bitsum += 1 * n;
+						}else{
+							otherTexture = area.spritemap[area.map[readX][readY]]; // <-- crazy lazy and probably will need to be replaced
+						}
+					}
+					if(otherTexture != 'sand'){
+						// oh god I need to separate the drawing of each cell from this function so that I can call it recursively
+						switch(otherTexture){
+							case 'grass':
+
+								sprites.grass.rotate(Math.PI / 2);
+								sprites.grass.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
+
+								break;
+							case 'water':
+								sprites.waterWaves.setPosition(gridX, gridY, false);
+								sprites.waterWaves.setFrame(waterframe);
+								sprites.waterWaves.draw(context);
+								break;
+						}
+					}
+
+					switch(bitsum){
+						case 3:
+							sprites.sandTiles.setFrame('corner');
+							sprites.sandTiles.rotation = Math.PI;
+							sprites.sandTiles.setPosition(gridX + cellSize, gridY + cellSize, false);
+							sprites.sandTiles.draw(context);
+							break;
+						case 5:
+							sprites.sandTiles.setFrame('corner');
+							sprites.sandTiles.rotation = 3 * Math.PI / 2;
+							sprites.sandTiles.setPosition(gridX, gridY + cellSize, false);
+							sprites.sandTiles.draw(context);
+							break;
+						case 10:
+							sprites.sandTiles.setFrame('corner');
+							sprites.sandTiles.rotation = Math.PI / 2;
+							sprites.sandTiles.setPosition(gridX + cellSize, gridY, false);
+							sprites.sandTiles.draw(context);
+							break;
+						case 12:
+							sprites.sandTiles.setFrame('corner');
+							sprites.sandTiles.rotation = 0;
+							sprites.sandTiles.setPosition(gridX, gridY, false);
+							sprites.sandTiles.draw(context);
+							break;
+
+						case 7:
+							sprites.sandTiles.setFrame('edge');
+							sprites.sandTiles.rotation = 3 * Math.PI / 2;
+							sprites.sandTiles.setPosition(gridX, gridY + cellSize, false);
+							sprites.sandTiles.draw(context);
+							break;
+						case 13:
+							sprites.sandTiles.setFrame('edge');
+							sprites.sandTiles.rotation = 0;
+							sprites.sandTiles.setPosition(gridX, gridY, false);
+							sprites.sandTiles.draw(context);
+							break;
+						case 14:
+							sprites.sandTiles.setFrame('edge');
+							sprites.sandTiles.rotation = Math.PI / 2;
+							sprites.sandTiles.setPosition(gridX + cellSize, gridY, false);
+							sprites.sandTiles.draw(context);
+							break;
+						case 11:
+							sprites.sandTiles.setFrame('edge');
+							sprites.sandTiles.rotation = Math.PI;
+							sprites.sandTiles.setPosition(gridX + cellSize, gridY + cellSize, false);
+							sprites.sandTiles.draw(context);
+							break;
+
+						case 1:
+							sprites.sandTiles.setFrame('tip');
+							sprites.sandTiles.rotation = Math.PI;
+							sprites.sandTiles.setPosition(gridX + cellSize, gridY + cellSize, false);
+							sprites.sandTiles.draw(context);
+							break;
+
+						case 2:
+							sprites.sandTiles.setFrame('tip');
+							sprites.sandTiles.rotation = Math.PI / 2;
+							sprites.sandTiles.setPosition(gridX + cellSize, gridY, false);
+							sprites.sandTiles.draw(context);
+							break;
+
+						case 4:
+							sprites.sandTiles.setFrame('tip');
+							sprites.sandTiles.rotation = 3 * Math.PI / 2;
+							sprites.sandTiles.setPosition(gridX, gridY + cellSize, false);
+							sprites.sandTiles.draw(context);
+							break;
+
+						case 8:
+							sprites.sandTiles.setFrame('tip');
+							sprites.sandTiles.rotation = 0;
+							sprites.sandTiles.setPosition(gridX, gridY, false);
+							sprites.sandTiles.draw(context);
+							break;
+
+						case 9:
+							sprites.sandTiles.setFrame('wall');
+							sprites.sandTiles.rotation = 0;
+							sprites.sandTiles.setPosition(gridX, gridY, false);
+							sprites.sandTiles.draw(context);
+							break;
+						
+						case 6:
+							sprites.sandTiles.setFrame('wall');
+							sprites.sandTiles.rotation = Math.PI / 2;
+							sprites.sandTiles.setPosition(gridX + cellSize, gridY, false);
+							sprites.sandTiles.draw(context);
+							break;
+
+						case 15:
+							sprites.sand.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
+							break;
+					}
 					break;
 				case 'stone floor':
 
@@ -248,7 +387,7 @@ function renderView(area){
 						var brushFrame = Math.floor(Math.abs(9 * Math.sin(mapX + mapY + viewRange.width + randomKey)));
 						playerLayer[playerLayer.length] = {
 							doing : 'grass',
-							sprite : sprites.longgrass,
+							sprite : sprites.longGrass,
 							frame : brushFrame,
 							x : drawX / gameScale,
 							y : drawY / gameScale
@@ -620,13 +759,15 @@ function useEntrance(entrance){
 var initialize = function(){
 	var spriteList = Array(
 		{'name' : 'grass', 'file' : 'grass.sprite'},
-		{'name' : 'trees', 'file' : 'tree.sprite'},
+		{'name' : 'tree', 'file' : 'tree.sprite'},
 		{'name' : 'stone', 'file': 'stone.sprite'},
 		{'name' : 'ground', 'file' : 'ground.sprite'},
+		{'name' : 'sand', 'file' : 'sand.sprite'},
+		{'name' : 'sandTiles', 'file' : 'sandTiles.sprite'},
 		{'name' : 'dungeonElements', 'file' : 'dungeonElements.sprite'},
-		{'name' : 'longgrass', 'file' : 'longgrass.sprite'},
+		{'name' : 'longGrass', 'file' : 'longGrass.sprite'},
 		{'name' : 'caveEntrance' , 'file' : 'caveEntrance.sprite'},
-		{'name' : 'waterwaves' , 'file' : 'waterwaves.sprite'}
+		{'name' : 'waterWaves' , 'file' : 'waterWaves.sprite'}
 	);
 
 	var doStep = function(step){
@@ -664,36 +805,17 @@ var initialize = function(){
 				if(spriteList.length > 0){
 					dat = spriteList.pop();
 					spriteSets[dat.name] = new spriteSet('sprites/' + dat.file, function(){
+						sprites[dat.name] = new cSprite(spriteSets[dat.name]);
+						sprites[dat.name].setScale(gameScale);
 						setTimeout(function(){
 							doStep('load spriteSets');
 						}, 1);
 					});
 
 				}else{
-					sprites.tree = new cSprite(spriteSets.trees);
-					sprites.tree.setScale(gameScale);
 
-					sprites.longgrass = new cSprite(spriteSets.longgrass);
-					sprites.longgrass.setScale(gameScale);
-
-					sprites.grass = new cSprite(spriteSets.grass);
-					sprites.grass.setScale(gameScale);
-
-					sprites.stone = new cSprite(spriteSets.stone);
-					sprites.stone.setScale(gameScale);
-
-					sprites.ground = new cSprite(spriteSets.ground);
-					sprites.ground.setScale(gameScale);
-
-					sprites.dungeonElements = new cSprite(spriteSets.dungeonElements);
-					sprites.dungeonElements.setScale(gameScale);
-
-					sprites.caveEntrance = new cSprite(spriteSets.caveEntrance);
-					sprites.caveEntrance.setScale(gameScale);
-
-					sprites.waterWaves = new cSprite(spriteSets.waterwaves);
-					sprites.waterWaves.setScale(gameScale);
 					sprites.waterWaves.setFrame('0');
+
 
 					doStep('load player sprite');
 				}
