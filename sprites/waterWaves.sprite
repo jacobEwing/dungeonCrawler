@@ -1,0 +1,21 @@
+{
+	"image" : "sprites/waterwaves.png",
+	"frameWidth" : 12,
+	"frameHeight" : 12,
+	"centerx" : 0,
+	"centery" : 0,
+	"frames" : {
+		"0" : {"x" : 0, "y" : 0},
+		"1" : {"x" : 1, "y" : 0},
+		"2" : {"x" : 2, "y" : 0},
+		"3" : {"x" : 0, "y" : 1},
+		"4" : {"x" : 1, "y" : 1},
+		"5" : {"x" : 2, "y" : 1}
+	},
+	"sequences" : {
+		"wave" : {
+			"frames" : ["0", "1", "2", "3", "4", "5"],
+			"framerate" : 60
+		}
+	}
+}
