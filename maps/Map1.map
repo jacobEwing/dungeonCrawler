@@ -4,11 +4,26 @@
 		"006d06" : "T",
 		"46ff1a" : "\"",
 		"ffd81a" : ".",
-		"8a8a8a" : "#"
+		"8a8a8a" : "#",
+		"0024ff" : "W"
+	},
+	"spritemap" : {
+		"T" : "trees",
+		"\"" : "grass",
+		"." : "sand",
+		"#" : "stone wall",
+		"W" : "water"
 	},
 	"playerPos" : {
-		"x" : 603,
-		"y" : 226
-	}
+		"x" : 497,
+		"y" : 118
+	},
+	"items" : [
+		{
+			"x" : 473,
+			"y" : 144,
+			"content" : "caveEntrance"
+		}
+	]
 }
 

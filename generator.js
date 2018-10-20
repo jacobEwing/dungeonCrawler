@@ -105,6 +105,22 @@ mapBuilder.prototype.loadImageMap = function(mapFile, callback){
 					context.drawImage(img, 0, 0);
 
 					console.log('reading map');
+					var imageData = context.getImageData(0, 0, me.width, me.height).data;
+					var idx = 0;
+					for(y = 0; y < me.height; y++){
+						for(x = 0; x < me.width; x++){
+							hexCode = ("0" + Number(imageData[idx]).toString(16)).slice(-2).toLowerCase();
+							hexCode += ("0" + Number(imageData[idx + 1]).toString(16)).slice(-2).toLowerCase();
+							hexCode += ("0" + Number(imageData[idx + 2]).toString(16)).slice(-2).toLowerCase();
+							c = data.colourmap[hexCode];
+							if(c != undefined){
+								me.map[x][y] = c;
+							}
+							idx += 4;
+						}
+
+					}
+/*
 					for(x = 0; x < me.width; x++){
 						for(y = 0; y < me.height; y++){
 							decvals = context.getImageData(x, y, 1, 1).data;
@@ -120,6 +136,7 @@ mapBuilder.prototype.loadImageMap = function(mapFile, callback){
 
 						}
 					}
+*/
 					for(n in data.items){
 						me.addItem(data.items[n]);
 					}

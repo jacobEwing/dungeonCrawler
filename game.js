@@ -137,22 +137,11 @@ function renderView(area){
 	var item, frameName;
 	var playerLayer = Array();
 	var topLayer = Array();
-	var randomKey, drawOffset, treeFrame;
-	var x, y, mapX, mapY, gridX, gridY, drawX, drawY, n;
+	var randomKey, worldPosition, treeFrame;
+	var x, y, mapX, mapY, gridX, gridY, n;
 	var neighbourList, bitsum, readX, readY;
 
-
-	/*
-	just a bit of a joke experiment.  We can scale down sort of.  the user needs to be accounted for too though
-	gameScale *= .999;
-	viewRange = {
-		width: Math.ceil(gameCanvas.width / (gameScale * cellSize)) + 1,
-		height: Math.ceil(gameCanvas.height / (gameScale * cellSize)) + 1
-	}
-	*/
-
-
-	drawOffset = {
+	worldPosition = {
 		x : player.position.x % cellSize,
 		y : player.position.y % cellSize
 	};
@@ -164,35 +153,34 @@ function renderView(area){
 		8 : {dx : 0, dy : 1}
 	};
 
+	var drawCell = function(gridX, gridY, mapX, mapY, celltype){
+	}
+
 
 	context.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
 
-	waterframe = (waterframe + 1)% 6;
+	waterframe = (waterframe + 1) % 6;
 
 	for(y = -1; y <= viewRange.height + 1; y++){
 		mapY = area.playerPos.y + y - Math.floor(screenMiddle.y / (gameScale * cellSize));
 		if(mapY < 0 || mapY > area.map[0].length - 1) continue;
+
 		for(x = -1; x <= viewRange.width + 1; x++){
 			mapX = area.playerPos.x + x - Math.floor(screenMiddle.x / (gameScale * cellSize));
 			if(mapX < 0 || mapX > area.map.length - 1) continue;
 
-			gridX = x * cellSize - drawOffset.x;
-			gridY = y * cellSize - drawOffset.y;
-			drawX = gridX * gameScale;
-			drawY = gridY * gameScale;
-	 
 			if(area.hideMap[mapX][mapY] == true){
 				continue;
 			}
 
+			gridX = x * cellSize - worldPosition.x;
+			gridY = y * cellSize - worldPosition.y;
+	 
+
 			randomKey = Math.abs(Math.sin(mapX + mapY * viewRange.width) * 10000);
 			randomKey -= Math.floor(randomKey);
-			switch(area.spritemap[area.map[mapX][mapY]]){
-				/*
-				case textures.water:
-					
-					break;
-				*/
+
+ 			switch(area.spritemap[area.map[mapX][mapY]]){
 				case 'water':
 					sprites.waterWaves.setPosition(gridX, gridY, false);
 					sprites.waterWaves.setFrame(waterframe);
@@ -216,9 +204,10 @@ function renderView(area){
 						// oh god I need to separate the drawing of each cell from this function so that I can call it recursively
 						switch(otherTexture){
 							case 'grass':
+							case 'trees':
 
 								sprites.grass.rotate(Math.PI / 2);
-								sprites.grass.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
+								sprites.grass.drawRandomArea(context, gridX, gridY, cellSize, cellSize, randomKey);
 
 								break;
 							case 'water':
@@ -323,19 +312,20 @@ function renderView(area){
 							break;
 
 						case 15:
-							sprites.sand.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
+							sprites.sand.drawRandomArea(context, gridX, gridY, cellSize, cellSize, randomKey);
 							break;
 					}
 					break;
 				case 'stone floor':
-
-					//sprites.ground.rotate(Math.floor(randomKey * 4) * Math.PI / 2);
-					sprites.ground.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
+					sprites.ground.rotate(Math.floor(randomKey * 4) * Math.PI / 2);
+					sprites.ground.drawRandomArea(context, gridX, gridY, cellSize, cellSize, randomKey);
 					break;
 				case 'stone wall':
-
-					sprites.stone.setFrame(Math.floor(randomKey * 25));
-					//sprites.stone.draw(context, {x : x * cellSize - drawOffset.x , y : y * cellSize - drawOffset.y});
+					if(mapY == area.map[0].length || area.spritemap[area.map[mapX][mapY + 1]] != 'stone wall'){
+						sprites.stone.setFrame(Math.floor(randomKey * 10) + 10);
+					}else{
+						sprites.stone.setFrame(Math.floor(randomKey * 10));
+					}
 					sprites.stone.draw(context, {x : gridX, y : gridY});
 					break;
 				case 'trees':
@@ -344,7 +334,7 @@ function renderView(area){
 					// first we draw some grass
 
 					sprites.grass.rotate(Math.PI / 2);
-					sprites.grass.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
+					sprites.grass.drawRandomArea(context, gridX, gridY, cellSize, cellSize, randomKey);
 
 
 					if(randomKey < 0.1){
@@ -363,16 +353,16 @@ function renderView(area){
 						doing : 'tree',
 						sprite : sprites.tree,
 						frame : 'trunk' + treeFrame,
-						x : drawX / gameScale,
-						y : drawY / gameScale
+						x : gridX,
+						y : gridY
 					};
 
 					// and queue up the greens for a second run
 					topLayer[topLayer.length] = {
 						sprite : sprites.tree,
 						frame : 'greens' + treeFrame,
-						x : drawX / gameScale,
-						y : drawY / gameScale
+						x : gridX,
+						y : gridY
 					};
 
 
@@ -381,16 +371,17 @@ function renderView(area){
 				case 'grass':
 
 					sprites.grass.rotate(Math.PI / 2);
-					sprites.grass.drawRandomArea(context, drawX, drawY, cellSize, cellSize, randomKey);
+					sprites.grass.drawRandomArea(context, gridX, gridY, cellSize, cellSize, randomKey);
 
 					if(randomKey < .5){
-						var brushFrame = Math.floor(Math.abs(9 * Math.sin(mapX + mapY + viewRange.width + randomKey)));
+						var brushFrame = 100 * randomKey;
+						var brushFrame = Math.floor(Math.abs(9 * Math.sin(brushFrame - Math.floor(brushFrame))));
 						playerLayer[playerLayer.length] = {
 							doing : 'grass',
 							sprite : sprites.longGrass,
 							frame : brushFrame,
-							x : drawX / gameScale,
-							y : drawY / gameScale
+							x : gridX,
+							y : gridY
 						};
 					}
 
@@ -398,9 +389,11 @@ function renderView(area){
 					/*
 				default:
 					context.fillStyle = '#88AACC';
-					context.fillRect(drawX, drawY, cellSize * gameScale, cellSize * gameScale);
+					context.fillRect(gridX * gameScale, gridY * gameScale, cellSize * gameScale, cellSize * gameScale);
 					*/
 			}
+
+
 			for(var itemName in area.items){
 				for(n in area.items[itemName]){
 					item = area.items[itemName][n];
@@ -413,12 +406,11 @@ function renderView(area){
 						switch(frameName){
 							case 'stairsUp': case 'stairsDown': 
 								sprites.dungeonElements.setFrame(frameName);
-								//sprites.dungeonElements.draw(context, {x : x * cellSize - drawOffset.x , y : y * cellSize - drawOffset.y});
-								sprites.dungeonElements.draw(context, {x : drawX / gameScale, y : drawY / gameScale});
+								sprites.dungeonElements.draw(context, {x : gridX, y: gridY});
 								break;
 							case 'caveEntrance':
 								sprites.caveEntrance.setFrame(frameName);
-								sprites.caveEntrance.draw(context, {x : drawX / gameScale, y : drawY / gameScale});
+								sprites.caveEntrance.draw(context, {x : gridX, y : gridY});
 						}
 					}
 				}
@@ -837,7 +829,7 @@ var initialize = function(){
 				var mapIdx = maps.length;
 				maps[mapIdx] = new mapBuilder();
 				console.log('calling loadImageMap');
-				maps[mapIdx].loadImageMap('maps/Map2.map', function(){
+				maps[mapIdx].loadImageMap('maps/Map1.map', function(){
 					console.log('map loaded, placing player');
 					activeMap = maps[mapIdx];
 

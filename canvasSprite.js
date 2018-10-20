@@ -111,7 +111,7 @@ cSprite.prototype.drawArea = function(context, drawx, drawy, readx1, ready1, wid
 		this.image,
 		readx1, ready1,
 		width, height,
-		drawx, drawy,
+		drawx * this.scale, drawy * this.scale,
 		width * this.scale, height * this.scale
 	);
 	context.restore();
