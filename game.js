@@ -132,316 +132,320 @@ var player = (function(){
 		currentEndFrame : null
 	};
 })();
-var waterframe = 0;
-function renderView(area){
+
+var renderView = (function(){
 	var item, frameName;
-	var playerLayer = Array();
-	var topLayer = Array();
+	var playerLayer;
+	var topLayer;
 	var randomKey, worldPosition, treeFrame;
 	var x, y, mapX, mapY, gridX, gridY, n;
-	var neighbourList, bitsum, readX, readY;
+	var waterCycle = 0;
 
-	worldPosition = {
-		x : player.position.x % cellSize,
-		y : player.position.y % cellSize
-	};
-
-	neighbourList = {
-		1 : {dx : 0, dy : -1},
-		2 : {dx : -1, dy : 0},
-		4 : {dx : 1, dy : 0},
-		8 : {dx : 0, dy : 1}
-	};
-
-	var drawCell = function(gridX, gridY, mapX, mapY, celltype){
-	}
-
-
-	context.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
-
-	waterframe = (waterframe + 1) % 6;
-
-	for(y = -1; y <= viewRange.height + 1; y++){
-		mapY = area.playerPos.y + y - Math.floor(screenMiddle.y / (gameScale * cellSize));
-		if(mapY < 0 || mapY > area.map[0].length - 1) continue;
-
-		for(x = -1; x <= viewRange.width + 1; x++){
-			mapX = area.playerPos.x + x - Math.floor(screenMiddle.x / (gameScale * cellSize));
-			if(mapX < 0 || mapX > area.map.length - 1) continue;
-
-			if(area.hideMap[mapX][mapY] == true){
-				continue;
-			}
-
-			gridX = x * cellSize - worldPosition.x;
-			gridY = y * cellSize - worldPosition.y;
-	 
-
-			randomKey = Math.abs(Math.sin(mapX + mapY * viewRange.width) * 10000);
-			randomKey -= Math.floor(randomKey);
-
- 			switch(area.spritemap[area.map[mapX][mapY]]){
-				case 'water':
-					sprites.waterWaves.setPosition(gridX, gridY, false);
-					sprites.waterWaves.setFrame(waterframe);
-					sprites.waterWaves.draw(context);
-					break;
-				case 'sand':
-					var otherTexture = 'sand';
-					bitsum = 0;
-					for(n in neighbourList){
-						readX = mapX + neighbourList[n].dx;
-						readY = mapY + neighbourList[n].dy;
-						if(readX < 0 || readY < 0 || readX > area.map.length || readY > area.map[0].length){
-							bitsum += 1 * n;
-						}else if(area.spritemap[area.map[readX][readY]] == 'sand'){
-							bitsum += 1 * n;
-						}else{
-							otherTexture = area.spritemap[area.map[readX][readY]]; // <-- crazy lazy and probably will need to be replaced
-						}
-					}
-					if(otherTexture != 'sand'){
-						// oh god I need to separate the drawing of each cell from this function so that I can call it recursively
-						switch(otherTexture){
-							case 'grass':
-							case 'trees':
-
-								sprites.grass.rotate(Math.PI / 2);
-								sprites.grass.drawRandomArea(context, gridX, gridY, cellSize, cellSize, randomKey);
-
-								break;
-							case 'water':
-								sprites.waterWaves.setPosition(gridX, gridY, false);
-								sprites.waterWaves.setFrame(waterframe);
-								sprites.waterWaves.draw(context);
-								break;
-						}
-					}
-
-					switch(bitsum){
-						case 3:
-							sprites.sandTiles.setFrame('corner');
-							sprites.sandTiles.rotation = Math.PI;
-							sprites.sandTiles.setPosition(gridX + cellSize, gridY + cellSize, false);
-							sprites.sandTiles.draw(context);
-							break;
-						case 5:
-							sprites.sandTiles.setFrame('corner');
-							sprites.sandTiles.rotation = 3 * Math.PI / 2;
-							sprites.sandTiles.setPosition(gridX, gridY + cellSize, false);
-							sprites.sandTiles.draw(context);
-							break;
-						case 10:
-							sprites.sandTiles.setFrame('corner');
-							sprites.sandTiles.rotation = Math.PI / 2;
-							sprites.sandTiles.setPosition(gridX + cellSize, gridY, false);
-							sprites.sandTiles.draw(context);
-							break;
-						case 12:
-							sprites.sandTiles.setFrame('corner');
-							sprites.sandTiles.rotation = 0;
-							sprites.sandTiles.setPosition(gridX, gridY, false);
-							sprites.sandTiles.draw(context);
-							break;
-
-						case 7:
-							sprites.sandTiles.setFrame('edge');
-							sprites.sandTiles.rotation = 3 * Math.PI / 2;
-							sprites.sandTiles.setPosition(gridX, gridY + cellSize, false);
-							sprites.sandTiles.draw(context);
-							break;
-						case 13:
-							sprites.sandTiles.setFrame('edge');
-							sprites.sandTiles.rotation = 0;
-							sprites.sandTiles.setPosition(gridX, gridY, false);
-							sprites.sandTiles.draw(context);
-							break;
-						case 14:
-							sprites.sandTiles.setFrame('edge');
-							sprites.sandTiles.rotation = Math.PI / 2;
-							sprites.sandTiles.setPosition(gridX + cellSize, gridY, false);
-							sprites.sandTiles.draw(context);
-							break;
-						case 11:
-							sprites.sandTiles.setFrame('edge');
-							sprites.sandTiles.rotation = Math.PI;
-							sprites.sandTiles.setPosition(gridX + cellSize, gridY + cellSize, false);
-							sprites.sandTiles.draw(context);
-							break;
-
-						case 1:
-							sprites.sandTiles.setFrame('tip');
-							sprites.sandTiles.rotation = Math.PI;
-							sprites.sandTiles.setPosition(gridX + cellSize, gridY + cellSize, false);
-							sprites.sandTiles.draw(context);
-							break;
-
-						case 2:
-							sprites.sandTiles.setFrame('tip');
-							sprites.sandTiles.rotation = Math.PI / 2;
-							sprites.sandTiles.setPosition(gridX + cellSize, gridY, false);
-							sprites.sandTiles.draw(context);
-							break;
-
-						case 4:
-							sprites.sandTiles.setFrame('tip');
-							sprites.sandTiles.rotation = 3 * Math.PI / 2;
-							sprites.sandTiles.setPosition(gridX, gridY + cellSize, false);
-							sprites.sandTiles.draw(context);
-							break;
-
-						case 8:
-							sprites.sandTiles.setFrame('tip');
-							sprites.sandTiles.rotation = 0;
-							sprites.sandTiles.setPosition(gridX, gridY, false);
-							sprites.sandTiles.draw(context);
-							break;
-
-						case 9:
-							sprites.sandTiles.setFrame('wall');
-							sprites.sandTiles.rotation = 0;
-							sprites.sandTiles.setPosition(gridX, gridY, false);
-							sprites.sandTiles.draw(context);
-							break;
-						
-						case 6:
-							sprites.sandTiles.setFrame('wall');
-							sprites.sandTiles.rotation = Math.PI / 2;
-							sprites.sandTiles.setPosition(gridX + cellSize, gridY, false);
-							sprites.sandTiles.draw(context);
-							break;
-
-						case 15:
-							sprites.sand.drawRandomArea(context, gridX, gridY, cellSize, cellSize, randomKey);
-							break;
-					}
-					break;
-				case 'stone floor':
-					sprites.ground.rotate(Math.floor(randomKey * 4) * Math.PI / 2);
-					sprites.ground.drawRandomArea(context, gridX, gridY, cellSize, cellSize, randomKey);
-					break;
-				case 'stone wall':
-					if(mapY == area.map[0].length || area.spritemap[area.map[mapX][mapY + 1]] != 'stone wall'){
-						sprites.stone.setFrame(Math.floor(randomKey * 10) + 10);
+	var renderCell = function(area, sprite, underlay){
+		underlay = underlay == undefined ? false : (underlay ? true : false);
+		var bitsum, readX, readY;
+		var neighbourList = {
+			1 : {dx : 0, dy : -1},
+			2 : {dx : -1, dy : 0},
+			4 : {dx : 1, dy : 0},
+			8 : {dx : 0, dy : 1}
+		};
+		switch(sprite){
+			case 'water':
+				var r = mapX + mapY * area.map.length;
+				r = Math.sin(r) + 1
+				r *= 500; // <-- already 0-2, so now 0-1000
+				r -= Math.floor(r); // now 0-1
+				r *= 100;
+				r = Math.floor(r);
+				r = (r + waterCycle) % 20;
+				if(r < 5){
+					sprites.waterWaves.setFrame(r);
+				}else{
+					sprites.waterWaves.setFrame(5);
+				}
+				
+				sprites.waterWaves.setPosition(gridX, gridY, false);
+				sprites.waterWaves.draw(context);
+				break;
+			case 'sand':
+				var otherTexture = 'sand';
+				bitsum = 0;
+				for(n in neighbourList){
+					readX = mapX + neighbourList[n].dx;
+					readY = mapY + neighbourList[n].dy;
+					if(readX < 0 || readY < 0 || readX > area.map.length || readY > area.map[0].length){
+						bitsum += 1 * n;
+					}else if(area.spritemap[area.map[readX][readY]] == 'sand'){
+						bitsum += 1 * n;
 					}else{
-						sprites.stone.setFrame(Math.floor(randomKey * 10));
+						otherTexture = area.spritemap[area.map[readX][readY]]; // <-- crazy lazy and probably will need to be replaced
 					}
-					sprites.stone.draw(context, {x : gridX, y : gridY});
-					break;
-				case 'trees':
+				}
+				if(otherTexture != 'sand'){
+					renderCell(area, otherTexture, true);
+				}
+
+				switch(bitsum){
+					case 3:
+						sprites.sandTiles.setFrame('corner');
+						sprites.sandTiles.rotation = Math.PI;
+						sprites.sandTiles.setPosition(gridX + cellSize, gridY + cellSize, false);
+						sprites.sandTiles.draw(context);
+						break;
+					case 5:
+						sprites.sandTiles.setFrame('corner');
+						sprites.sandTiles.rotation = 3 * Math.PI / 2;
+						sprites.sandTiles.setPosition(gridX, gridY + cellSize, false);
+						sprites.sandTiles.draw(context);
+						break;
+					case 10:
+						sprites.sandTiles.setFrame('corner');
+						sprites.sandTiles.rotation = Math.PI / 2;
+						sprites.sandTiles.setPosition(gridX + cellSize, gridY, false);
+						sprites.sandTiles.draw(context);
+						break;
+					case 12:
+						sprites.sandTiles.setFrame('corner');
+						sprites.sandTiles.rotation = 0;
+						sprites.sandTiles.setPosition(gridX, gridY, false);
+						sprites.sandTiles.draw(context);
+						break;
+
+					case 7:
+						sprites.sandTiles.setFrame('edge');
+						sprites.sandTiles.rotation = 3 * Math.PI / 2;
+						sprites.sandTiles.setPosition(gridX, gridY + cellSize, false);
+						sprites.sandTiles.draw(context);
+						break;
+					case 13:
+						sprites.sandTiles.setFrame('edge');
+						sprites.sandTiles.rotation = 0;
+						sprites.sandTiles.setPosition(gridX, gridY, false);
+						sprites.sandTiles.draw(context);
+						break;
+					case 14:
+						sprites.sandTiles.setFrame('edge');
+						sprites.sandTiles.rotation = Math.PI / 2;
+						sprites.sandTiles.setPosition(gridX + cellSize, gridY, false);
+						sprites.sandTiles.draw(context);
+						break;
+					case 11:
+						sprites.sandTiles.setFrame('edge');
+						sprites.sandTiles.rotation = Math.PI;
+						sprites.sandTiles.setPosition(gridX + cellSize, gridY + cellSize, false);
+						sprites.sandTiles.draw(context);
+						break;
+
+					case 1:
+						sprites.sandTiles.setFrame('tip');
+						sprites.sandTiles.rotation = Math.PI;
+						sprites.sandTiles.setPosition(gridX + cellSize, gridY + cellSize, false);
+						sprites.sandTiles.draw(context);
+						break;
+
+					case 2:
+						sprites.sandTiles.setFrame('tip');
+						sprites.sandTiles.rotation = Math.PI / 2;
+						sprites.sandTiles.setPosition(gridX + cellSize, gridY, false);
+						sprites.sandTiles.draw(context);
+						break;
+
+					case 4:
+						sprites.sandTiles.setFrame('tip');
+						sprites.sandTiles.rotation = 3 * Math.PI / 2;
+						sprites.sandTiles.setPosition(gridX, gridY + cellSize, false);
+						sprites.sandTiles.draw(context);
+						break;
+
+					case 8:
+						sprites.sandTiles.setFrame('tip');
+						sprites.sandTiles.rotation = 0;
+						sprites.sandTiles.setPosition(gridX, gridY, false);
+						sprites.sandTiles.draw(context);
+						break;
+
+					case 9:
+						sprites.sandTiles.setFrame('wall');
+						sprites.sandTiles.rotation = 0;
+						sprites.sandTiles.setPosition(gridX, gridY, false);
+						sprites.sandTiles.draw(context);
+						break;
+					
+					case 6:
+						sprites.sandTiles.setFrame('wall');
+						sprites.sandTiles.rotation = Math.PI / 2;
+						sprites.sandTiles.setPosition(gridX + cellSize, gridY, false);
+						sprites.sandTiles.draw(context);
+						break;
+
+					case 15:
+						sprites.sand.drawRandomArea(context, gridX, gridY, cellSize, cellSize, randomKey);
+						break;
+				}
+				break;
+			case 'stone floor':
+				sprites.ground.rotate(Math.floor(randomKey * 4) * Math.PI / 2);
+				sprites.ground.drawRandomArea(context, gridX, gridY, cellSize, cellSize, randomKey);
+				break;
+			case 'stone wall':
+				if(mapY == area.map[0].length || area.spritemap[area.map[mapX][mapY + 1]] != 'stone wall'){
+					sprites.stone.setFrame(Math.floor(randomKey * 10) + 10);
+				}else{
+					sprites.stone.setFrame(Math.floor(randomKey * 10));
+				}
+				sprites.stone.draw(context, {x : gridX, y : gridY});
+				break;
+			case 'trees':
 
 
-					// first we draw some grass
+				// first we draw some grass
 
-					sprites.grass.rotate(Math.PI / 2);
-					sprites.grass.drawRandomArea(context, gridX, gridY, cellSize, cellSize, randomKey);
+				sprites.grass.rotate(Math.PI / 2);
+				sprites.grass.drawRandomArea(context, gridX, gridY, cellSize, cellSize, randomKey);
 
 
-					if(randomKey < 0.1){
-						treeFrame = 1;
-					}else if(randomKey < .36){
-						treeFrame = 2;
-					}else if(randomKey < .53){
-						treeFrame = 3;
-					}else if(randomKey < .8){
-						treeFrame = 4;
-					}else{
-						treeFrame = 5;
-					}
-					// now the tree trunk
+				if(randomKey < 0.1){
+					treeFrame = 1;
+				}else if(randomKey < .36){
+					treeFrame = 2;
+				}else if(randomKey < .53){
+					treeFrame = 3;
+				}else if(randomKey < .8){
+					treeFrame = 4;
+				}else{
+					treeFrame = 5;
+				}
+				// now the tree trunk
+				playerLayer[playerLayer.length] = {
+					doing : 'tree',
+					sprite : sprites.tree,
+					frame : 'trunk' + treeFrame,
+					x : gridX,
+					y : gridY
+				};
+
+				// and queue up the greens for a second run
+				topLayer[topLayer.length] = {
+					sprite : sprites.tree,
+					frame : 'greens' + treeFrame,
+					x : gridX,
+					y : gridY
+				};
+
+
+
+				break;
+			case 'grass':
+
+				sprites.grass.rotate(Math.PI / 2);
+				sprites.grass.drawRandomArea(context, gridX, gridY, cellSize, cellSize, randomKey);
+
+				if(!underlay && randomKey < .5){
+					var brushFrame = 100 * randomKey;
+					var brushFrame = Math.floor(Math.abs(9 * Math.sin(brushFrame - Math.floor(brushFrame))));
 					playerLayer[playerLayer.length] = {
-						doing : 'tree',
-						sprite : sprites.tree,
-						frame : 'trunk' + treeFrame,
+						doing : 'grass',
+						sprite : sprites.longGrass,
+						frame : brushFrame,
 						x : gridX,
 						y : gridY
 					};
+				}
 
-					// and queue up the greens for a second run
-					topLayer[topLayer.length] = {
-						sprite : sprites.tree,
-						frame : 'greens' + treeFrame,
-						x : gridX,
-						y : gridY
-					};
-
-
-
-					break;
-				case 'grass':
-
-					sprites.grass.rotate(Math.PI / 2);
-					sprites.grass.drawRandomArea(context, gridX, gridY, cellSize, cellSize, randomKey);
-
-					if(randomKey < .5){
-						var brushFrame = 100 * randomKey;
-						var brushFrame = Math.floor(Math.abs(9 * Math.sin(brushFrame - Math.floor(brushFrame))));
-						playerLayer[playerLayer.length] = {
-							doing : 'grass',
-							sprite : sprites.longGrass,
-							frame : brushFrame,
-							x : gridX,
-							y : gridY
-						};
-					}
-
-					break;
-					/*
-				default:
-					context.fillStyle = '#88AACC';
-					context.fillRect(gridX * gameScale, gridY * gameScale, cellSize * gameScale, cellSize * gameScale);
-					*/
-			}
+				break;
+				/*
+			default:
+				context.fillStyle = '#88AACC';
+				context.fillRect(gridX * gameScale, gridY * gameScale, cellSize * gameScale, cellSize * gameScale);
+				*/
+		}
+	};
 
 
-			for(var itemName in area.items){
-				for(n in area.items[itemName]){
-					item = area.items[itemName][n];
-					if(item.x == mapX && item.y == mapY){
-						frameName = {
-							'stairup' : 'stairsUp',
-							'stairdown' : 'stairsDown',
-							'caveEntrance' : 'caveEntrance'
-						}[item.content];
-						switch(frameName){
-							case 'stairsUp': case 'stairsDown': 
-								sprites.dungeonElements.setFrame(frameName);
-								sprites.dungeonElements.draw(context, {x : gridX, y: gridY});
-								break;
-							case 'caveEntrance':
-								sprites.caveEntrance.setFrame(frameName);
-								sprites.caveEntrance.draw(context, {x : gridX, y : gridY});
+	return function(area){
+		playerLayer = Array();
+		topLayer = Array();
+
+		worldPosition = {
+			x : player.position.x % cellSize,
+			y : player.position.y % cellSize
+		};
+		context.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+
+		waterCycle++;
+
+
+		for(y = -1; y <= viewRange.height + 1; y++){
+			mapY = area.playerPos.y + y - Math.floor(screenMiddle.y / (gameScale * cellSize));
+			if(mapY < 0 || mapY > area.map[0].length - 1) continue;
+
+			for(x = -1; x <= viewRange.width + 1; x++){
+				mapX = area.playerPos.x + x - Math.floor(screenMiddle.x / (gameScale * cellSize));
+				if(mapX < 0 || mapX > area.map.length - 1) continue;
+
+				if(area.hideMap[mapX][mapY] == true){
+					continue;
+				}
+
+				gridX = x * cellSize - worldPosition.x;
+				gridY = y * cellSize - worldPosition.y;
+		 
+
+				randomKey = Math.abs(Math.sin(mapX + mapY * viewRange.width) * 10000);
+				randomKey -= Math.floor(randomKey);
+				renderCell(area, area.spritemap[area.map[mapX][mapY]]);
+
+
+				for(var itemName in area.items){
+					for(n in area.items[itemName]){
+						item = area.items[itemName][n];
+						if(item.x == mapX && item.y == mapY){
+							frameName = {
+								'stairup' : 'stairsUp',
+								'stairdown' : 'stairsDown',
+								'caveEntrance' : 'caveEntrance'
+							}[item.content];
+							switch(frameName){
+								case 'stairsUp': case 'stairsDown': 
+									sprites.dungeonElements.setFrame(frameName);
+									sprites.dungeonElements.draw(context, {x : gridX, y: gridY});
+									break;
+								case 'caveEntrance':
+									sprites.caveEntrance.setFrame(frameName);
+									sprites.caveEntrance.draw(context, {x : gridX, y : gridY});
+							}
 						}
 					}
 				}
+
 			}
-
 		}
-	}
-	for(n in playerLayer){
-		playerLayer[n].sprite.setFrame(playerLayer[n].frame);
-		if(playerLayer[n].sprite.frame == undefined){
-			debugger;
+		for(n in playerLayer){
+			playerLayer[n].sprite.setFrame(playerLayer[n].frame);
+			if(playerLayer[n].sprite.frame == undefined){
+				debugger;
+			}
+			playerLayer[n].sprite.draw(context, {
+				x : playerLayer[n].x, 
+				y : playerLayer[n].y
+			});
 		}
-		playerLayer[n].sprite.draw(context, {
-			x : playerLayer[n].x, 
-			y : playerLayer[n].y
+		player.sprite.draw(context, {
+			x : cellSize * Math.floor(screenMiddle.x / (gameScale * cellSize)) - (player.sprite.frameWidth >> 1),
+			y : cellSize * Math.floor(screenMiddle.y / (gameScale * cellSize)) - player.sprite.frameHeight + 1
 		});
-	}
-	player.sprite.draw(context, {
-		x : cellSize * Math.floor(screenMiddle.x / (gameScale * cellSize)) - (player.sprite.frameWidth >> 1),
-		y : cellSize * Math.floor(screenMiddle.y / (gameScale * cellSize)) - player.sprite.frameHeight + 1
-	});
 
-	for(n in topLayer){
-		topLayer[n].sprite.setFrame(topLayer[n].frame);
-		topLayer[n].sprite.draw(context, {
-			x : topLayer[n].x, 
-			y : topLayer[n].y
-		});
-	}
+		for(n in topLayer){
+			topLayer[n].sprite.setFrame(topLayer[n].frame);
+			topLayer[n].sprite.draw(context, {
+				x : topLayer[n].x, 
+				y : topLayer[n].y
+			});
+		}
 
-}
+	}
+})();
 
 function writeText(x, y, text){
 	var span = document.createElement('span');
@@ -739,13 +743,41 @@ function useEntrance(entrance){
 				break;
 		}
 	}
+	
+	clearInterval(gameInterval);
+	var opacity = 1, faderate = .1;
+	gameCanvas.style.opacity = opacity;
+	var fadeOut = function(){
+		opacity -= faderate;
+		gameCanvas.style.opacity = opacity;
+		if(opacity > faderate){
+			setTimeout(fadeOut, 30);
+		}else{
+			console.log('calling fadeIn');
+			activeMap = entrance.target;
+			player.setMapPos(activeMap.playerPos.x, activeMap.playerPos.y);
+			player.position.x += cellSize >> 1;
+			player.position.y += cellSize >> 1;
+			checkOverlay();
+			renderView(activeMap);
+			gameInterval = setInterval(playGame, 70);
+			fadeIn();
+		}
+	};
 
-	activeMap = entrance.target;
-	player.setMapPos(activeMap.playerPos.x, activeMap.playerPos.y);
-	player.position.x += cellSize >> 1;
-	player.position.y += cellSize >> 1;
-	checkOverlay();
-	renderView(activeMap);
+	var fadeIn = function(){
+		console.log('fading in');
+		opacity += faderate;
+		gameCanvas.style.opacity = opacity;
+		if(opacity < 1){
+			setTimeout(fadeIn, 30);
+		}else{
+			console.log('setting opacity to 1');
+			gameCanvas.style.opacity = 1;
+		}
+	}
+
+	fadeOut();
 }
 
 var initialize = function(){
