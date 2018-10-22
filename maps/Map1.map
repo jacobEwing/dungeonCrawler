@@ -1,5 +1,6 @@
 {
 	"image" : "Map1.gif",
+	"category" : "outdoors",
 	"colourmap" : {
 		"006d06" : "T",
 		"46ff1a" : "\"",

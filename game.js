@@ -133,6 +133,260 @@ var player = (function(){
 	};
 })();
 
+function useEntrance(entrance){
+
+	/*
+		This entire if structure needs to be replaced with something better.
+
+		This is where the code decides the new location of the player in the new area.
+		And it's done terribly.  It simply generates the area and says "ok, find an exit
+		that goes in the opposite direction of this entrance".  It should be far better
+		engineered than that.  Truthfully, I think perhaps the mapBuilder class should
+		let the current level generate the child.  That would allow more relevant
+		handling of the linking.
+
+	*/
+	if(entrance.target == undefined){
+		var mapIdx = maps.length;
+		maps[mapIdx] = new mapBuilder();
+		maps[mapIdx].build({
+			category : 'dungeon',
+			width : 30,
+			height: 30,
+			roomscale: .8,
+			stairup: true,
+			stairdown: true
+		});
+		entrance.target = maps[mapIdx];
+
+		switch(entrance.content){
+			case 'stairup':
+				entrance.target.playerPos = {
+					x : entrance.target.items['stairdown'][0].x,
+					y : entrance.target.items['stairdown'][0].y
+				};
+				if(entrance.target.items['stairdown'][0].target == undefined){
+					entrance.target.items['stairdown'][0].target = activeMap;
+				}
+				break;
+			case 'stairdown':
+				entrance.target.playerPos = {
+					x : entrance.target.items['stairup'][0].x,
+					y : entrance.target.items['stairup'][0].y
+				};
+				if(entrance.target.items['stairup'][0].target == undefined){
+					entrance.target.items['stairup'][0].target = activeMap;
+				}
+				break;
+			case 'caveEntrance':
+				entrance.target.playerPos = {
+					x : entrance.target.items['stairup'][0].x,
+					y : entrance.target.items['stairup'][0].y
+				};
+				if(entrance.target.items['stairup'][0].target == undefined){
+					entrance.target.items['stairup'][0].target = activeMap;
+				}
+				break;
+		}
+	}
+	
+	clearInterval(gameInterval);
+	var opacity = 1, faderate = .2;
+	gameCanvas.style.opacity = opacity;
+	var fadeOut = function(){
+		opacity -= faderate;
+		gameCanvas.style.opacity = opacity;
+		if(opacity > faderate){
+			setTimeout(fadeOut, 30);
+		}else{
+			console.log('calling fadeIn');
+			activeMap = entrance.target;
+			player.setMapPos(activeMap.playerPos.x, activeMap.playerPos.y);
+			player.position.x += cellSize >> 1;
+			player.position.y += cellSize >> 1;
+			checkOverlay();
+			renderView(activeMap);
+			gameInterval = setInterval(playGame, 70);
+			gameCanvas.style.opacity = 0;
+			setTimeout(fadeIn, 500);
+		}
+	};
+
+	var fadeIn = function(){
+		console.log('fading in');
+		opacity += faderate ;
+		gameCanvas.style.opacity = opacity;
+		if(opacity < 1){
+			setTimeout(fadeIn, 30);
+		}else{
+			console.log('setting opacity to 1');
+			gameCanvas.style.opacity = 1;
+		}
+	}
+
+	fadeOut();
+}
+
+function checkKeyControl(action){
+	var rval, n;
+	if(motionControls[action] != undefined){
+		rval = true;
+		for(n in motionControls[action]){
+			rval &= keyboard.keyState[motionControls[action][n]] ? true : false;
+		}
+	}else{
+		rval = false;
+	}
+	return rval;
+}
+
+function check_key_state(){
+	var dirCombo = 0, n;
+	var sequence = null;
+	var endFrame = null;
+	var fighting = checkKeyControl('attack');
+
+	dirCombo += checkKeyControl('up') ? 1 : 0;
+	dirCombo += checkKeyControl('down') ? 2 : 0;
+	dirCombo += checkKeyControl('left') ? 4 : 0;
+	dirCombo += checkKeyControl('right') ? 8 : 0;
+
+	switch(dirCombo){
+		case 1: case 13: // up
+			sequence = 'walkup';
+			endFrame = 'back_idle';
+			player.direction = 'up';
+			break;
+		case 2: case 14: // down
+			sequence = 'walkdown';
+			endFrame = 'front_idle';
+			player.direction = 'down';
+			break;
+		case 4: case 7: // left
+			sequence = 'walkleft';
+			endFrame = 'left_idle';
+			player.direction = 'left';
+			break;
+		case 8: case 11:// right
+			sequence = 'walkright';
+			endFrame = 'right_idle';
+			player.direction = 'right';
+			break;
+		case 5: // up/left
+			sequence = 'walkupleft';
+			endFrame = 'back_left_idle';
+			player.direction = 'upleft';
+			break;
+		case 6: // down/left
+			sequence = 'walkdownleft';
+			endFrame = 'front_left_idle';
+			player.direction = 'downleft';
+			break;
+		case 9: // up/right
+			sequence = 'walkupright';
+			endFrame = 'back_right_idle';
+			player.direction = 'upright';
+			break;
+		case 10: // down/right
+			sequence = 'walkdownright';
+			endFrame = 'front_right_idle';
+			player.direction = 'downright';
+			break;
+	}
+
+	if(fighting){
+		var endState = {
+			'up' : 'back_idle',
+			'down' : 'front_idle',
+			'left' : 'left_idle',
+			'right' : 'right_idle',
+			'upleft' : 'back_left_idle',
+			'upright' : 'back_right_idle',
+			'downleft' : 'front_left_idle',
+			'downright' : 'front_right_idle'
+		}[player.direction];
+		var newSequence = {
+			'up' : 'attack_back',
+			'down' : 'attack_front',
+			'left' : 'attack_left',
+			'right' : 'attack_right',
+			'upleft' : 'attack_up_left',
+			'upright' : 'attack_up_right',
+			'downleft' : 'attack_down_left',
+			'downright' : 'attack_down_right'
+		}[player.direction];
+		if(newSequence != undefined && newSequence != player.currentSequence){
+			player.currentSequence = newSequence;
+			player.sprite.startSequence(newSequence, {
+				iterations: 1,
+				method : 'manual',
+				callback: function(){
+					player.currentSequence = null;
+					player.sprite.setFrame(endState);
+				}
+			});
+		}
+	}else{
+		//var currentCellType = player.currentMapVal();
+		var touchingItems = player.touchingItems();
+
+		if(sequence == null){
+			if(player.currentSequence != null){
+				//player.sprite.stopSequence(player.currentSequence);
+				player.sprite.setFrame(player.currentEndFrame);
+				player.currentSequence = null;
+				player.sprite.currentSequence = null;
+				player.sprite.animating = false;
+			}
+			// this should be replaced with a call to a function that builds a menu of
+			// actions available (e.g, "go down", "take food", "take weapon", etc.).  That
+			// would be a mildly translucent menu that lits on another interface layer
+			// above, perhaps to the bottom right of the player.  Each option in there
+			// would have a keyboard shortcut(e.g. "pick up item [,]").  With an option not
+			// to display those menus.
+			for(n in touchingItems){
+				switch(touchingItems[n].content){
+					case 'stairup':
+						if(checkKeyControl('exit')){
+							useEntrance(touchingItems[n]);
+						}
+						break;
+					case 'stairdown':
+						if(checkKeyControl('enter')){
+							useEntrance(touchingItems[n]);
+						}
+						break;
+					case 'caveEntrance':
+						if(checkKeyControl('enter')){
+							useEntrance(touchingItems[n]);
+						}
+						break;
+					default:
+						console.log(touchingItems[n].content);
+				}
+			}
+
+
+		}else if(sequence != player.currentSequence){
+			/*
+			if(player.currentSequence != null){
+				player.sprite.stopSequence(player.currentSequence);
+			}
+			*/
+			player.currentEndFrame = endFrame;
+			player.currentSequence = sequence;
+			player.sprite.startSequence(sequence, {
+				iterations: 0,
+				method : 'manual',
+				callback: function(){
+					player.currentSequence = null;
+					player.sprite.setFrame(endFrame);
+				}
+			});
+		}
+	}
+}
+
 var renderView = (function(){
 	var item, frameName;
 	var playerLayer;
@@ -499,166 +753,6 @@ function loadDefaultMotionControls(){
 	};
 }
 
-function checkKeyControl(action){
-	var rval, n;
-	if(motionControls[action] != undefined){
-		rval = true;
-		for(n in motionControls[action]){
-			rval &= keyboard.keyState[motionControls[action][n]] ? true : false;
-		}
-	}else{
-		rval = false;
-	}
-	return rval;
-}
-
-function check_key_state(){
-	var dirCombo = 0, n;
-	var sequence = null;
-	var endFrame = null;
-	var fighting = checkKeyControl('attack');
-
-	dirCombo += checkKeyControl('up') ? 1 : 0;
-	dirCombo += checkKeyControl('down') ? 2 : 0;
-	dirCombo += checkKeyControl('left') ? 4 : 0;
-	dirCombo += checkKeyControl('right') ? 8 : 0;
-
-	switch(dirCombo){
-		case 1: case 13: // up
-			sequence = 'walkup';
-			endFrame = 'back_idle';
-			player.direction = 'up';
-			break;
-		case 2: case 14: // down
-			sequence = 'walkdown';
-			endFrame = 'front_idle';
-			player.direction = 'down';
-			break;
-		case 4: case 7: // left
-			sequence = 'walkleft';
-			endFrame = 'left_idle';
-			player.direction = 'left';
-			break;
-		case 8: case 11:// right
-			sequence = 'walkright';
-			endFrame = 'right_idle';
-			player.direction = 'right';
-			break;
-		case 5: // up/left
-			sequence = 'walkupleft';
-			endFrame = 'back_left_idle';
-			player.direction = 'upleft';
-			break;
-		case 6: // down/left
-			sequence = 'walkdownleft';
-			endFrame = 'front_left_idle';
-			player.direction = 'downleft';
-			break;
-		case 9: // up/right
-			sequence = 'walkupright';
-			endFrame = 'back_right_idle';
-			player.direction = 'upright';
-			break;
-		case 10: // down/right
-			sequence = 'walkdownright';
-			endFrame = 'front_right_idle';
-			player.direction = 'downright';
-			break;
-	}
-
-	if(fighting){
-		var endState = {
-			'up' : 'back_idle',
-			'down' : 'front_idle',
-			'left' : 'left_idle',
-			'right' : 'right_idle',
-			'upleft' : 'back_left_idle',
-			'upright' : 'back_right_idle',
-			'downleft' : 'front_left_idle',
-			'downright' : 'front_right_idle'
-		}[player.direction];
-		var newSequence = {
-			'up' : 'attack_back',
-			'down' : 'attack_front',
-			'left' : 'attack_left',
-			'right' : 'attack_right',
-			'upleft' : 'attack_up_left',
-			'upright' : 'attack_up_right',
-			'downleft' : 'attack_down_left',
-			'downright' : 'attack_down_right'
-		}[player.direction];
-		if(newSequence != undefined && newSequence != player.currentSequence){
-			player.currentSequence = newSequence;
-			player.sprite.startSequence(newSequence, {
-				iterations: 1,
-				method : 'manual',
-				callback: function(){
-					player.currentSequence = null;
-					player.sprite.setFrame(endState);
-				}
-			});
-		}
-	}else{
-		//var currentCellType = player.currentMapVal();
-		var touchingItems = player.touchingItems();
-
-		if(sequence == null){
-			if(player.currentSequence != null){
-				//player.sprite.stopSequence(player.currentSequence);
-				player.sprite.setFrame(player.currentEndFrame);
-				player.currentSequence = null;
-				player.sprite.currentSequence = null;
-				player.sprite.animating = false;
-			}
-			// this should be replaced with a call to a function that builds a menu of
-			// actions available (e.g, "go down", "take food", "take weapon", etc.).  That
-			// would be a mildly translucent menu that lits on another interface layer
-			// above, perhaps to the bottom right of the player.  Each option in there
-			// would have a keyboard shortcut(e.g. "pick up item [,]").  With an option not
-			// to display those menus.
-			for(n in touchingItems){
-				switch(touchingItems[n].content){
-					case 'stairup':
-						if(checkKeyControl('exit')){
-							useEntrance(touchingItems[n]);
-						}
-						break;
-					case 'stairdown':
-						if(checkKeyControl('enter')){
-							useEntrance(touchingItems[n]);
-						}
-						break;
-					case 'caveEntrance':
-						if(checkKeyControl('enter')){
-							useEntrance(touchingItems[n]);
-						}
-						break;
-					default:
-						console.log(touchingItems[n].content);
-				}
-			}
-
-
-		}else if(sequence != player.currentSequence){
-			/*
-			if(player.currentSequence != null){
-				player.sprite.stopSequence(player.currentSequence);
-			}
-			*/
-			player.currentEndFrame = endFrame;
-			player.currentSequence = sequence;
-			player.sprite.startSequence(sequence, {
-				iterations: 0,
-				method : 'manual',
-				callback: function(){
-					player.currentSequence = null;
-					player.sprite.setFrame(endFrame);
-				}
-			});
-		}
-	}
-}
-
 function checkOverlay(){
 	activeMap.playerPos.x
 
@@ -684,100 +778,6 @@ function checkOverlay(){
 			}
 		}
 	}
-}
-
-
-function useEntrance(entrance){
-
-	/*
-		This entire if structure needs to be replaced with something better.
-
-		This is where the code decides the new location of the player in the new area.
-		And it's done terribly.  It simply generates the area and says "ok, find an exit
-		that goes in the opposite direction of this entrance".  It should be far better
-		engineered than that.  Truthfully, I think perhaps the mapBuilder class should
-		let the current level generate the child.  That would allow more relevant
-		handling of the linking.
-
-	*/
-	if(entrance.target == undefined){
-		var mapIdx = maps.length;
-		maps[mapIdx] = new mapBuilder();
-		maps[mapIdx].build({
-			category : 'dungeon',
-			width : 30,
-			height: 30,
-			roomscale: .8,
-			stairup: true,
-			stairdown: true
-		});
-		entrance.target = maps[mapIdx];
-
-		switch(entrance.content){
-			case 'stairup':
-				entrance.target.playerPos = {
-					x : entrance.target.items['stairdown'][0].x,
-					y : entrance.target.items['stairdown'][0].y
-				};
-				if(entrance.target.items['stairdown'][0].target == undefined){
-					entrance.target.items['stairdown'][0].target = activeMap;
-				}
-				break;
-			case 'stairdown':
-				entrance.target.playerPos = {
-					x : entrance.target.items['stairup'][0].x,
-					y : entrance.target.items['stairup'][0].y
-				};
-				if(entrance.target.items['stairup'][0].target == undefined){
-					entrance.target.items['stairup'][0].target = activeMap;
-				}
-				break;
-			case 'caveEntrance':
-				entrance.target.playerPos = {
-					x : entrance.target.items['stairup'][0].x,
-					y : entrance.target.items['stairup'][0].y
-				};
-				if(entrance.target.items['stairup'][0].target == undefined){
-					entrance.target.items['stairup'][0].target = activeMap;
-				}
-				break;
-		}
-	}
-	
-	clearInterval(gameInterval);
-	var opacity = 1, faderate = .1;
-	gameCanvas.style.opacity = opacity;
-	var fadeOut = function(){
-		opacity -= faderate;
-		gameCanvas.style.opacity = opacity;
-		if(opacity > faderate){
-			setTimeout(fadeOut, 30);
-		}else{
-			console.log('calling fadeIn');
-			activeMap = entrance.target;
-			player.setMapPos(activeMap.playerPos.x, activeMap.playerPos.y);
-			player.position.x += cellSize >> 1;
-			player.position.y += cellSize >> 1;
-			checkOverlay();
-			renderView(activeMap);
-			gameInterval = setInterval(playGame, 70);
-			fadeIn();
-		}
-	};
-
-	var fadeIn = function(){
-		console.log('fading in');
-		opacity += faderate;
-		gameCanvas.style.opacity = opacity;
-		if(opacity < 1){
-			setTimeout(fadeIn, 30);
-		}else{
-			console.log('setting opacity to 1');
-			gameCanvas.style.opacity = 1;
-		}
-	}
-
-	fadeOut();
 }
 
 var initialize = function(){
@@ -869,61 +869,18 @@ var initialize = function(){
 					player.position.y = Math.floor(cellSize * activeMap.playerPos.y);
 					player.sightRadius = 5;
 
-
 					// make the whole map visible
 					for(x = 0; x < activeMap.width; x++){
 						for(y = 0; y < activeMap.height; y++){
 							activeMap.hideMap[x][y] = false;
 						}
 					}
-
-
 //					checkOverlay();
 					renderView(activeMap);
 
 					doStep('initialize keyboard');
 				});
 				break;
-
-
-
-/*
-				var mapIdx = maps.length;
-				maps[mapIdx] = new mapBuilder();
-				maps[mapIdx].build({
-					category : 'forest',
-					width : 100,
-					height: 100,
-					roomscale: 1,
-					gridScale: 8,
-					//stairup: true,
-					stairdown: true,
-					//startTexture: '<'
-				});
-				activeMap = maps[mapIdx];
-
-				// quick random placement for now:
-				activeMap.playerPos = activeMap.findTextureSpot('"');
-				player.position.x = Math.floor(cellSize * (activeMap.playerPos.x));
-				player.position.y = Math.floor(cellSize * (activeMap.playerPos.y));
-
-
-
-				player.sightRadius = 5;
-
-
-				// make the whole map visible
-				for(x = 0; x < activeMap.width; x++){
-					for(y = 0; y < activeMap.height; y++){
-						activeMap.hideMap[x][y] = false;
-					}
-				}
-				//checkOverlay();
-				renderView(activeMap);
-
-				setTimeout(function(){doStep('initialize keyboard');}, 1);
-				break;
-*/
 			case 'initialize keyboard':
 				// the functions used here are defined in keyboard.js
 				keyboard = new kbListener();
@@ -943,4 +900,3 @@ var initialize = function(){
 window.onload = function(){
 	initialize();
 };
-

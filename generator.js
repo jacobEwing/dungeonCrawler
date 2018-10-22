@@ -87,6 +87,11 @@ mapBuilder.prototype.loadImageMap = function(mapFile, callback){
 					me.height = this.height;
 					me.map = me.makeEmptyMap(' ', me.width, me.height);
 
+					if(data.category != undefined){
+						me.category = data.category;
+						console.log('set category to ' + me.category);
+					}
+
 					if(data.playerPos != undefined){
 						me.playerPos = {
 							x : data.playerPos.x,
