@@ -24,114 +24,110 @@ var walkSpeed = 3;
 var angSpeedRatio = {
 	x : .70711, // 1/sqrt(2) <- the axis projection of a 45 degree unit vector
 	y : .70711
-
-	/*
-	// these old values were used on an isometric map
-	x : 0.866, // <- sin(pi / 3)
-	y : 0.5 // <- cos(pi / 3)
-	*/
 };
 var screenMiddle = {x: 0, y : 0};
-var player = (function(){
-	var position = {x : 0, y : 0};
-	return {
-		direction : 'down',
-		sprite : null,
-		'position' : position,
-		setMapPos : function(x, y){
-			// our grid position on the map
-			activeMap.playerPos.x = x;
-			activeMap.playerPos.y = y;
+var characterClass = function(){
+	this.position = {x : 0, y : 0};
+	this.direction = 'down';
+	this.sprite = null;
+	this.currentSequence = null;
+	this.currentEndFrame = null;
+};
 
-			// our real position in the map
-			this.position.x = cellSize * x;
-			this.position.y = cellSize * y;
-		},
-		canWalkOn : function(posx, posy){
-			var roundX = Math.floor(1 * posx / cellSize)
-			var roundY = Math.floor(1 * posy / cellSize)
-			var map = activeMap.map;
-			var rval = true;
-			if(roundX < 0 || roundY < 0 || roundX >= map.length || roundY >= map[roundX].length){
-				rval = false;
-			}else if({'#' : 1, 'W' : 1}[map[roundX][roundY]] != undefined){
-				rval = false;
+characterClass.prototype.setMapPos = function(x, y){
+	// our grid position on the map
+	activeMap.playerPos.x = x;
+	activeMap.playerPos.y = y;
+
+	// our real position in the map
+	this.position.x = cellSize * x;
+	this.position.y = cellSize * y;
+};
+
+characterClass.prototype.canWalkOn = function(posx, posy){
+	var roundX = Math.floor(1 * posx / cellSize)
+	var roundY = Math.floor(1 * posy / cellSize)
+	var map = activeMap.map;
+	var rval = true;
+	if(roundX < 0 || roundY < 0 || roundX >= map.length || roundY >= map[roundX].length){
+		rval = false;
+	}else if({'#' : 1, 'W' : 1}[map[roundX][roundY]] != undefined){
+		rval = false;
+	}
+	return rval;
+};
+
+characterClass.prototype.currentMapVal = function(){
+	var map = activeMap.map;
+	var pos = activeMap.playerPos;
+	var rval;
+
+	if(pos.x < 0 || pos.y < 0 || pos.x >= map.length || pos.y >= map[pos.x].length){
+		rval = null;
+	}else{
+		rval = map[pos.x][pos.y];
+	}
+	return rval;
+
+
+};
+
+characterClass.prototype.touchingItems = function(){
+	var rval = Array();
+	if(activeMap.mappedItems[activeMap.playerPos.x] != undefined){
+		if(activeMap.mappedItems[activeMap.playerPos.x][activeMap.playerPos.y] != undefined){
+			for(var n in activeMap.mappedItems[activeMap.playerPos.x][activeMap.playerPos.y]){
+				rval = rval.concat(activeMap.mappedItems[activeMap.playerPos.x][activeMap.playerPos.y]);
 			}
-			return rval;
-		},
-		currentMapVal : function(){
-			var map = activeMap.map;
-			var pos = activeMap.playerPos;
-			var rval;
-
-			if(pos.x < 0 || pos.y < 0 || pos.x >= map.length || pos.y >= map[pos.x].length){
-				rval = null;
-			}else{
-				rval = map[pos.x][pos.y];
-			}
-			return rval;
+		}
+	}
+	return rval;
 
 
-		},
-		touchingItems : function(){
-			var rval = Array();
-			if(activeMap.mappedItems[activeMap.playerPos.x] != undefined){
-				if(activeMap.mappedItems[activeMap.playerPos.x][activeMap.playerPos.y] != undefined){
-					for(var n in activeMap.mappedItems[activeMap.playerPos.x][activeMap.playerPos.y]){
-						rval = rval.concat(activeMap.mappedItems[activeMap.playerPos.x][activeMap.playerPos.y]);
-					}
+};
+
+characterClass.prototype.move = function(dx, dy, noCollision){
+	var i, xTally, yTally;
+	var sgndx = Math.sign(dx);
+	var absdx = Math.abs(dx);
+	var sgndy = Math.sign(dy);
+	var absdy = Math.abs(dy);
+
+	if (absdx >= absdy){
+		yTally = absdx >> 1;
+		for(i = 0; i < absdx; i++){
+			yTally += absdy;
+			if (yTally >= absdx){
+				yTally -= absdx;
+				if(this.canWalkOn(this.position.x, this.position.y + sgndy)){
+					this.position.y += sgndy;
 				}
 			}
-			return rval;
-
-
-		},
-		move : function(dx, dy, noCollision){
-			var i, xTally, yTally;
-			var sgndx = Math.sign(dx);
-			var absdx = Math.abs(dx);
-			var sgndy = Math.sign(dy);
-			var absdy = Math.abs(dy);
-
-			if (absdx >= absdy){
-				yTally = absdx >> 1;
-				for(i = 0; i < absdx; i++){
-					yTally += absdy;
-					if (yTally >= absdx){
-						yTally -= absdx;
-						if(this.canWalkOn(this.position.x, this.position.y + sgndy)){
-							this.position.y += sgndy;
-						}
-					}
-					if(this.canWalkOn(this.position.x + sgndx, this.position.y)){
-						this.position.x += sgndx;
-					}
-				}
-			}else{
-				xTally = absdy >> 1;
-				for(i = 0; i < absdy; i++){
-					xTally += absdx;
-					if(xTally >= absdy){
-						xTally -= absdy;
-						if(this.canWalkOn(this.position.x + sgndx, this.position.y)){
-							this.position.x += sgndx;
-						}
-					}
-					if(this.canWalkOn(this.position.x, this.position.y + sgndy)){
-						this.position.y += sgndy;
-					}
+			if(this.canWalkOn(this.position.x + sgndx, this.position.y)){
+				this.position.x += sgndx;
+			}
+		}
+	}else{
+		xTally = absdy >> 1;
+		for(i = 0; i < absdy; i++){
+			xTally += absdx;
+			if(xTally >= absdy){
+				xTally -= absdy;
+				if(this.canWalkOn(this.position.x + sgndx, this.position.y)){
+					this.position.x += sgndx;
 				}
 			}
-			activeMap.playerPos = {
-				x : Math.floor(this.position.x / cellSize),
-				y : Math.floor(this.position.y / cellSize)
+			if(this.canWalkOn(this.position.x, this.position.y + sgndy)){
+				this.position.y += sgndy;
 			}
-			checkOverlay();
-		},
-		currentSequence: null,
-		currentEndFrame : null
-	};
-})();
+		}
+	}
+	activeMap.playerPos = {
+		x : Math.floor(this.position.x / cellSize),
+		y : Math.floor(this.position.y / cellSize)
+	}
+	checkOverlay();
+};
 
 function useEntrance(entrance){
 
@@ -847,6 +843,7 @@ var initialize = function(){
 
 
 			case 'load player sprite':
+				player = new characterClass();
 				playerSpriteSet.load("sprites/player.sprite", function(){
 					player.sprite = new cSprite(this);
 					player.sprite.setScale(gameScale);
