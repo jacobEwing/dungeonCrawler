@@ -36,7 +36,8 @@ var characterClass = function(){
 	this.currentEndFrame = null;
 	this.category = null;
 	this.skills = {
-		speed : walkSpeed
+		speed : walkSpeed,
+		vision: 3
 	};
 };
 
@@ -885,22 +886,14 @@ function checkOverlay(){
 	activeMap.playerPos.x
 
 	var x, y, cx, cy, opactiy, o, cell;
-	for(x = -8; x <= 8; x++){
+	for(x = -player.skills.vision; x <= player.skills.vision; x++){
 		cx = x + activeMap.playerPos.x;
 		if(cx >= 0 && cx < activeMap.width){
-			for(y = -8; y <= 8; y++){
+			for(y = -player.skills.vision; y <= player.skills.vision; y++){
 				cy = y + activeMap.playerPos.y;
 				if(cy >= 0 && cy < activeMap.height){
-					if(x * x + y * y < player.sightRadius * player.sightRadius){
+					if(squareDistance(x, y, 0, 0) < Math.pow(player.skills.vision, 2)){
 						activeMap.hideMap[cx][cy] = false;
-					/*
-					}else{
-						opacity = (x * x + y * y) / 36;
-						o = cell.css('opacity');
-						if(o == undefined || o > opacity){
-							cell.css('opacity', opacity);
-						}
-					*/
 					}
 				}
 			}
@@ -997,7 +990,7 @@ var initialize = function(){
 
 					player.position.x = Math.floor(cellSize * activeMap.playerPos.x);
 					player.position.y = Math.floor(cellSize * activeMap.playerPos.y);
-					player.sightRadius = 5;
+					player.skills.vision = 5;
 
 					// make the whole map visible
 					for(x = 0; x < activeMap.width; x++){
@@ -1016,10 +1009,10 @@ var initialize = function(){
 				keyboard = new kbListener();
 				keyboard.listen();
 				loadDefaultMotionControls();
-				setTimeout(function(){doStep('load knight');}, 1);
+				setTimeout(function(){doStep('load test character');}, 1);
 				break;
 
-			case 'load knight':
+			case 'load test character':
 				// let's add a character
 				var knightSprite = new spriteSet('sprites/humanFemale.sprite', function(){
 					characters[0] = new characterClass();

@@ -6,6 +6,12 @@ individual values, or as matrixClass objects.  There are exceptions though.
 
 // returns the distance between two 2D points
 function distance(){
+	return Math.sqrt(squareDistance.apply(null, arguments));
+}
+
+// returns the square of the distance.  Useful when wanting a fast greater/less
+// comparison of radii withou needing the value.
+function squareDistance(){
 	var x1, y1, x2, y2;
 	if(arguments.length == 4){
 		x1 = arguments[0];
@@ -30,7 +36,7 @@ function distance(){
 		x2 = arguments[0].val(0, 0);
 		y2 = arguments[0].val(0, 1);
 	}
-	return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+	return (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
 }
 
 // returns the counter-clockwise angle between the line defined by any two points and the horizontal.
