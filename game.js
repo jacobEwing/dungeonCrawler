@@ -26,12 +26,18 @@ var angSpeedRatio = {
 	y : .70711
 };
 var screenMiddle = {x: 0, y : 0};
+var characters = [];
+
 var characterClass = function(){
 	this.position = {x : 0, y : 0};
 	this.direction = 'down';
 	this.sprite = null;
 	this.currentSequence = null;
 	this.currentEndFrame = null;
+	this.category = null;
+	this.skills = {
+		speed : walkSpeed
+	};
 };
 
 characterClass.prototype.setMapPos = function(x, y){
@@ -122,9 +128,11 @@ characterClass.prototype.move = function(dx, dy, noCollision){
 			}
 		}
 	}
-	activeMap.playerPos = {
-		x : Math.floor(this.position.x / cellSize),
-		y : Math.floor(this.position.y / cellSize)
+	if(this == player){
+		activeMap.playerPos = {
+			x : Math.floor(this.position.x / cellSize),
+			y : Math.floor(this.position.y / cellSize)
+		}
 	}
 	checkOverlay();
 };
@@ -625,13 +633,17 @@ var renderView = (function(){
 
 		waterCycle++;
 
+		var middleX = Math.floor(screenMiddle.x / (gameScale * cellSize))
+		var middleY = Math.floor(screenMiddle.y / (gameScale * cellSize))
+
+
 
 		for(y = -1; y <= viewRange.height + 1; y++){
-			mapY = area.playerPos.y + y - Math.floor(screenMiddle.y / (gameScale * cellSize));
+			mapY = area.playerPos.y + y - middleY;
 			if(mapY < 0 || mapY > area.map[0].length - 1) continue;
 
 			for(x = -1; x <= viewRange.width + 1; x++){
-				mapX = area.playerPos.x + x - Math.floor(screenMiddle.x / (gameScale * cellSize));
+				mapX = area.playerPos.x + x - middleX;
 				if(mapX < 0 || mapX > area.map.length - 1) continue;
 
 				if(area.hideMap[mapX][mapY] == true){
@@ -673,17 +685,26 @@ var renderView = (function(){
 		}
 		for(n in playerLayer){
 			playerLayer[n].sprite.setFrame(playerLayer[n].frame);
-			if(playerLayer[n].sprite.frame == undefined){
-				debugger;
-			}
 			playerLayer[n].sprite.draw(context, {
 				x : playerLayer[n].x, 
 				y : playerLayer[n].y
 			});
 		}
+
+		for(n in characters){
+			var offset = {
+				x : characters[n].sprite.frameWidth >> 1,
+				y : characters[n].sprite.frameHeight - 1
+			};
+			characters[n].sprite.draw(context, {
+				x : cellSize * middleX + characters[n].position.x - player.position.x - offset.x,
+				y : cellSize * middleY + characters[n].position.y - player.position.y - offset.y
+			});
+		}
+
 		player.sprite.draw(context, {
-			x : cellSize * Math.floor(screenMiddle.x / (gameScale * cellSize)) - (player.sprite.frameWidth >> 1),
-			y : cellSize * Math.floor(screenMiddle.y / (gameScale * cellSize)) - player.sprite.frameHeight + 1
+			x : cellSize * middleX - (player.sprite.frameWidth >> 1),
+			y : cellSize * middleY - player.sprite.frameHeight + 1
 		});
 
 		for(n in topLayer){
@@ -720,20 +741,131 @@ function playGame(){
 	check_key_state();
 	if(player.currentSequence != null){
 		switch(player.currentSequence){
-			case 'walkup': player.move(0, -walkSpeed); break;
-			case 'walkdown': player.move(0, walkSpeed); break;
-			case 'walkleft': player.move(-walkSpeed, 0); break;
-			case 'walkright': player.move(walkSpeed, 0); break;
-			case 'walkupleft': player.move(-angSpeedRatio.x * walkSpeed, -angSpeedRatio.y * walkSpeed ); break;
-			case 'walkupright': player.move(angSpeedRatio.x * walkSpeed, -angSpeedRatio.y * walkSpeed ); break;
-			case 'walkdownleft': player.move(-angSpeedRatio.x * walkSpeed, angSpeedRatio.y * walkSpeed); break;
-			case 'walkdownright': player.move(angSpeedRatio.x * walkSpeed, angSpeedRatio.y * walkSpeed); break;
+			case 'walkup': player.move(0, -player.skills.speed); break;
+			case 'walkdown': player.move(0, player.skills.speed); break;
+			case 'walkleft': player.move(-player.skills.speed, 0); break;
+			case 'walkright': player.move(player.skills.speed, 0); break;
+			case 'walkupleft': player.move(-angSpeedRatio.x * player.skills.speed, -angSpeedRatio.y * player.skills.speed ); break;
+			case 'walkupright': player.move(angSpeedRatio.x * player.skills.speed, -angSpeedRatio.y * player.skills.speed ); break;
+			case 'walkdownleft': player.move(-angSpeedRatio.x * player.skills.speed, angSpeedRatio.y * player.skills.speed); break;
+			case 'walkdownright': player.move(angSpeedRatio.x * player.skills.speed, angSpeedRatio.y * player.skills.speed); break;
 		}
 		player.sprite.doSequenceStep();
 
 
 	}
+	moveCharacters();
 	renderView(activeMap);
+}
+
+function moveCharacters(){
+	var n, direction, sequence, endFrame;
+	for(n = 0; n < characters.length; n++){
+		// note that these comparisons are checking to see if the distance from player to
+		// character is less than the grid size shown on the screen.  In other words if
+		// the character is as much as half a screenwidth outside the screen range.
+		if(viewRange.height * cellSize  < Math.abs(characters[n].position.y - player.position.y)){
+			continue;
+		}
+		if(viewRange.width * cellSize < Math.abs(characters[n].position.x - player.position.x)){
+			continue;
+		}
+		
+		direction = Math.round(4 * rel_ang(
+			characters[n].position.x,
+			characters[n].position.y,
+			player.position.x,
+			player.position.y
+		) / Math.PI) % 8;
+
+		switch(direction){
+			case 0: 
+				characters[n].move(0, -characters[n].skills.speed);
+				sequence = 'walkup';
+				endFrame = 'back_idle';
+				characters[n].direction = 'up';
+				break;
+			case 1: 
+				characters[n].move(angSpeedRatio.x * characters[n].skills.speed, -angSpeedRatio.y * characters[n].skills.speed ); 
+				sequence = 'walkupright';
+				endFrame = 'back_right_idle';
+				characters[n].direction = 'upright';
+				break;
+			case 2: 
+				characters[n].move(characters[n].skills.speed, 0); 
+				sequence = 'walkright';
+				endFrame = 'right_idle';
+				characters[n].direction = 'right';
+				break;
+			case 3: 
+				characters[n].move(angSpeedRatio.x * characters[n].skills.speed, angSpeedRatio.y * characters[n].skills.speed); 
+				sequence = 'walkdownright';
+				endFrame = 'front_right_idle';
+				characters[n].direction = 'downright';
+				break;
+			case 4: 
+				characters[n].move(0, characters[n].skills.speed); 
+				sequence = 'walkdown';
+				endFrame = 'front_idle';
+				characters[n].direction = 'down';
+				break;
+			case 5: 
+				sequence = 'walkdownleft';
+				endFrame = 'front_left_idle';
+				characters[n].direction = 'downleft';
+				characters[n].move(-angSpeedRatio.x * characters[n].skills.speed, angSpeedRatio.y * characters[n].skills.speed); 
+				break;
+			case 6: 
+				sequence = 'walkleft';
+				characters[n].move(-characters[n].skills.speed, 0); 
+				endFrame = 'left_idle';
+				characters[n].direction = 'left';
+				break;
+			case 7: 
+				characters[n].move(-angSpeedRatio.x * characters[n].skills.speed, -angSpeedRatio.y * characters[n].skills.speed ); 
+				sequence = 'walkupleft';
+				endFrame = 'back_left_idle';
+				characters[n].direction = 'upleft';
+				break;
+		}
+
+		/*  // I think this chunk is only relevant to fighting sequences
+		if(newSequence != undefined && newSequence != characters[n].currentSequence){
+			characters[n].currentSequence = newSequence;
+			characters[n].sprite.startSequence(newSequence, {
+				iterations: 1,
+				method : 'manual',
+				callback: function(){
+					characters[n].currentSequence = null;
+					characters[n].sprite.setFrame(endState);
+				}
+			});
+		}
+		*/
+		var touchingItems = characters[n].touchingItems();
+
+		if(sequence == null){
+			if(characters[n].currentSequence != null){
+				//characters[n].sprite.stopSequence(characters[n].currentSequence);
+				characters[n].sprite.setFrame(characters[n].currentEndFrame);
+				characters[n].currentSequence = null;
+				characters[n].sprite.currentSequence = null;
+				characters[n].sprite.animating = false;
+			}
+
+		}else if(sequence != characters[n].currentSequence){
+			characters[n].currentEndFrame = endFrame;
+			characters[n].currentSequence = sequence;
+			characters[n].sprite.startSequence(sequence, {
+				iterations: 0,
+				method : 'manual',
+				callback: function(){
+					characters[n].currentSequence = null;
+					characters[n].sprite.setFrame(endFrame);
+				}
+			});
+		}
+	}
 }
 
 function loadDefaultMotionControls(){
@@ -844,6 +976,7 @@ var initialize = function(){
 
 			case 'load player sprite':
 				player = new characterClass();
+				player.category = 'player';
 				playerSpriteSet.load("sprites/player.sprite", function(){
 					player.sprite = new cSprite(this);
 					player.sprite.setScale(gameScale);
@@ -883,11 +1016,27 @@ var initialize = function(){
 				keyboard = new kbListener();
 				keyboard.listen();
 				loadDefaultMotionControls();
-				setTimeout(function(){doStep('finish');}, 1);
+				setTimeout(function(){doStep('load knight');}, 1);
+				break;
+
+			case 'load knight':
+				// let's add a character
+				var knightSprite = new spriteSet('sprites/humanFemale.sprite', function(){
+					characters[0] = new characterClass();
+					characters[0].category = 'hominid';
+					characters[0].position.x = player.position.x - 25;
+					characters[0].position.y = player.position.y + 25;
+					//debugger;
+					characters[0].sprite = new cSprite(knightSprite);
+					characters[0].sprite.setScale(gameScale);
+					characters[0].sprite.setFrame('front_idle');
+					characters[0].skills.speed *= .5;
+
+					setTimeout(function(){doStep('finish');}, 1);
+				});
 				break;
 
 			case 'finish':
-
 				gameInterval = setInterval(playGame, 70);
 		}
 	}
