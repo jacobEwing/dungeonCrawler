@@ -760,7 +760,7 @@ function playGame(){
 }
 
 function moveCharacters(){
-	var n, direction, sequence, endFrame;
+	var n, direction, sequence, endFrame, diametersq;
 	for(n = 0; n < characters.length; n++){
 		// note that these comparisons are checking to see if the distance from player to
 		// character is less than the grid size shown on the screen.  In other words if
@@ -771,7 +771,18 @@ function moveCharacters(){
 		if(viewRange.width * cellSize < Math.abs(characters[n].position.x - player.position.x)){
 			continue;
 		}
-		
+
+		var diametersq = squareDistance(
+			characters[n].position.x,
+			characters[n].position.y,
+			player.position.x,
+			player.position.y
+		);
+
+		if(diametersq > Math.pow(characters[n].skills.vision  * cellSize, 2)){
+			continue;
+		}
+
 		direction = Math.round(4 * rel_ang(
 			characters[n].position.x,
 			characters[n].position.y,
