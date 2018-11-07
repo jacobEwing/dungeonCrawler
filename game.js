@@ -8,7 +8,7 @@ Math.random = (function(){
 	}
 })();
 */
-var keyboard;
+//var keyboard;
 var gameCanvas;
 var viewRange = {};
 var motionControls = {};
@@ -21,10 +21,6 @@ var activeMap;
 var context;
 var gameInterval; // <-- the animation interval object
 var walkSpeed = 3;
-var angSpeedRatio = {
-	x : .70711, // 1/sqrt(2) <- the axis projection of a 45 degree unit vector
-	y : .70711
-};
 var screenMiddle = {x: 0, y : 0};
 var characters = [];
 
@@ -39,6 +35,7 @@ var characterClass = function(){
 		speed : walkSpeed,
 		vision: 3
 	};
+	this.target = null;
 };
 
 characterClass.prototype.setMapPos = function(x, y){
@@ -93,19 +90,39 @@ characterClass.prototype.touchingItems = function(){
 
 };
 
-characterClass.prototype.move = function(dx, dy, noCollision){
-	var i, xTally, yTally;
+characterClass.prototype.moveTowardsTarget = function(){
+	if(this.motionData == undefined){
+		this.motionData = {
+			xTally : 0,
+			yTally : 0,
+			oldTarget : {
+				x : 0, y : 0
+			}
+		};
+	}
+
+	if(this.target == null) return;
+	if(this.motionData.oldTarget.x != this.target.x || this.motionData.oldTarget.y != this.target.y){
+		this.motionData.oldTarget = {
+			x : this.target.x,
+			y : this.target.y
+		};
+		this.motionData.xTally = Math.abs(this.target.x - this.position.x) >> 1;
+		this.motionData.yTally = Math.abs(this.target.y - this.position.y) >> 1;
+	}
+	var i;
+	var dx = this.target.x - this.position.x;
+	var dy = this.target.y - this.position.y;
 	var sgndx = Math.sign(dx);
 	var absdx = Math.abs(dx);
 	var sgndy = Math.sign(dy);
 	var absdy = Math.abs(dy);
 
 	if (absdx >= absdy){
-		yTally = absdx >> 1;
-		for(i = 0; i < absdx; i++){
-			yTally += absdy;
-			if (yTally >= absdx){
-				yTally -= absdx;
+		for(i = 0; i < absdx && i < this.skills.speed; i++){
+			this.motionData.yTally += absdy;
+			if (this.motionData.yTally >= absdx){
+				this.motionData.yTally -= absdx;
 				if(this.canWalkOn(this.position.x, this.position.y + sgndy)){
 					this.position.y += sgndy;
 				}
@@ -115,11 +132,10 @@ characterClass.prototype.move = function(dx, dy, noCollision){
 			}
 		}
 	}else{
-		xTally = absdy >> 1;
-		for(i = 0; i < absdy; i++){
-			xTally += absdx;
-			if(xTally >= absdy){
-				xTally -= absdy;
+		for(i = 0; i < absdy && i < this.skills.speed; i++){
+			this.motionData.xTally += absdx;
+			if(this.motionData.xTally >= absdy){
+				this.motionData.xTally -= absdy;
 				if(this.canWalkOn(this.position.x + sgndx, this.position.y)){
 					this.position.x += sgndx;
 				}
@@ -136,6 +152,138 @@ characterClass.prototype.move = function(dx, dy, noCollision){
 		}
 	}
 	checkOverlay();
+
+
+};
+
+characterClass.prototype.findTarget = function(){
+	if(this == player){
+		
+	}else{
+		if(viewRange.height * cellSize  < Math.abs(this.position.y - player.position.y)){
+			this.target = null;
+			return;
+		}
+		if(viewRange.width * cellSize < Math.abs(this.position.x - player.position.x)){
+			this.target = null;
+			return;
+		}
+
+		var diametersq = squareDistance(
+			this.position.x,
+			this.position.y,
+			player.position.x,
+			player.position.y
+		);
+		if(diametersq <= Math.pow(2 * this.skills.vision  * cellSize, 2)){
+			if(diametersq <= cellSize){
+				// here should be interaction between characters (fighting/whatever)
+				this.target = null;
+			}else{
+				// this should check the aggression of the character first.  In fact, it should
+				// probably just call a function to get the character's "desire".
+				this.target = {
+					x : player.position.x,
+					y : player.position.y
+				};
+			}
+		}else{
+			//this.target = null;
+		}
+	}
+}
+
+characterClass.prototype.act = function(){
+	var frameIndex, sequence, endFrame, diametersq, oldx, oldy;
+	this.findTarget();
+
+	if(this.target != null){
+		if(this.position.x == this.target.x && this.position.y == this.target.y){
+			this.target = null;
+		}else{
+			frameIndex = Math.round(4 * rel_ang(
+				this.position.x,
+				this.position.y,
+				this.target.x,
+				this.target.y
+			) / Math.PI) % 8;
+
+			// this oldx, oldy comparison tells us if a collision stopped them entirely.
+			oldx = this.position.x;
+			oldy = this.position.y;
+			this.moveTowardsTarget();
+			if(oldx == this.position.x && oldy == this.position.y){
+				this.target = null;
+			}
+
+			switch(frameIndex){
+				case 0: 
+					sequence = 'walkup';
+					endFrame = 'back_idle';
+					this.frameIndex = 'up';
+					break;
+				case 1: 
+					sequence = 'walkupright';
+					endFrame = 'back_right_idle';
+					this.frameIndex = 'upright';
+					break;
+				case 2: 
+					sequence = 'walkright';
+					endFrame = 'right_idle';
+					this.frameIndex = 'right';
+					break;
+				case 3: 
+					sequence = 'walkdownright';
+					endFrame = 'front_right_idle';
+					this.frameIndex = 'downright';
+					break;
+				case 4: 
+					sequence = 'walkdown';
+					endFrame = 'front_idle';
+					this.frameIndex = 'down';
+					break;
+				case 5: 
+					sequence = 'walkdownleft';
+					endFrame = 'front_left_idle';
+					this.frameIndex = 'downleft';
+					break;
+				case 6: 
+					sequence = 'walkleft';
+					endFrame = 'left_idle';
+					this.frameIndex = 'left';
+					break;
+				case 7: 
+					sequence = 'walkupleft';
+					endFrame = 'back_left_idle';
+					this.frameIndex = 'upleft';
+					break;
+			}
+		}
+	}
+
+	if(sequence == null){
+		if(this.currentSequence != null){
+			//this.sprite.stopSequence(this.currentSequence);
+			this.sprite.setFrame(this.currentEndFrame);
+			this.currentSequence = null;
+			this.sprite.currentSequence = null;
+			this.sprite.animating = false;
+		}
+
+	}else if(sequence != this.currentSequence){
+		this.currentEndFrame = endFrame;
+		this.currentSequence = sequence;
+		this.sprite.startSequence(sequence, {
+			iterations: 0,
+			method : 'manual',
+			callback: function(){
+				this.currentSequence = null;
+				this.sprite.setFrame(endFrame);
+			}
+		});
+	}else{
+		//this.sprite.doSequenceStep();
+	}
 };
 
 function useEntrance(entrance){
@@ -232,6 +380,7 @@ function useEntrance(entrance){
 	fadeOut();
 }
 
+/*
 function checkKeyControl(action){
 	var rval, n;
 	if(motionControls[action] != undefined){
@@ -373,11 +522,9 @@ function check_key_state(){
 
 
 		}else if(sequence != player.currentSequence){
-			/*
-			if(player.currentSequence != null){
-				player.sprite.stopSequence(player.currentSequence);
-			}
-			*/
+			//if(player.currentSequence != null){
+			//	player.sprite.stopSequence(player.currentSequence);
+			//}
 			player.currentEndFrame = endFrame;
 			player.currentSequence = sequence;
 			player.sprite.startSequence(sequence, {
@@ -391,7 +538,7 @@ function check_key_state(){
 		}
 	}
 }
-
+*/
 var renderView = (function(){
 	var item, frameName;
 	var playerLayer;
@@ -702,12 +849,12 @@ var renderView = (function(){
 				y : cellSize * middleY + characters[n].position.y - player.position.y - offset.y
 			});
 		}
-
-		player.sprite.draw(context, {
-			x : cellSize * middleX - (player.sprite.frameWidth >> 1),
-			y : cellSize * middleY - player.sprite.frameHeight + 1
-		});
-
+		player.sprite.setPosition(
+			cellSize * middleX - (player.sprite.frameWidth >> 1),
+			cellSize * middleY - player.sprite.frameHeight + 1,
+			1
+		);
+		player.sprite.draw(context);
 		for(n in topLayer){
 			topLayer[n].sprite.setFrame(topLayer[n].frame);
 			topLayer[n].sprite.draw(context, {
@@ -738,148 +885,20 @@ function writeText(x, y, text){
 
 }
 
+function checkMouse(){
+
+}
+
 function playGame(){
-	check_key_state();
-	if(player.currentSequence != null){
-		switch(player.currentSequence){
-			case 'walkup': player.move(0, -player.skills.speed); break;
-			case 'walkdown': player.move(0, player.skills.speed); break;
-			case 'walkleft': player.move(-player.skills.speed, 0); break;
-			case 'walkright': player.move(player.skills.speed, 0); break;
-			case 'walkupleft': player.move(-angSpeedRatio.x * player.skills.speed, -angSpeedRatio.y * player.skills.speed ); break;
-			case 'walkupright': player.move(angSpeedRatio.x * player.skills.speed, -angSpeedRatio.y * player.skills.speed ); break;
-			case 'walkdownleft': player.move(-angSpeedRatio.x * player.skills.speed, angSpeedRatio.y * player.skills.speed); break;
-			case 'walkdownright': player.move(angSpeedRatio.x * player.skills.speed, angSpeedRatio.y * player.skills.speed); break;
-		}
-		player.sprite.doSequenceStep();
-
-
+	var n;
+	checkMouse();
+	player.act();
+	for(n = 0; n < characters.length; n++){
+		characters[n].act();
 	}
-	moveCharacters();
 	renderView(activeMap);
 }
-
-function moveCharacters(){
-	var n, direction, sequence, endFrame, diametersq;
-	for(n = 0; n < characters.length; n++){
-		// note that these comparisons are checking to see if the distance from player to
-		// character is less than the grid size shown on the screen.  In other words if
-		// the character is as much as half a screenwidth outside the screen range.
-		if(viewRange.height * cellSize  < Math.abs(characters[n].position.y - player.position.y)){
-			continue;
-		}
-		if(viewRange.width * cellSize < Math.abs(characters[n].position.x - player.position.x)){
-			continue;
-		}
-
-		var diametersq = squareDistance(
-			characters[n].position.x,
-			characters[n].position.y,
-			player.position.x,
-			player.position.y
-		);
-
-		if(diametersq > Math.pow(characters[n].skills.vision  * cellSize, 2)){
-			continue;
-		}
-
-		direction = Math.round(4 * rel_ang(
-			characters[n].position.x,
-			characters[n].position.y,
-			player.position.x,
-			player.position.y
-		) / Math.PI) % 8;
-
-		switch(direction){
-			case 0: 
-				characters[n].move(0, -characters[n].skills.speed);
-				sequence = 'walkup';
-				endFrame = 'back_idle';
-				characters[n].direction = 'up';
-				break;
-			case 1: 
-				characters[n].move(angSpeedRatio.x * characters[n].skills.speed, -angSpeedRatio.y * characters[n].skills.speed ); 
-				sequence = 'walkupright';
-				endFrame = 'back_right_idle';
-				characters[n].direction = 'upright';
-				break;
-			case 2: 
-				characters[n].move(characters[n].skills.speed, 0); 
-				sequence = 'walkright';
-				endFrame = 'right_idle';
-				characters[n].direction = 'right';
-				break;
-			case 3: 
-				characters[n].move(angSpeedRatio.x * characters[n].skills.speed, angSpeedRatio.y * characters[n].skills.speed); 
-				sequence = 'walkdownright';
-				endFrame = 'front_right_idle';
-				characters[n].direction = 'downright';
-				break;
-			case 4: 
-				characters[n].move(0, characters[n].skills.speed); 
-				sequence = 'walkdown';
-				endFrame = 'front_idle';
-				characters[n].direction = 'down';
-				break;
-			case 5: 
-				sequence = 'walkdownleft';
-				endFrame = 'front_left_idle';
-				characters[n].direction = 'downleft';
-				characters[n].move(-angSpeedRatio.x * characters[n].skills.speed, angSpeedRatio.y * characters[n].skills.speed); 
-				break;
-			case 6: 
-				sequence = 'walkleft';
-				characters[n].move(-characters[n].skills.speed, 0); 
-				endFrame = 'left_idle';
-				characters[n].direction = 'left';
-				break;
-			case 7: 
-				characters[n].move(-angSpeedRatio.x * characters[n].skills.speed, -angSpeedRatio.y * characters[n].skills.speed ); 
-				sequence = 'walkupleft';
-				endFrame = 'back_left_idle';
-				characters[n].direction = 'upleft';
-				break;
-		}
-
-		/*  // I think this chunk is only relevant to fighting sequences
-		if(newSequence != undefined && newSequence != characters[n].currentSequence){
-			characters[n].currentSequence = newSequence;
-			characters[n].sprite.startSequence(newSequence, {
-				iterations: 1,
-				method : 'manual',
-				callback: function(){
-					characters[n].currentSequence = null;
-					characters[n].sprite.setFrame(endState);
-				}
-			});
-		}
-		*/
-		var touchingItems = characters[n].touchingItems();
-
-		if(sequence == null){
-			if(characters[n].currentSequence != null){
-				//characters[n].sprite.stopSequence(characters[n].currentSequence);
-				characters[n].sprite.setFrame(characters[n].currentEndFrame);
-				characters[n].currentSequence = null;
-				characters[n].sprite.currentSequence = null;
-				characters[n].sprite.animating = false;
-			}
-
-		}else if(sequence != characters[n].currentSequence){
-			characters[n].currentEndFrame = endFrame;
-			characters[n].currentSequence = sequence;
-			characters[n].sprite.startSequence(sequence, {
-				iterations: 0,
-				method : 'manual',
-				callback: function(){
-					characters[n].currentSequence = null;
-					characters[n].sprite.setFrame(endFrame);
-				}
-			});
-		}
-	}
-}
-
+/*
 function loadDefaultMotionControls(){
 	motionControls = {
 		up : [keyboard.KEYMAP['UP']],
@@ -892,7 +911,7 @@ function loadDefaultMotionControls(){
 		grab : [keyboard.KEYMAP[',']],
 	};
 }
-
+*/
 function checkOverlay(){
 	activeMap.playerPos.x
 
@@ -1012,14 +1031,35 @@ var initialize = function(){
 //					checkOverlay();
 					renderView(activeMap);
 
-					doStep('initialize keyboard');
+					doStep('initialize events');
 				});
 				break;
-			case 'initialize keyboard':
+			case 'initialize events':
 				// the functions used here are defined in keyboard.js
+				document.getElementById('overlay').addEventListener('mousedown', function(e){
+
+					// px and py are exactly the middle bottom of the player sprite
+					var px = player.sprite.position.x;
+					var py = player.sprite.position.y;
+					py += player.sprite.frameHeight - 1;
+					px += player.sprite.frameWidth >> 1;
+
+					// mx and my are the mouse click's position relative to the player's middle bottom
+					var mx = Math.floor(e.clientX / gameScale) - px;
+					var my = Math.floor(e.clientY / gameScale) - py;
+
+					player.target = {
+						x : player.position.x + mx,//x : Math.floor(e.clientX  / gameScale),
+						y : player.position.y + my//y : Math.floor(e.clientY / gameScale)
+					}
+
+					//console.log(mx + ', ' + my);
+				});
+				/*
 				keyboard = new kbListener();
 				keyboard.listen();
 				loadDefaultMotionControls();
+				*/
 				setTimeout(function(){doStep('load test character');}, 1);
 				break;
 

@@ -214,10 +214,12 @@ cSprite.prototype.setPosition = function(x, y, useScale){
 	var offset = {'x' : 0, 'y' : 0};
 	this.position.x = x;
 	this.position.y = y;
+	/*
 	if(useScale){
 		this.position.x *= this.scale;
 		this.position.y *= this.scale;
 	}
+	*/
 	if(this.frame != undefined){
 		this.centerx = this.frame.centerx;
 		this.centery = this.frame.centery;
