@@ -9,9 +9,9 @@ Math.random = (function(){
 })();
 */
 //var keyboard;
+var mouse;
 var gameCanvas;
 var viewRange = {};
-var motionControls = {};
 var playerSpriteSet = new spriteSet();
 var spriteSets = {}, sprites = {};
 var player;
@@ -286,6 +286,20 @@ characterClass.prototype.act = function(){
 	}
 };
 
+characterClass.prototype.distanceToMouseEvent = function(e){
+	// px and py are exactly the middle bottom of the player sprite
+	var px = this.sprite.position.x;
+	var py = this.sprite.position.y;
+	py += this.sprite.frameHeight - 1;
+	px += this.sprite.frameWidth >> 1;
+
+	// x and y are the mouse click's position relative to the player's middle bottom
+	return {
+		x : Math.floor(e.clientX / gameScale) - px,
+		y : Math.floor(e.clientY / gameScale) - py
+	};
+};
+
 function useEntrance(entrance){
 
 	/*
@@ -381,19 +395,6 @@ function useEntrance(entrance){
 }
 
 /*
-function checkKeyControl(action){
-	var rval, n;
-	if(motionControls[action] != undefined){
-		rval = true;
-		for(n in motionControls[action]){
-			rval &= keyboard.keyState[motionControls[action][n]] ? true : false;
-		}
-	}else{
-		rval = false;
-	}
-	return rval;
-}
-
 function check_key_state(){
 	var dirCombo = 0, n;
 	var sequence = null;
@@ -886,6 +887,34 @@ function writeText(x, y, text){
 }
 
 function checkMouse(){
+	var delta;
+	var state = mouse.stateQueue[0];
+
+	if(
+		   (!mouse.stateQueue[0].e.buttons & 1)
+		&& (mouse.stateQueue[1].e.buttons & 1)
+		&& (!mouse.stateQueue[2].e.buttons & 1)
+		&& (mouse.stateQueue[3].e.buttons & 1)
+	){
+		if(Date.now() - mouse.stateQueue[3].time < 1000){
+			console.log('double click');
+		}
+	}
+
+	if(state.e.buttons & 1){
+		delta = player.distanceToMouseEvent(state.e);
+		player.target = {
+			x : player.position.x + delta.x,//x : Math.floor(state.e.clientX  / gameScale),
+			y : player.position.y + delta.y//y : Math.floor(state.e.clientY / gameScale)
+		}
+	}else{
+		/*
+		player.target = {
+			x : player.position.x,
+			y : player.position.y
+		}
+		*/
+	}
 
 }
 
@@ -898,20 +927,7 @@ function playGame(){
 	}
 	renderView(activeMap);
 }
-/*
-function loadDefaultMotionControls(){
-	motionControls = {
-		up : [keyboard.KEYMAP['UP']],
-		down: [keyboard.KEYMAP['DOWN']],
-		left: [keyboard.KEYMAP['LEFT']],
-		right: [keyboard.KEYMAP['RIGHT']],
-		enter : [keyboard.KEYMAP['SHIFT'], keyboard.KEYMAP['.']],
-		exit : [keyboard.KEYMAP['SHIFT'], keyboard.KEYMAP[',']],
-		attack: [keyboard.KEYMAP['CTRL']],
-		grab : [keyboard.KEYMAP[',']],
-	};
-}
-*/
+
 function checkOverlay(){
 	activeMap.playerPos.x
 
@@ -1035,26 +1051,11 @@ var initialize = function(){
 				});
 				break;
 			case 'initialize events':
-				// the functions used here are defined in keyboard.js
-				document.getElementById('overlay').addEventListener('mousedown', function(e){
+				
+				// the functions used here are defined in keyboard.js and mouseHandler.js
+				mouse = new mouseHandler();
+				mouse.listen(document.getElementById('overlay'));
 
-					// px and py are exactly the middle bottom of the player sprite
-					var px = player.sprite.position.x;
-					var py = player.sprite.position.y;
-					py += player.sprite.frameHeight - 1;
-					px += player.sprite.frameWidth >> 1;
-
-					// mx and my are the mouse click's position relative to the player's middle bottom
-					var mx = Math.floor(e.clientX / gameScale) - px;
-					var my = Math.floor(e.clientY / gameScale) - py;
-
-					player.target = {
-						x : player.position.x + mx,//x : Math.floor(e.clientX  / gameScale),
-						y : player.position.y + my//y : Math.floor(e.clientY / gameScale)
-					}
-
-					//console.log(mx + ', ' + my);
-				});
 				/*
 				keyboard = new kbListener();
 				keyboard.listen();
