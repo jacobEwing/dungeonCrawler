@@ -840,6 +840,20 @@ var renderView = (function(){
 			});
 		}
 
+		// if there's a target location, draw it here
+		if(player.target != null){
+			// the zero should probably be the center of the sprite
+			var pointerx = cellSize * middleX + player.target.x - player.position.x - 0;
+			var pointery = cellSize * middleY + player.target.y - player.position.y - 0;
+
+
+			mouse.pointers.target.draw(context, {
+				x : pointerx,
+				y : pointery
+			});
+		}
+
+
 		for(n in characters){
 			var offset = {
 				x : characters[n].sprite.frameWidth >> 1,
@@ -960,6 +974,10 @@ var initialize = function(){
 		{'name' : 'caveEntrance' , 'file' : 'caveEntrance.sprite'},
 		{'name' : 'waterWaves' , 'file' : 'waterWaves.sprite'}
 	);
+	var pointerSet;
+	var pointerList = Array(
+		{'name' : 'target', 'file' : 'target.sprite'}
+	);
 
 	var doStep = function(step){
 		var x, y;
@@ -1051,17 +1069,43 @@ var initialize = function(){
 				});
 				break;
 			case 'initialize events':
-				
 				// the functions used here are defined in keyboard.js and mouseHandler.js
-				mouse = new mouseHandler();
-				mouse.listen(document.getElementById('overlay'));
-
 				/*
 				keyboard = new kbListener();
 				keyboard.listen();
 				loadDefaultMotionControls();
 				*/
-				setTimeout(function(){doStep('load test character');}, 1);
+				mouse = new mouseHandler();
+				mouse.pointers = {}; // <-- might as well add the mouse icons to the event object
+
+				mouse.listen(document.getElementById('overlay'));
+				setTimeout(function(){doStep('load mouse pointers');}, 1);
+				//setTimeout(function(){doStep('load test character');}, 1);
+				break;
+
+
+			case 'load mouse pointers':
+
+				// this step has to happen after initializing events, as that's where the mouse
+				// handler is defined, (mouse), and that's where we're storing the sprites as
+				// well.
+				if(pointerList.length > 0){
+					dat = pointerList.pop();
+					pointerSet = new spriteSet('sprites/' + dat.file, function(){
+						mouse.pointers[dat.name] = new cSprite(pointerSet);
+						mouse.pointers[dat.name].setScale(gameScale);
+						setTimeout(function(){
+							doStep('load mouse pointers');
+						}, 1);
+					});
+
+				}else{
+					mouse.pointers['target'].startSequence('spin', {
+						iterations: 0,
+						method : 'manual'
+					});
+					doStep('load test character');
+				}
 				break;
 
 			case 'load test character':

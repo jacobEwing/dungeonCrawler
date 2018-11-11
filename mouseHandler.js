@@ -33,4 +33,11 @@ mouseHandler.prototype.handleEvent = function(e){
 		});
 	}
 }
+/*
 
+ assssigned from game.js
+
+ sprites:
+ mouse.pointers.target
+
+*/

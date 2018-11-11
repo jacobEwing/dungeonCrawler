@@ -1,0 +1,18 @@
+{
+	"image" : "sprites/target.png",
+	"frameWidth" : 19,
+	"frameHeight" : 13,
+	"centerx" : 9,
+	"centery" : 6,
+	"frames" : {
+		"1" : {"x" : 0, "y" : 0},
+		"2" : {"x" : 1, "y" : 0},
+		"3" : {"x" : 2, "y" : 0},
+		"4" : {"x" : 3, "y" : 0}
+	},
+	"sequences" : {
+		"spin" : {
+			"frames" : ["1", "2", "3", "4"]
+		}
+	}
+}
