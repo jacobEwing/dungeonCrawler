@@ -356,7 +356,7 @@ function useEntrance(entrance){
 				break;
 		}
 	}
-	
+	player.target = null;
 	clearInterval(gameInterval);
 	var opacity = 1, faderate = .2;
 	gameCanvas.style.opacity = opacity;
@@ -540,6 +540,30 @@ function check_key_state(){
 	}
 }
 */
+
+function handleActiveCellClick(){
+	var n;
+	var touchingItems = player.touchingItems();
+
+	for(n in touchingItems){
+		switch(touchingItems[n].content){
+			case 'stairup':
+				useEntrance(touchingItems[n]);
+				break;
+			case 'stairdown':
+				useEntrance(touchingItems[n]);
+				break;
+			case 'caveEntrance':
+				useEntrance(touchingItems[n]);
+				break;
+			default:
+				console.log(touchingItems[n].content);
+		}
+	}
+
+}
+
+
 var renderView = (function(){
 	var item, frameName;
 	var playerLayer;
@@ -917,9 +941,14 @@ function checkMouse(){
 
 	if(state.e.buttons & 1){
 		delta = player.distanceToMouseEvent(state.e);
-		player.target = {
-			x : player.position.x + delta.x,//x : Math.floor(state.e.clientX  / gameScale),
-			y : player.position.y + delta.y//y : Math.floor(state.e.clientY / gameScale)
+		if(Math.abs(delta.x) < cellSize >> 1 && Math.abs(delta.y) < cellSize >> 1){
+			// clicked on the cell we're standing on
+			handleActiveCellClick();
+		}else{
+			player.target = {
+				x : player.position.x + delta.x,
+				y : player.position.y + delta.y
+			}
 		}
 	}else{
 		/*
