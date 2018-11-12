@@ -1,8 +1,8 @@
 {
-	"image" : "sprites/target.png",
-	"frameWidth" : 19,
-	"frameHeight" : 13,
-	"centerx" : 9,
+	"image" : "sprites/target2.png",
+	"frameWidth" : 17,
+	"frameHeight" : 12,
+	"centerx" : 8,
 	"centery" : 6,
 	"frames" : {
 		"1" : {"x" : 0, "y" : 0},

@@ -15,7 +15,7 @@ var viewRange = {};
 var playerSpriteSet = new spriteSet();
 var spriteSets = {}, sprites = {};
 var player;
-var gameScale = 5, cellSize = 12;
+var gameScale = 4, cellSize = 12;
 var maps = Array();
 var activeMap;
 var context;
@@ -393,153 +393,6 @@ function useEntrance(entrance){
 
 	fadeOut();
 }
-
-/*
-function check_key_state(){
-	var dirCombo = 0, n;
-	var sequence = null;
-	var endFrame = null;
-	var fighting = checkKeyControl('attack');
-
-	dirCombo += checkKeyControl('up') ? 1 : 0;
-	dirCombo += checkKeyControl('down') ? 2 : 0;
-	dirCombo += checkKeyControl('left') ? 4 : 0;
-	dirCombo += checkKeyControl('right') ? 8 : 0;
-
-	switch(dirCombo){
-		case 1: case 13: // up
-			sequence = 'walkup';
-			endFrame = 'back_idle';
-			player.direction = 'up';
-			break;
-		case 2: case 14: // down
-			sequence = 'walkdown';
-			endFrame = 'front_idle';
-			player.direction = 'down';
-			break;
-		case 4: case 7: // left
-			sequence = 'walkleft';
-			endFrame = 'left_idle';
-			player.direction = 'left';
-			break;
-		case 8: case 11:// right
-			sequence = 'walkright';
-			endFrame = 'right_idle';
-			player.direction = 'right';
-			break;
-		case 5: // up/left
-			sequence = 'walkupleft';
-			endFrame = 'back_left_idle';
-			player.direction = 'upleft';
-			break;
-		case 6: // down/left
-			sequence = 'walkdownleft';
-			endFrame = 'front_left_idle';
-			player.direction = 'downleft';
-			break;
-		case 9: // up/right
-			sequence = 'walkupright';
-			endFrame = 'back_right_idle';
-			player.direction = 'upright';
-			break;
-		case 10: // down/right
-			sequence = 'walkdownright';
-			endFrame = 'front_right_idle';
-			player.direction = 'downright';
-			break;
-	}
-
-	if(fighting){
-		var endState = {
-			'up' : 'back_idle',
-			'down' : 'front_idle',
-			'left' : 'left_idle',
-			'right' : 'right_idle',
-			'upleft' : 'back_left_idle',
-			'upright' : 'back_right_idle',
-			'downleft' : 'front_left_idle',
-			'downright' : 'front_right_idle'
-		}[player.direction];
-		var newSequence = {
-			'up' : 'attack_back',
-			'down' : 'attack_front',
-			'left' : 'attack_left',
-			'right' : 'attack_right',
-			'upleft' : 'attack_up_left',
-			'upright' : 'attack_up_right',
-			'downleft' : 'attack_down_left',
-			'downright' : 'attack_down_right'
-		}[player.direction];
-		if(newSequence != undefined && newSequence != player.currentSequence){
-			player.currentSequence = newSequence;
-			player.sprite.startSequence(newSequence, {
-				iterations: 1,
-				method : 'manual',
-				callback: function(){
-					player.currentSequence = null;
-					player.sprite.setFrame(endState);
-				}
-			});
-		}
-	}else{
-		//var currentCellType = player.currentMapVal();
-		var touchingItems = player.touchingItems();
-
-		if(sequence == null){
-			if(player.currentSequence != null){
-				//player.sprite.stopSequence(player.currentSequence);
-				player.sprite.setFrame(player.currentEndFrame);
-				player.currentSequence = null;
-				player.sprite.currentSequence = null;
-				player.sprite.animating = false;
-			}
-			// this should be replaced with a call to a function that builds a menu of
-			// actions available (e.g, "go down", "take food", "take weapon", etc.).  That
-			// would be a mildly translucent menu that lits on another interface layer
-			// above, perhaps to the bottom right of the player.  Each option in there
-			// would have a keyboard shortcut(e.g. "pick up item [,]").  With an option not
-			// to display those menus.
-			for(n in touchingItems){
-				switch(touchingItems[n].content){
-					case 'stairup':
-						if(checkKeyControl('exit')){
-							useEntrance(touchingItems[n]);
-						}
-						break;
-					case 'stairdown':
-						if(checkKeyControl('enter')){
-							useEntrance(touchingItems[n]);
-						}
-						break;
-					case 'caveEntrance':
-						if(checkKeyControl('enter')){
-							useEntrance(touchingItems[n]);
-						}
-						break;
-					default:
-						console.log(touchingItems[n].content);
-				}
-			}
-
-
-		}else if(sequence != player.currentSequence){
-			//if(player.currentSequence != null){
-			//	player.sprite.stopSequence(player.currentSequence);
-			//}
-			player.currentEndFrame = endFrame;
-			player.currentSequence = sequence;
-			player.sprite.startSequence(sequence, {
-				iterations: 0,
-				method : 'manual',
-				callback: function(){
-					player.currentSequence = null;
-					player.sprite.setFrame(endFrame);
-				}
-			});
-		}
-	}
-}
-*/
 
 function handleActiveCellClick(){
 	var n;
@@ -1089,8 +942,10 @@ var initialize = function(){
 					for(x = 0; x < activeMap.width; x++){
 						for(y = 0; y < activeMap.height; y++){
 							activeMap.hideMap[x][y] = false;
+//							activeMap.collide = 
 						}
 					}
+					debugger;
 //					checkOverlay();
 					renderView(activeMap);
 
