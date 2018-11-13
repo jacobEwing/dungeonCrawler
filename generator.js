@@ -147,6 +147,7 @@ mapBuilder.prototype.loadImageMap = function(mapFile, callback){
 					}
 					console.log('data loaded');
 					me.hideMap();
+					me.buildCollisionMap();
 					if(typeof(callback) == 'function'){
 						setTimeout(callback, 0);
 					}
@@ -198,6 +199,35 @@ mapBuilder.prototype.build = function(params){
 		"W" : "water"
 	};
 	this.hideMap();
+	this.buildCollisionMap();
+}
+
+// read a subset area of the collision map and return it as an array
+mapBuilder.prototype.readCollisionMap = function(x1, y1, x2, y2){
+	var rval = Array();
+	var x, y, width, height;
+	var mapX, mapY;
+
+	width = x2 - x1;
+	height = y2 - y1;
+
+	for(x = 0; x < width; x++){
+		mapX = x + x1;
+		if(mapX < 0 || mapX >= this.width){
+			rval[x] = Array.apply(null, Array(height)).map(String.prototype.valueOf, '1');
+		}else{
+			rval[x] = Array();
+			for(y = 0; y < height; y++){
+				mapY = y + y1;
+				if(mapY < 0 || mapY >= this.height){
+					rval[x][y] = 1;
+				}else{
+					rval[x][y] = this.collisionMap[mapX][mapY] ? 1 : 0;
+				}
+			}
+		}
+	}
+	return rval;
 }
 
 mapBuilder.prototype.hideMap = function(){
@@ -206,6 +236,16 @@ mapBuilder.prototype.hideMap = function(){
 		this.hideMap[x] = Array();
 		for(var y = 0; y < this.height; y++){
 			this.hideMap[x][y] = true;
+		}
+	}
+}
+
+mapBuilder.prototype.buildCollisionMap = function(){
+	this.collisionMap = Array();
+	for(var x = 0; x < this.width; x++){
+		this.collisionMap[x] = Array();
+		for(var y = 0; y < this.height; y++){
+			this.collisionMap[x][y] = {' ' : 1, '#' : 1, 'W' : 1}[this.map[x][y]] != undefined ? 1 : 0;
 		}
 	}
 }

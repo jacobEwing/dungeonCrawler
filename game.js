@@ -26,7 +26,6 @@ var characters = [];
 
 var characterClass = function(){
 	this.position = {x : 0, y : 0};
-	this.direction = 'down';
 	this.sprite = null;
 	this.currentSequence = null;
 	this.currentEndFrame = null;
@@ -35,6 +34,7 @@ var characterClass = function(){
 		speed : walkSpeed,
 		vision: 3
 	};
+	this.walkPath = Array();
 	this.target = null;
 };
 
@@ -101,7 +101,13 @@ characterClass.prototype.moveTowardsTarget = function(){
 		};
 	}
 
-	if(this.target == null) return;
+	if(this.target == null){
+		if(this.walkPath.length == 0){
+			return;
+		}else{
+			this.target = this.walkPath.shift();
+		}
+	}
 	if(this.motionData.oldTarget.x != this.target.x || this.motionData.oldTarget.y != this.target.y){
 		this.motionData.oldTarget = {
 			x : this.target.x,
@@ -356,6 +362,7 @@ function useEntrance(entrance){
 				break;
 		}
 	}
+	player.walkPath = Array();
 	player.target = null;
 	clearInterval(gameInterval);
 	var opacity = 1, faderate = .2;
@@ -797,12 +804,25 @@ function checkMouse(){
 		if(Math.abs(delta.x) < cellSize >> 1 && Math.abs(delta.y) < cellSize >> 1){
 			// clicked on the cell we're standing on
 			handleActiveCellClick();
-		}else{
-			player.target = {
-				x : player.position.x + delta.x,
-				y : player.position.y + delta.y
-			}
+		}//else{
+
+		/////////////////////////////////////////////
+		// here is where we calculate player.walkPath
+		/////////////////////////////////////////////
+
+		
+		player.findPath({
+			dx : Math.round(delta.x / cellSize),
+			dy : Math.round(delta.y / cellSize)
+		});
+
+		////////////// this is the old code that should be pulled when the target is working.
+		// it'll just be player.target = player.walkPath.shift();
+		player.target = {
+			x : player.position.x + delta.x,
+			y : player.position.y + delta.y
 		}
+		//}
 	}else{
 		/*
 		player.target = {
@@ -812,6 +832,81 @@ function checkMouse(){
 		*/
 	}
 
+}
+
+characterClass.prototype.findPath = function(target){
+	var MAX_PLOT_DISTANCE = 100; // <-- making this ugly variable for now, which should be replaced with vision range
+	var minx, miny, maxx, maxy;
+	var testMap;
+
+	var playerPos = {
+		x : Math.floor(this.position.x / cellSize),
+		y : Math.floor(this.position.y / cellSize)
+	};
+	var tx = target.dx + playerPos.x;
+	var ty = target.dy + playerPos.y;
+	
+	if(activeMap.map[tx] == undefined) return Array();
+	if(activeMap.map[tx][ty] == undefined) return Array();
+	if(activeMap.hideMap[tx][ty]) return Array();
+
+	if(target.dx * target.dx + target.dy * target.dy > MAX_PLOT_DISTANCE * MAX_PLOT_DISTANCE){
+		// too far away
+		return Array();
+	}
+
+	minx = (playerPos.x + tx - MAX_PLOT_DISTANCE) >> 1;
+	maxx = minx + MAX_PLOT_DISTANCE;
+
+	miny = (playerPos.y + ty - MAX_PLOT_DISTANCE) >> 1;
+	maxy = miny + MAX_PLOT_DISTANCE;
+/*
+	// let's work out the area we have to work in.
+	if(target.dx < 0){
+		minx = tx;
+		maxx = playerPos.x;
+	}else{
+		maxx = tx;
+		minx = playerPos.x;
+	}
+	if(target.dy < 0){
+		miny = ty;
+		maxy = playerPos.y;
+	}else{
+		maxy = ty;
+		miny = playerPos.y;
+	}
+
+	minx = (minx + maxx - MAX_PLOT_DISTANCE) >> 1;
+	maxx = minx + MAX_PLOT_DISTANCE;
+
+	miny = (miny + maxy - MAX_PLOT_DISTANCE) >> 1;
+	maxy = miny + MAX_PLOT_DISTANCE;
+*/
+
+	// now we get a subset of our world map between minx/y and maxx/y
+
+	testMap = activeMap.readCollisionMap(minx, miny, maxx, maxy); /// <--needs to be written
+	var finder = new PF.BestFirstFinder({
+		allowDiagonal : true,
+		heuristic: PF.Heuristic.chebyshev
+	});
+	// GOOD!  Now we can pass that map to the path finder
+	/*
+	// this is what I want to do, but it hits an error at some point. 
+	var path = finder.findPath(
+		playerPos.x - minx,
+		playerPos.y - miny,
+		tx - minx,
+		ty - miny,
+		testMap
+	);
+	debugger;
+	*/
+
+
+	
+	console.log('dx:'+ (maxx - minx) + ', dy:' + (maxy - miny));
 }
 
 function playGame(){
@@ -930,9 +1025,14 @@ var initialize = function(){
 				var mapIdx = maps.length;
 				maps[mapIdx] = new mapBuilder();
 				console.log('calling loadImageMap');
-				maps[mapIdx].loadImageMap('maps/Map1.map', function(){
+				///////////////////////////////////////////////////////////////
+				/////////// FIXME switch this back when done testing //////////
+				///////////////////////////////////////////////////////////////
+				//maps[mapIdx].loadImageMap('maps/Map1.map', function(){
+				maps[mapIdx].loadImageMap('maps/test.map', function(){
 					console.log('map loaded, placing player');
 					activeMap = maps[mapIdx];
+
 
 					player.position.x = Math.floor(cellSize * activeMap.playerPos.x);
 					player.position.y = Math.floor(cellSize * activeMap.playerPos.y);
@@ -942,10 +1042,8 @@ var initialize = function(){
 					for(x = 0; x < activeMap.width; x++){
 						for(y = 0; y < activeMap.height; y++){
 							activeMap.hideMap[x][y] = false;
-//							activeMap.collide = 
 						}
 					}
-					debugger;
 //					checkOverlay();
 					renderView(activeMap);
 
@@ -988,7 +1086,11 @@ var initialize = function(){
 						iterations: 0,
 						method : 'manual'
 					});
-					doStep('load test character');
+					///////////////////////////////////////////////////////////////
+					/////////// FIXME switch this back when done testing //////////
+					///////////////////////////////////////////////////////////////
+					//doStep('load test character');
+					doStep('finish');
 				}
 				break;
 
