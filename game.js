@@ -843,13 +843,17 @@ characterClass.prototype.findPath = function(target){
 		x : Math.floor(this.position.x / cellSize),
 		y : Math.floor(this.position.y / cellSize)
 	};
+
+	// target is the relative position to the player.  tx, ty is the map position of that target
 	var tx = target.dx + playerPos.x;
 	var ty = target.dy + playerPos.y;
 	
+	// make sure it's a valid map target
 	if(activeMap.map[tx] == undefined) return Array();
 	if(activeMap.map[tx][ty] == undefined) return Array();
 	if(activeMap.hideMap[tx][ty]) return Array();
 
+	// beyond our maximum range.  do nothing.
 	if(target.dx * target.dx + target.dy * target.dy > MAX_PLOT_DISTANCE * MAX_PLOT_DISTANCE){
 		// too far away
 		return Array();
@@ -860,7 +864,7 @@ characterClass.prototype.findPath = function(target){
 
 	miny = (playerPos.y + ty - MAX_PLOT_DISTANCE) >> 1;
 	maxy = miny + MAX_PLOT_DISTANCE;
-/*
+
 	// let's work out the area we have to work in.
 	if(target.dx < 0){
 		minx = tx;
@@ -882,18 +886,21 @@ characterClass.prototype.findPath = function(target){
 
 	miny = (miny + maxy - MAX_PLOT_DISTANCE) >> 1;
 	maxy = miny + MAX_PLOT_DISTANCE;
-*/
+
 
 	// now we get a subset of our world map between minx/y and maxx/y
+	var mapGrid = activeMap.readCollisionMap(minx, miny, maxx, maxy);
+	var testMap = new PF.Grid(maxx - minx, maxy - miny, mapGrid);
 
-	testMap = activeMap.readCollisionMap(minx, miny, maxx, maxy); /// <--needs to be written
+	// and build a pathFinder implementation
+	//// note that this could be done once and used repeatedly
 	var finder = new PF.BestFirstFinder({
 		allowDiagonal : true,
-		heuristic: PF.Heuristic.chebyshev
+		heuristic: PF.Heuristic.chebyshev,
+		dontCrossCorners: true
 	});
+
 	// GOOD!  Now we can pass that map to the path finder
-	/*
-	// this is what I want to do, but it hits an error at some point. 
 	var path = finder.findPath(
 		playerPos.x - minx,
 		playerPos.y - miny,
@@ -901,12 +908,8 @@ characterClass.prototype.findPath = function(target){
 		ty - miny,
 		testMap
 	);
-	debugger;
-	*/
 
-
-	
-	console.log('dx:'+ (maxx - minx) + ', dy:' + (maxy - miny));
+	var newPath = PF.Util.smoothenPath(testMap, path);
 }
 
 function playGame(){
@@ -1028,8 +1031,8 @@ var initialize = function(){
 				///////////////////////////////////////////////////////////////
 				/////////// FIXME switch this back when done testing //////////
 				///////////////////////////////////////////////////////////////
-				//maps[mapIdx].loadImageMap('maps/Map1.map', function(){
-				maps[mapIdx].loadImageMap('maps/test.map', function(){
+				maps[mapIdx].loadImageMap('maps/Map1.map', function(){
+				//maps[mapIdx].loadImageMap('maps/test.map', function(){
 					console.log('map loaded, placing player');
 					activeMap = maps[mapIdx];
 
