@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<style type="text/css">
+		td {
+			border: 1px solid;
+		}
+		table {
+			border-collapse: collapse;
+			margin: 1em;
+		}
+	</style>
+	<script type="text/javascript" src="helperFuncs.js"></script>
+	<script type="text/javascript">
+		var testArray;
+		window.onload = function(){
+			testArray = [];
+			var x;
+			for(x = 0; x < 10; x++){
+				testArray[x] = [];
+				for(y = 0; y < 10; y++){
+					testArray[x][y] = x + 'x' + y;
+				}
+			}
+			document.body.appendChild(arrayToTable(testArray));
+			document.body.appendChild(arrayToTable(sliceArray2d(testArray, 2, -2, 3, 4, 'x')));
+
+		};
+
+
+	</script>
+</head>
+<body>
+	<div id="content">
+	</div>
+</body>
+</html>
