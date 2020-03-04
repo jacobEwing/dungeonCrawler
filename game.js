@@ -9,6 +9,10 @@ Math.random = (function(){
 })();
 */
 //var keyboard;
+
+// this variable is just for some debug testing
+var pathCanvas, pathContext, plotPixel, redPixel;
+
 var mouse;
 var gameCanvas;
 var viewRange = {};
@@ -203,7 +207,12 @@ characterClass.prototype.act = function(){
 
 	if(this.target != null){
 		if(this.position.x == this.target.x && this.position.y == this.target.y){
-			this.target = null;
+			if(this.walkPath.length){
+				this.target = this.walkPath.shift();
+			} else {
+				this.target = null;
+			}
+			
 		}else{
 			frameIndex = Math.round(4 * rel_ang(
 				this.position.x,
@@ -722,10 +731,11 @@ var renderView = (function(){
 		}
 
 		// if there's a target location, draw it here
-		if(player.target != null){
+		if(player.walkPath.length > 0){
+
 			// the zero should probably be the center of the sprite
-			var pointerx = cellSize * middleX + player.target.x - player.position.x - 0;
-			var pointery = cellSize * middleY + player.target.y - player.position.y - 0;
+			var pointerx = cellSize * middleX + player.walkPath[player.walkPath.length - 1].x - player.position.x - 0;
+			var pointery = cellSize * middleY + player.walkPath[player.walkPath.length - 1].y - player.position.y - 0;
 
 
 			mouse.pointers.target.draw(context, {
@@ -816,8 +826,16 @@ function checkMouse(){
 			dy : Math.round(delta.y)
 		});
 
+		// replace the end location in the path with the actual pixel clicked on.
+		player.walkPath.pop();
+		player.walkPath.push({
+			x : player.position.x + delta.x,
+			y : player.position.y + delta.y
+		});
+
 
 		player.target = player.walkPath.shift();
+		console.log('remaining path steps: ' + player.walkPath.length);
 		
 	}else{
 		/*
@@ -879,6 +897,18 @@ characterClass.prototype.findPath = function(displacement){
 		1 // <-- this should vary depending on whether water traversing equipment is available
 	);
 
+	var x, y;
+	pathContext.fillStyle = 'rgba(80, 120, 200, 0.6)';
+	pathContext.fillRect(0, 0, 102, 102);
+	for(x = 0; x < viewMap.length; x++){
+		for(y = 0; y < viewMap[x].length; y++){
+			if(viewMap[x][y]){
+				pathContext.putImageData(plotPixel, x, y);
+			}
+		}
+	}
+	
+
 	// now create our path finding map instance and the finder that will use it
 	var testMap = new PF.Grid(size, size, viewMap);
 
@@ -907,7 +937,10 @@ characterClass.prototype.findPath = function(displacement){
 	// now translate this path to the correct game scale and make it relative to
 	// the map instead of the test area
 
+//	pathContext.fillRect(0, 0, 102, 102);
+
 	path.map(function(r, idx, p){
+		pathContext.putImageData(redPixel, r[0], r[1]);
 		r[0] -= viewRadius + 1;
 		r[1] -= viewRadius + 1;
 		r[0] *= cellSize;
@@ -985,6 +1018,35 @@ var initialize = function(){
 		console.log('doing step "' + step + '"');
 		switch(step){
 			case 'initialize':
+				
+				pathCanvas = document.createElement('CANVAS');
+				pathCanvas.width = 102;
+				pathCanvas.height = 102;
+				pathCanvas.style.float = "right";
+				pathContext = pathCanvas.getContext('2d');
+				pathContext.webkitImageSmoothingEnabled = false;
+				pathContext.mozImageSmoothingEnabled = false;
+				pathContext.imageSmoothingEnabled = false; /// future
+				document.getElementById('overlay').appendChild(pathCanvas);
+				pathContext.fillStyle = 'rgba(80, 120, 200, 0.6)';
+				pathContext.fillRect(0, 0, 102, 102);
+
+				plotPixel = pathContext.createImageData(1, 1);
+				var d = plotPixel.data;
+				d[0] = 255;
+				d[1] = 255;
+				d[2] = 255;
+				d[3] = 255;
+
+				redPixel = pathContext.createImageData(1, 1);
+				var d = redPixel.data;
+				d[0] = 255;
+				d[1] = 80;
+				d[2] = 80;
+				d[3] = 255;
+
+
+
 				gameCanvas = document.getElementById('gameCanvas');
 				gameCanvas.width = window.innerWidth;
 				gameCanvas.height = window.innerHeight;
