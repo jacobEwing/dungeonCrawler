@@ -22,8 +22,8 @@
 					testArray[x][y] = x + 'x' + y;
 				}
 			}
-			document.body.appendChild(arrayToTable(testArray));
-			document.body.appendChild(arrayToTable(sliceArray2d(testArray, 2, -2, 3, 4, 'x')));
+			document.body.appendChild(testArray.toTable());
+			document.body.appendChild(testArray.gridSubset(-2, -2, 14, 14, 'x').toTable());
 
 		};
 

@@ -1,8 +1,8 @@
 // grab a rectangular subset of a 2d array.  This will use the x1, x2 etc. values strictly as real locations, so there
 // will be no available tricks with negative numbers and the like as you get with Array.slice.
-function sliceArray2d(source, x1, y1, w, h, filler){
+Array.prototype.gridSubset = function(x1, y1, w, h, filler){
 	if(filler == undefined) filler = null;
-	var x2, y2;
+	var x2, y2, extra;
 	var padding = {
 		top : 0,
 		bottom : 0,
@@ -12,7 +12,7 @@ function sliceArray2d(source, x1, y1, w, h, filler){
 
 	// scrub the width and height paramaters and calculate the resulting area
 	if(w == 0 || h == 0){
-		throw "sliceArray2d: width and height can not be equal to zero";
+		throw "Array::gridSubset: width and height can not be equal to zero";
 	}
 	if(w < 0){
 		x1 += w;
@@ -26,10 +26,9 @@ function sliceArray2d(source, x1, y1, w, h, filler){
 	x2 = x1 + w - 1;
 	y2 = y1 + h - 1;
 
-	//console.log('x1:' + x1 + ', y1:' + y1 + ', x2:' + x2 + ', y2:' + y2 + ', w:' + w + ', h:' + h);
 
 	// if all of our coordinates are outside of the array.  Return nothing but the filler.
-	if(x2 < 1 || y2 < 1 || x1 >= source.length || y1 >= source[0].length){
+	if(x2 < 0 || y2 < 0 || x1 >= this.length || y1 >= this[0].length){
 		return Array(w).fill().map(() => Array(h).fill(filler));
 	}
 
@@ -37,35 +36,40 @@ function sliceArray2d(source, x1, y1, w, h, filler){
 	if(y1 < 0){
 		padding.top = -y1;
 		y1 = 0
-		y2--;
 	}
 	if(x1 < 0){
 		padding.left = -x1;
 		x1 = 0;
-		x2--;
 	}
-	if(x2 >= source.length){
-		padding.right = x2 - source.length + 1;
-		x2 = source.length - 1;
-	}
-
-	// here we assume that each vertical array is the same length and that source contains a zero index.
-	if(y2 >= source[0].length){
-		padding.bottom = y2 - source[0].length + 1;
-		y2 = source[0].length - 1;
+	if(x2 >= this.length){
+		padding.right = x2 - this.length + 1;
+		x2 = this.length - 1;
 	}
 
-	/*
-	x1, y1 is now the top left corner of the subset we want
-	x2, y2 is now the bottom right corner
-	padding now lists any added space that should be added to each side of the array
-	 (note that the x padding will need to be added first, to fill in corners if we have padding on both axis.
-	*/
+	// here we assume that each vertical array is the same length and that this contains a zero index.
+	if(y2 >= this[0].length){
+		padding.bottom = y2 - this[0].length + 1;
+		y2 = this[0].length - 1;
+	}
 
 	// grab the actual content that can be read from the source
-	var subset = source.map(function(r){ return r.slice(y1, y2 + 1); }).slice(x1, x2 + 1);
+	var subset = this.map(function(r){ return r.slice(y1, y2 + 1); }).slice(x1, x2 + 1);
+
 
 	// now if there are any overlaps outside the array, we need to use the filler
+	// add the left padding
+	if(padding.left > 0){
+		extra = new Array(padding.left);
+		extra.fill(Array(y2 - y1 + 1).fill(filler), 0, padding.left);
+		subset = extra.concat(subset);
+	}
+
+	// add the right padding
+	if(padding.right > 0){
+		extra = new Array(padding.right);
+		extra.fill(Array(y2 - y1 + 1).fill(filler), 0, padding.right);
+		subset = subset.concat(extra);
+	}
 
 	// add top padding
 	if(padding.top > 0){
@@ -86,18 +90,18 @@ function sliceArray2d(source, x1, y1, w, h, filler){
 }
 
 // returns an HTML table displaying the contents of a 2d array
-function arrayToTable(grid){
-	if(!Array.isArray(grid) || !Array.isArray(grid[0])){
-		throw "arrayToTable expects single argument to be a two dimensional array";
+Array.prototype.toTable = function (){
+	if(!Array.isArray(this[0])){
+		throw "ArrayToTable expects single argument to be a two dimensional array";
 	}
 	var x, y;
 	var row, cell, table = document.createElement('TABLE');
-	for(y = 0; y < grid[0].length; y++){
+	for(y = 0; y < this[0].length; y++){
 		
 		row = table.insertRow(y);
-		for(x = 0; x < grid.length; x++){
+		for(x = 0; x < this.length; x++){
 			cell = row.insertCell(x);
-			cell.innerHTML = grid[x][y];
+			cell.innerHTML = this[x][y];
 		}
 	}
 	return table;
@@ -198,11 +202,7 @@ function parseQuotes(text){
 }
 
 function in_array(needle, haystack) {
-	var length = haystack.length;
-	for(var n = 0; n < length; n++) {
-		if(haystack[n] == needle) return true;
-	}
-	return false;
+	return haystack.indexOf(needle) != -1;
 }
 
 

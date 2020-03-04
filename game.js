@@ -804,7 +804,7 @@ function checkMouse(){
 		if(Math.abs(delta.x) < cellSize >> 1 && Math.abs(delta.y) < cellSize >> 1){
 			// clicked on the cell we're standing on
 			handleActiveCellClick();
-		}//else{
+		}
 
 		/////////////////////////////////////////////
 		// here is where we calculate player.walkPath
@@ -812,17 +812,11 @@ function checkMouse(){
 
 		
 		player.findPath({
-			dx : Math.round(delta.x / cellSize),
-			dy : Math.round(delta.y / cellSize)
+			dx : Math.round(delta.x),
+			dy : Math.round(delta.y)
 		});
 
-		////////////// this is the old code that should be pulled when the target is working.
-		// it'll just be player.target = player.walkPath.shift();
-		player.target = {
-			x : player.position.x + delta.x,
-			y : player.position.y + delta.y
-		}
-		//}
+		player.target = player.walkPath.unshift();
 	}else{
 		/*
 		player.target = {
@@ -834,82 +828,12 @@ function checkMouse(){
 
 }
 
-characterClass.prototype.findPath = function(target){
-	var MAX_PLOT_DISTANCE = 100; // <-- making this ugly variable for now, which should be replaced with vision range
-	var minx, miny, maxx, maxy;
-	var testMap;
-
-	var playerPos = {
-		x : Math.floor(this.position.x / cellSize),
-		y : Math.floor(this.position.y / cellSize)
+characterClass.prototype.findPath = function(displacement){
+	var target = {
+		x : player.position.x + displacement.dx,
+		y : player.position.y + displacement.dy
 	};
-
-	// target is the relative position to the player.  tx, ty is the map position of that target
-	var tx = target.dx + playerPos.x;
-	var ty = target.dy + playerPos.y;
-	
-	// make sure it's a valid map target
-	if(activeMap.map[tx] == undefined) return Array();
-	if(activeMap.map[tx][ty] == undefined) return Array();
-	if(activeMap.hideMap[tx][ty]) return Array();
-
-	// beyond our maximum range.  do nothing.
-	if(target.dx * target.dx + target.dy * target.dy > MAX_PLOT_DISTANCE * MAX_PLOT_DISTANCE){
-		// too far away
-		return Array();
-	}
-
-	minx = (playerPos.x + tx - MAX_PLOT_DISTANCE) >> 1;
-	maxx = minx + MAX_PLOT_DISTANCE;
-
-	miny = (playerPos.y + ty - MAX_PLOT_DISTANCE) >> 1;
-	maxy = miny + MAX_PLOT_DISTANCE;
-
-	// let's work out the area we have to work in.
-	if(target.dx < 0){
-		minx = tx;
-		maxx = playerPos.x;
-	}else{
-		maxx = tx;
-		minx = playerPos.x;
-	}
-	if(target.dy < 0){
-		miny = ty;
-		maxy = playerPos.y;
-	}else{
-		maxy = ty;
-		miny = playerPos.y;
-	}
-
-	minx = (minx + maxx - MAX_PLOT_DISTANCE) >> 1;
-	maxx = minx + MAX_PLOT_DISTANCE;
-
-	miny = (miny + maxy - MAX_PLOT_DISTANCE) >> 1;
-	maxy = miny + MAX_PLOT_DISTANCE;
-
-
-	// now we get a subset of our world map between minx/y and maxx/y
-	var mapGrid = activeMap.readCollisionMap(minx, miny, maxx, maxy);
-	var testMap = new PF.Grid(maxx - minx, maxy - miny, mapGrid);
-
-	// and build a pathFinder implementation
-	//// note that this could be done once and used repeatedly
-	var finder = new PF.BestFirstFinder({
-		allowDiagonal : true,
-		heuristic: PF.Heuristic.chebyshev,
-		dontCrossCorners: true
-	});
-
-	// GOOD!  Now we can pass that map to the path finder
-	var path = finder.findPath(
-		playerPos.x - minx,
-		playerPos.y - miny,
-		tx - minx,
-		ty - miny,
-		testMap
-	);
-
-	var newPath = PF.Util.smoothenPath(testMap, path);
+	debugger;
 }
 
 function playGame(){
