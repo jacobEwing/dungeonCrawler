@@ -80,14 +80,12 @@ characterClass.prototype.touchingItems = function(){
 	var rval = Array();
 	if(activeMap.mappedItems[activeMap.playerPos.x] != undefined){
 		if(activeMap.mappedItems[activeMap.playerPos.x][activeMap.playerPos.y] != undefined){
-			for(var n in activeMap.mappedItems[activeMap.playerPos.x][activeMap.playerPos.y]){
+			for(var i  of activeMap.mappedItems[activeMap.playerPos.x][activeMap.playerPos.y]){
 				rval = rval.concat(activeMap.mappedItems[activeMap.playerPos.x][activeMap.playerPos.y]);
 			}
 		}
 	}
 	return rval;
-
-
 };
 
 characterClass.prototype.moveTowardsTarget = function(){
@@ -402,22 +400,22 @@ function useEntrance(entrance){
 }
 
 function handleActiveCellClick(){
-	var n;
+	var i;
 	var touchingItems = player.touchingItems();
 
-	for(n in touchingItems){
-		switch(touchingItems[n].content){
+	for(i of touchingItems){
+		switch(i.content){
 			case 'stairup':
-				useEntrance(touchingItems[n]);
+				useEntrance(i);
 				break;
 			case 'stairdown':
-				useEntrance(touchingItems[n]);
+				useEntrance(i);
 				break;
 			case 'caveEntrance':
-				useEntrance(touchingItems[n]);
+				useEntrance(i);
 				break;
 			default:
-				console.log(touchingItems[n].content);
+				console.log(i.content);
 		}
 	}
 
@@ -655,6 +653,7 @@ var renderView = (function(){
 
 
 	return function(area){
+		var o;
 		playerLayer = Array();
 		topLayer = Array();
 
@@ -691,10 +690,8 @@ var renderView = (function(){
 				randomKey -= Math.floor(randomKey);
 				renderCell(area, area.spritemap[area.map[mapX][mapY]]);
 
-
 				for(var itemName in area.items){
-					for(n in area.items[itemName]){
-						item = area.items[itemName][n];
+					for(item of area.items[itemName]){
 						if(item.x == mapX && item.y == mapY){
 							frameName = {
 								'stairup' : 'stairsUp',
@@ -716,11 +713,11 @@ var renderView = (function(){
 
 			}
 		}
-		for(n in playerLayer){
-			playerLayer[n].sprite.setFrame(playerLayer[n].frame);
-			playerLayer[n].sprite.draw(context, {
-				x : playerLayer[n].x, 
-				y : playerLayer[n].y
+		for(o of playerLayer){
+			o.sprite.setFrame(o.frame);
+			o.sprite.draw(context, {
+				x : o.x, 
+				y : o.y
 			});
 		}
 
@@ -738,14 +735,14 @@ var renderView = (function(){
 		}
 
 
-		for(n in characters){
+		for(o of characters){
 			var offset = {
-				x : characters[n].sprite.frameWidth >> 1,
-				y : characters[n].sprite.frameHeight - 1
+				x : o.sprite.frameWidth >> 1,
+				y : o.sprite.frameHeight - 1
 			};
-			characters[n].sprite.draw(context, {
-				x : cellSize * middleX + characters[n].position.x - player.position.x - offset.x,
-				y : cellSize * middleY + characters[n].position.y - player.position.y - offset.y
+			o.sprite.draw(context, {
+				x : cellSize * middleX + o.position.x - player.position.x - offset.x,
+				y : cellSize * middleY + o.position.y - player.position.y - offset.y
 			});
 		}
 		player.sprite.setPosition(
@@ -754,11 +751,11 @@ var renderView = (function(){
 			1
 		);
 		player.sprite.draw(context);
-		for(n in topLayer){
-			topLayer[n].sprite.setFrame(topLayer[n].frame);
-			topLayer[n].sprite.draw(context, {
-				x : topLayer[n].x, 
-				y : topLayer[n].y
+		for(o of topLayer){
+			o.sprite.setFrame(o.frame);
+			o.sprite.draw(context, {
+				x : o.x, 
+				y : o.y
 			});
 		}
 
@@ -804,12 +801,17 @@ function checkMouse(){
 		if(Math.abs(delta.x) < cellSize >> 1 && Math.abs(delta.y) < cellSize >> 1){
 			// clicked on the cell we're standing on
 			handleActiveCellClick();
+		}else{
+			player.target = {
+				x : player.position.x + delta.x,
+				y : player.position.y + delta.y
+			};
 		}
 
 		/////////////////////////////////////////////
 		// here is where we calculate player.walkPath
 		/////////////////////////////////////////////
-
+/*
 		
 		player.findPath({
 			dx : Math.round(delta.x),
@@ -817,6 +819,7 @@ function checkMouse(){
 		});
 
 		player.target = player.walkPath.unshift();
+		*/
 	}else{
 		/*
 		player.target = {
@@ -833,7 +836,10 @@ characterClass.prototype.findPath = function(displacement){
 		x : player.position.x + displacement.dx,
 		y : player.position.y + displacement.dy
 	};
-	debugger;
+	
+	return target;
+
+	//debugger;
 }
 
 function playGame(){

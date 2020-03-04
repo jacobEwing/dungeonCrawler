@@ -1,6 +1,6 @@
 // grab a rectangular subset of a 2d array.  This will use the x1, x2 etc. values strictly as real locations, so there
 // will be no available tricks with negative numbers and the like as you get with Array.slice.
-Array.prototype.gridSubset = function(x1, y1, w, h, filler){
+function getArraySubset(source, x1, y1, w, h, filler){
 	if(filler == undefined) filler = null;
 	var x2, y2, extra;
 	var padding = {
@@ -28,7 +28,7 @@ Array.prototype.gridSubset = function(x1, y1, w, h, filler){
 
 
 	// if all of our coordinates are outside of the array.  Return nothing but the filler.
-	if(x2 < 0 || y2 < 0 || x1 >= this.length || y1 >= this[0].length){
+	if(x2 < 0 || y2 < 0 || x1 >= source.length || y1 >= source[0].length){
 		return Array(w).fill().map(() => Array(h).fill(filler));
 	}
 
@@ -41,19 +41,19 @@ Array.prototype.gridSubset = function(x1, y1, w, h, filler){
 		padding.left = -x1;
 		x1 = 0;
 	}
-	if(x2 >= this.length){
-		padding.right = x2 - this.length + 1;
-		x2 = this.length - 1;
+	if(x2 >= source.length){
+		padding.right = x2 - source.length + 1;
+		x2 = source.length - 1;
 	}
 
-	// here we assume that each vertical array is the same length and that this contains a zero index.
-	if(y2 >= this[0].length){
-		padding.bottom = y2 - this[0].length + 1;
-		y2 = this[0].length - 1;
+	// here we assume that each vertical array is the same length and that source contains a zero index.
+	if(y2 >= source[0].length){
+		padding.bottom = y2 - source[0].length + 1;
+		y2 = source[0].length - 1;
 	}
 
 	// grab the actual content that can be read from the source
-	var subset = this.map(function(r){ return r.slice(y1, y2 + 1); }).slice(x1, x2 + 1);
+	var subset = source.map(function(r){ return r.slice(y1, y2 + 1); }).slice(x1, x2 + 1);
 
 
 	// now if there are any overlaps outside the array, we need to use the filler
@@ -90,18 +90,18 @@ Array.prototype.gridSubset = function(x1, y1, w, h, filler){
 }
 
 // returns an HTML table displaying the contents of a 2d array
-Array.prototype.toTable = function (){
-	if(!Array.isArray(this[0])){
+function arrayToTable(source){
+	if(!Array.isArray(source[0])){
 		throw "ArrayToTable expects single argument to be a two dimensional array";
 	}
 	var x, y;
 	var row, cell, table = document.createElement('TABLE');
-	for(y = 0; y < this[0].length; y++){
+	for(y = 0; y < source[0].length; y++){
 		
 		row = table.insertRow(y);
-		for(x = 0; x < this.length; x++){
+		for(x = 0; x < source.length; x++){
 			cell = row.insertCell(x);
-			cell.innerHTML = this[x][y];
+			cell.innerHTML = source[x][y];
 		}
 	}
 	return table;
