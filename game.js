@@ -802,24 +802,23 @@ function checkMouse(){
 			// clicked on the cell we're standing on
 			handleActiveCellClick();
 		}else{
+		/*
 			player.target = {
 				x : player.position.x + delta.x,
 				y : player.position.y + delta.y
 			};
+		*/
 		}
 
-		/////////////////////////////////////////////
-		// here is where we calculate player.walkPath
-		/////////////////////////////////////////////
-/*
 		
-		player.findPath({
+		player.walkPath = player.findPath({
 			dx : Math.round(delta.x),
 			dy : Math.round(delta.y)
 		});
 
-		player.target = player.walkPath.unshift();
-		*/
+
+		player.target = player.walkPath.shift();
+		
 	}else{
 		/*
 		player.target = {
@@ -832,14 +831,101 @@ function checkMouse(){
 }
 
 characterClass.prototype.findPath = function(displacement){
+
+	// target is the pixel location we're going to
 	var target = {
 		x : player.position.x + displacement.dx,
 		y : player.position.y + displacement.dy
 	};
-	
-	return target;
 
-	//debugger;
+	// viewRadius is the width and height of the region to use for mapping
+	var viewRadius = Math.max(viewRange.width, viewRange.height) >> 1;
+
+
+	// the rounded target position in the pathfinding array
+	var viewTarget = {
+		x : Math.floor(target.x / cellSize) - activeMap.playerPos.x,
+		y : Math.floor(target.y / cellSize) - activeMap.playerPos.y
+	};
+
+	// make sure our pathfinding grid includes the target point
+	viewRadius = Math.max(Math.abs(viewTarget.x), viewRadius);
+	viewRadius = Math.max(Math.abs(viewTarget.y), viewRadius);
+
+	var size = 2 * viewRadius + 1;
+
+	// now make that target relative to the center of the map
+	viewTarget.x += viewRadius + 1;  // <-- *** NEED TO DOUBLE CHECK THESE +1's
+	viewTarget.y += viewRadius + 1;
+
+
+	/*
+	Once conitionally traversible cells become a thing (boat lets you hit water,
+	equipment for mountain climbing, etc.)  This should instead read from the world
+	map instead of the collision map, and run it through a function to flag cells
+	as traversible or not based on those conditions.  Eventually this should
+	probably apply in all cases an the collision map can be removed, which should
+	save memory.
+	*/
+
+
+	// get the region of the 
+	var viewMap = getArraySubset(
+		activeMap.collisionMap, 
+		activeMap.playerPos.x - viewRadius,
+		activeMap.playerPos.y - viewRadius,
+		size,
+		size,
+		1 // <-- this should vary depending on whether water traversing equipment is available
+	);
+
+	// now create our path finding map instance and the finder that will use it
+	var testMap = new PF.Grid(size, size, viewMap);
+
+	var finder = new PF.BestFirstFinder({
+		allowDiagonal : true,
+		heuristic : PF.Heuristic.chebyshev,
+		dontCrossCorners: true
+	});
+
+	// and find the path that gets us there
+	var path = finder.findPath(
+		viewRadius + 1,
+		viewRadius + 1,
+		viewTarget.x,
+		viewTarget.y,
+		testMap
+	);
+
+	//path = PF.Util.smoothenPath(testMap, path);
+
+
+	// the resulting output includes the starting position, which we don't
+	// need, so drop it
+	path.shift();
+
+	// now translate this path to the correct game scale and make it relative to
+	// the map instead of the test area
+
+	path.map(function(r, idx, p){
+		r[0] -= viewRadius + 1;
+		r[1] -= viewRadius + 1;
+		r[0] *= cellSize;
+		r[1] *= cellSize;
+		r[0] += player.position.x;
+		r[1] += player.position.y;
+
+		// also massage it to fix the path usage elsewhere.
+		p[idx] = {x : r[0], y : r[1]};
+		return r;
+	});
+	
+	return path;
+
+}
+
+function textureIsPassable(v){
+
 }
 
 function playGame(){
