@@ -918,6 +918,15 @@ characterClass.prototype.findPath = function(displacement){
 		dontCrossCorners: true
 	});
 
+
+	/*********************
+	@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+	I THINK I KNOW WHAT THE FUCK IS CAUSING THAT!!!!!!
+	The map subset being pulled out does not have hard set borders, so the path could find its way around by simply walking... .nooo not off the array... but check what's happening with areas of the grid that have not been seen yet... hmmm
+	fuck I hate this
+	@@@@@@@@@@@@@@@@@@@
+	******************/
+
 	// and find the path that gets us there
 	var path = finder.findPath(
 		viewRadius + 1,
