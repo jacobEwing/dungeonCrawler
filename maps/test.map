@@ -3,17 +3,19 @@
 	"colourmap" : {
 		"006d06" : "T",
 		"46ff1a" : "\"",
-		"d68b1c" : ".",
-		"8a8a8a" : "#"
+		"ffd81a" : ".",
+		"8a8a8a" : "#",
+		"0024ff" : "W"
 	},
 	"playerPos" : {
-		"x" : 45,
+		"x" : 35,
 		"y" : 35
 	},
 	"spritemap" : {
 		"T" : "trees",
 		"\"" : "grass",
-		"." : "stone floor",
-		"#" : "stone wall"
+		"." : "sand",
+		"#" : "stone wall",
+		"W" : "water"
 	}
 }

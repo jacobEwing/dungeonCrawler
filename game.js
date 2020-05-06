@@ -23,6 +23,7 @@ var gameInterval; // <-- the animation interval object
 var walkSpeed = 3;
 var screenMiddle = {x: 0, y : 0};
 var characters = [];
+var showGameGrid = false;
 
 var characterClass = function(){
 	this.position = {x : 0, y : 0};
@@ -316,37 +317,64 @@ characterClass.prototype.distanceToMouseEvent = function(e){
 };
 
 characterClass.prototype.setTarget = function(dx, dy){
+
 	// this is the old code that just sets the target as the point we walk toward
+	/*
 	var tx = this.position.x + dx;
 	var ty = this.position.y + dy;
-	this.walkPath = [{x : tx, y : ty}];
+	this.walkPath = [
+		{x : tx, y : ty}
+
+	];
+	*/
 	// target is the actual point to which we're walking, which gets pulled out of the walk path
 	this.target = null;
-/*
-////////////////////// the new code
+
+	// the actual pixel target we want
 	var target = {
 		x : this.position.x + dx,
 		y : this.position.y + dy
 	};
 
-	// viewRadius is the width and height of the region to use for mapping (in cells)
-	var viewRadius = Math.max(viewRange.width, viewRange.height) >> 1;
+	// gridRadius is the width and height of the region to use for mapping (in cells)
+	var gridRadius = Math.max(viewRange.width, viewRange.height) >> 1;
 
 
-	// the rounded target position in the pathfinding array (again in cells, not pixels)
-	var viewTarget = {
-		x : Math.floor(target.x / cellSize) - activeMap.playerPos.x,
-		y : Math.floor(target.y / cellSize) - activeMap.playerPos.y
+	// the rounded target position relative to the player
+	var gridTarget = {
+		x : Math.floor(target.x / cellSize) - this.mapPos.x,
+		y : Math.floor(target.y / cellSize) - this.mapPos.y
 	};
+//	console.log(gridTarget.x + ', ' + gridTarget.y);
 
-	var collisionMap = activeMap.map.readCollisionMap(
+	
+	var collisionMap = activeMap.readCollisionMap(
+		this.mapPos.x - gridRadius,
+		this.mapPos.y - gridRadius,
+		this.mapPos.x + gridRadius,
+		this.mapPos.y + gridRadius
+	);
 
 	// first we'll generate a map to calculate the best path with
-	var graph = new Graph(activeMap.map.readCollisionMap);
-	var start = graph.grid[0][0];
-	var end = graph.grid[1][2];
-	var result = astar.search(graph, start, end);
-*/
+	var graph = new Graph(collisionMap);
+
+	// now plot the best path!
+	var start = graph.grid[gridRadius][gridRadius];
+	var end = graph.grid[gridTarget.x + gridRadius][gridTarget.y + gridRadius];
+	var path = astar.search(graph, start, end);
+
+	// excellent, now we need to translate this resulting path into valid output
+	this.walkPath = [];
+
+	for(var p = 0; p < path.length - 1; p++){
+		this.walkPath[this.walkPath.length] = {
+			x : cellSize * (this.mapPos.x + path[p].x - gridRadius + .5),
+			y : cellSize * (this.mapPos.y + path[p].y - gridRadius + .5)
+		};
+	}
+
+	this.walkPath[this.walkPath.length] = target;
+
 }
 
 function useEntrance(entrance){
@@ -692,6 +720,9 @@ var renderView = (function(){
 				context.fillRect(gridX * gameScale, gridY * gameScale, cellSize * gameScale, cellSize * gameScale);
 				*/
 		}
+		if(showGameGrid){
+			context.strokeRect(gridX * gameScale, gridY * gameScale, cellSize * gameScale, cellSize * gameScale);
+		}
 	};
 
 
@@ -846,12 +877,6 @@ function checkMouse(){
 			// clicked on the cell we're standing on
 			handleActiveCellClick();
 		}else{
-			/*
-			player.setTarget(
-				player.position.x + delta.x,
-				player.position.y + delta.y
-			);
-			*/
 			player.setTarget(delta.x, delta.y);
 		}
 	}else{
@@ -974,6 +999,9 @@ var initialize = function(){
 						logTarget.scrollTop = logTarget.scrollHeight;
 					};
 				})();
+
+				showGameGrid = true;
+
 				setTimeout(function(){
 					doStep('load spriteSets');
 				}, 1);
@@ -1027,8 +1055,8 @@ var initialize = function(){
 					activeMap = maps[mapIdx];
 
 
-					player.position.x = Math.floor(cellSize * activeMap.playerPos.x);
-					player.position.y = Math.floor(cellSize * activeMap.playerPos.y);
+					player.position.x = Math.floor(cellSize * (activeMap.playerPos.x + .5));
+					player.position.y = Math.floor(cellSize * (activeMap.playerPos.y + .5));
 					player.mapPos = {
 						x : activeMap.playerPos.x,
 						y : activeMap.playerPos.y
