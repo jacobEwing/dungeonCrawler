@@ -214,7 +214,7 @@ mapBuilder.prototype.readCollisionMap = function(x1, y1, x2, y2){
 	for(x = 0; x < width; x++){
 		mapX = x + x1;
 		if(mapX < 0 || mapX >= this.width){
-			rval[x] = Array.apply(null, Array(height)).map(String.prototype.valueOf, '1');
+			rval[x] = Array.apply(null, Array(height)).fill(0);
 		}else{
 			rval[x] = Array();
 			for(y = 0; y < height; y++){
@@ -222,7 +222,7 @@ mapBuilder.prototype.readCollisionMap = function(x1, y1, x2, y2){
 				if(mapY < 0 || mapY >= this.height){
 					rval[x][y] = 1;
 				}else{
-					rval[x][y] = this.collisionMap[mapX][mapY] ? 1 : 0;
+					rval[x][y] = this.collisionMap[mapX][mapY] ? 0 : 1;
 				}
 			}
 		}

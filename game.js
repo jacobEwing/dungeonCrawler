@@ -9,10 +9,6 @@ Math.random = (function(){
 })();
 */
 //var keyboard;
-
-// this variable is just for some debug testing
-var pathCanvas, pathContext, plotPixel, redPixel;
-
 var mouse;
 var gameCanvas;
 var viewRange = {};
@@ -30,6 +26,8 @@ var characters = [];
 
 var characterClass = function(){
 	this.position = {x : 0, y : 0};
+	this.mapPos = {x : 0, y : 0};
+	this.direction = 'down';
 	this.sprite = null;
 	this.currentSequence = null;
 	this.currentEndFrame = null;
@@ -38,14 +36,18 @@ var characterClass = function(){
 		speed : walkSpeed,
 		vision: 3
 	};
-	this.walkPath = Array();
 	this.target = null;
+	this.walkPath = [];
 };
 
 characterClass.prototype.setMapPos = function(x, y){
 	// our grid position on the map
-	activeMap.playerPos.x = x;
-	activeMap.playerPos.y = y;
+	if(this == player){
+		activeMap.playerPos.x = x;
+		activeMap.playerPos.y = y;
+	}
+	this.mapPos.x = x;
+	this.mapPos.y = y;
 
 	// our real position in the map
 	this.position.x = cellSize * x;
@@ -67,7 +69,7 @@ characterClass.prototype.canWalkOn = function(posx, posy){
 
 characterClass.prototype.currentMapVal = function(){
 	var map = activeMap.map;
-	var pos = activeMap.playerPos;
+	var pos = this.mapPos;
 	var rval;
 
 	if(pos.x < 0 || pos.y < 0 || pos.x >= map.length || pos.y >= map[pos.x].length){
@@ -82,10 +84,12 @@ characterClass.prototype.currentMapVal = function(){
 
 characterClass.prototype.touchingItems = function(){
 	var rval = Array();
-	if(activeMap.mappedItems[activeMap.playerPos.x] != undefined){
-		if(activeMap.mappedItems[activeMap.playerPos.x][activeMap.playerPos.y] != undefined){
-			for(var i  of activeMap.mappedItems[activeMap.playerPos.x][activeMap.playerPos.y]){
-				rval = rval.concat(activeMap.mappedItems[activeMap.playerPos.x][activeMap.playerPos.y]);
+	var x = this.mapPos.x;
+	var y = this.mapPos.y;
+	if(activeMap.mappedItems[x] != undefined){
+		if(activeMap.mappedItems[x][y] != undefined){
+			for(var i of activeMap.mappedItems[x][y]){
+				rval = rval.concat(activeMap.mappedItems[x][y]);
 			}
 		}
 	}
@@ -103,13 +107,7 @@ characterClass.prototype.moveTowardsTarget = function(){
 		};
 	}
 
-	if(this.target == null){
-		if(this.walkPath.length == 0){
-			return;
-		}else{
-			this.target = this.walkPath.shift();
-		}
-	}
+	if(this.target == null) return;
 	if(this.motionData.oldTarget.x != this.target.x || this.motionData.oldTarget.y != this.target.y){
 		this.motionData.oldTarget = {
 			x : this.target.x,
@@ -153,12 +151,18 @@ characterClass.prototype.moveTowardsTarget = function(){
 			}
 		}
 	}
+	this.mapPos = {
+		x : Math.floor(this.position.x / cellSize),
+		y : Math.floor(this.position.y / cellSize)
+	};
+
 	if(this == player){
 		activeMap.playerPos = {
-			x : Math.floor(this.position.x / cellSize),
-			y : Math.floor(this.position.y / cellSize)
+			x : this.mapPos.x,
+			y : this.mapPos.y
 		}
 	}
+
 	checkOverlay();
 
 
@@ -166,6 +170,9 @@ characterClass.prototype.moveTowardsTarget = function(){
 
 characterClass.prototype.findTarget = function(){
 	if(this == player){
+		if(this.target == null && this.walkPath.length > 0){
+			this.target = this.walkPath.shift();
+		}
 		
 	}else{
 		if(viewRange.height * cellSize  < Math.abs(this.position.y - player.position.y)){
@@ -207,12 +214,7 @@ characterClass.prototype.act = function(){
 
 	if(this.target != null){
 		if(this.position.x == this.target.x && this.position.y == this.target.y){
-			if(this.walkPath.length){
-				this.target = this.walkPath.shift();
-			} else {
-				this.target = null;
-			}
-			
+			this.target = null;
 		}else{
 			frameIndex = Math.round(4 * rel_ang(
 				this.position.x,
@@ -313,6 +315,40 @@ characterClass.prototype.distanceToMouseEvent = function(e){
 	};
 };
 
+characterClass.prototype.setTarget = function(dx, dy){
+	// this is the old code that just sets the target as the point we walk toward
+	var tx = this.position.x + dx;
+	var ty = this.position.y + dy;
+	this.walkPath = [{x : tx, y : ty}];
+	// target is the actual point to which we're walking, which gets pulled out of the walk path
+	this.target = null;
+/*
+////////////////////// the new code
+	var target = {
+		x : this.position.x + dx,
+		y : this.position.y + dy
+	};
+
+	// viewRadius is the width and height of the region to use for mapping (in cells)
+	var viewRadius = Math.max(viewRange.width, viewRange.height) >> 1;
+
+
+	// the rounded target position in the pathfinding array (again in cells, not pixels)
+	var viewTarget = {
+		x : Math.floor(target.x / cellSize) - activeMap.playerPos.x,
+		y : Math.floor(target.y / cellSize) - activeMap.playerPos.y
+	};
+
+	var collisionMap = activeMap.map.readCollisionMap(
+
+	// first we'll generate a map to calculate the best path with
+	var graph = new Graph(activeMap.map.readCollisionMap);
+	var start = graph.grid[0][0];
+	var end = graph.grid[1][2];
+	var result = astar.search(graph, start, end);
+*/
+}
+
 function useEntrance(entrance){
 
 	/*
@@ -369,7 +405,6 @@ function useEntrance(entrance){
 				break;
 		}
 	}
-	player.walkPath = Array();
 	player.target = null;
 	clearInterval(gameInterval);
 	var opacity = 1, faderate = .2;
@@ -409,22 +444,21 @@ function useEntrance(entrance){
 }
 
 function handleActiveCellClick(){
-	var i;
-	var touchingItems = player.touchingItems();
+	var item;
 
-	for(i of touchingItems){
-		switch(i.content){
+	for(item of player.touchingItems()){
+		switch(item.content){
 			case 'stairup':
-				useEntrance(i);
+				useEntrance(item);
 				break;
 			case 'stairdown':
-				useEntrance(i);
+				useEntrance(item);
 				break;
 			case 'caveEntrance':
-				useEntrance(i);
+				useEntrance(item);
 				break;
 			default:
-				console.log(i.content);
+				console.log(item.content);
 		}
 	}
 
@@ -680,11 +714,11 @@ var renderView = (function(){
 
 
 		for(y = -1; y <= viewRange.height + 1; y++){
-			mapY = area.playerPos.y + y - middleY;
+			mapY = player.mapPos.y + y - middleY;
 			if(mapY < 0 || mapY > area.map[0].length - 1) continue;
 
 			for(x = -1; x <= viewRange.width + 1; x++){
-				mapX = area.playerPos.x + x - middleX;
+				mapX = player.mapPos.x + x - middleX;
 				if(mapX < 0 || mapX > area.map.length - 1) continue;
 
 				if(area.hideMap[mapX][mapY] == true){
@@ -722,6 +756,7 @@ var renderView = (function(){
 
 			}
 		}
+
 		for(o of playerLayer){
 			o.sprite.setFrame(o.frame);
 			o.sprite.draw(context, {
@@ -731,11 +766,10 @@ var renderView = (function(){
 		}
 
 		// if there's a target location, draw it here
-		if(player.walkPath.length > 0){
-
+		if(player.target != null){
 			// the zero should probably be the center of the sprite
-			var pointerx = cellSize * middleX + player.walkPath[player.walkPath.length - 1].x - player.position.x - 0;
-			var pointery = cellSize * middleY + player.walkPath[player.walkPath.length - 1].y - player.position.y - 0;
+			var pointerx = cellSize * middleX + player.target.x - player.position.x - 0;
+			var pointery = cellSize * middleY + player.target.y - player.position.y - 0;
 
 
 			mouse.pointers.target.draw(context, {
@@ -812,31 +846,14 @@ function checkMouse(){
 			// clicked on the cell we're standing on
 			handleActiveCellClick();
 		}else{
-		/*
-			player.target = {
-				x : player.position.x + delta.x,
-				y : player.position.y + delta.y
-			};
-		*/
+			/*
+			player.setTarget(
+				player.position.x + delta.x,
+				player.position.y + delta.y
+			);
+			*/
+			player.setTarget(delta.x, delta.y);
 		}
-
-		
-		player.walkPath = player.findPath({
-			dx : Math.round(delta.x),
-			dy : Math.round(delta.y)
-		});
-
-		// replace the end location in the path with the actual pixel clicked on.
-		player.walkPath.pop();
-		player.walkPath.push({
-			x : player.position.x + delta.x,
-			y : player.position.y + delta.y
-		});
-
-
-		player.target = player.walkPath.shift();
-		console.log('remaining path steps: ' + player.walkPath.length);
-		
 	}else{
 		/*
 		player.target = {
@@ -845,128 +862,6 @@ function checkMouse(){
 		}
 		*/
 	}
-
-}
-
-characterClass.prototype.findPath = function(displacement){
-
-	// target is the pixel location we're going to
-	var target = {
-		x : player.position.x + displacement.dx,
-		y : player.position.y + displacement.dy
-	};
-
-	// viewRadius is the width and height of the region to use for mapping
-	var viewRadius = Math.max(viewRange.width, viewRange.height) >> 1;
-
-
-	// the rounded target position in the pathfinding array
-	var viewTarget = {
-		x : Math.floor(target.x / cellSize) - activeMap.playerPos.x,
-		y : Math.floor(target.y / cellSize) - activeMap.playerPos.y
-	};
-
-	// make sure our pathfinding grid includes the target point
-	viewRadius = Math.max(Math.abs(viewTarget.x), viewRadius);
-	viewRadius = Math.max(Math.abs(viewTarget.y), viewRadius);
-
-	var size = 2 * viewRadius + 1;
-
-	// now make that target relative to the center of the map
-	viewTarget.x += viewRadius + 1;  // <-- *** NEED TO DOUBLE CHECK THESE +1's
-	viewTarget.y += viewRadius + 1;
-
-
-	/*
-	Once conitionally traversible cells become a thing (boat lets you hit water,
-	equipment for mountain climbing, etc.)  This should instead read from the world
-	map instead of the collision map, and run it through a function to flag cells
-	as traversible or not based on those conditions.  Eventually this should
-	probably apply in all cases an the collision map can be removed, which should
-	save memory.
-	*/
-
-
-	// get the region of the 
-	var viewMap = getArraySubset(
-		activeMap.collisionMap, 
-		activeMap.playerPos.x - viewRadius,
-		activeMap.playerPos.y - viewRadius,
-		size,
-		size,
-		1 // <-- this should vary depending on whether water traversing equipment is available
-	);
-
-	var x, y;
-	pathContext.fillStyle = 'rgba(80, 120, 200, 0.6)';
-	pathContext.fillRect(0, 0, 102, 102);
-	for(x = 0; x < viewMap.length; x++){
-		for(y = 0; y < viewMap[x].length; y++){
-			if(viewMap[x][y]){
-				pathContext.putImageData(plotPixel, x, y);
-			}
-		}
-	}
-	
-
-	// now create our path finding map instance and the finder that will use it
-	var testMap = new PF.Grid(size, size, viewMap);
-
-	var finder = new PF.BestFirstFinder({
-		allowDiagonal : true,
-		heuristic : PF.Heuristic.chebyshev,
-		dontCrossCorners: true
-	});
-
-
-	/*********************
-	@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-	I THINK I KNOW WHAT THE FUCK IS CAUSING THAT!!!!!!
-	The map subset being pulled out does not have hard set borders, so the path could find its way around by simply walking... .nooo not off the array... but check what's happening with areas of the grid that have not been seen yet... hmmm
-	fuck I hate this
-	@@@@@@@@@@@@@@@@@@@
-	******************/
-
-	// and find the path that gets us there
-	var path = finder.findPath(
-		viewRadius + 1,
-		viewRadius + 1,
-		viewTarget.x,
-		viewTarget.y,
-		testMap
-	);
-
-	//path = PF.Util.smoothenPath(testMap, path);
-
-
-	// the resulting output includes the starting position, which we don't
-	// need, so drop it
-	path.shift();
-
-	// now translate this path to the correct game scale and make it relative to
-	// the map instead of the test area
-
-//	pathContext.fillRect(0, 0, 102, 102);
-
-	path.map(function(r, idx, p){
-		pathContext.putImageData(redPixel, r[0], r[1]);
-		r[0] -= viewRadius + 1;
-		r[1] -= viewRadius + 1;
-		r[0] *= cellSize;
-		r[1] *= cellSize;
-		r[0] += player.position.x;
-		r[1] += player.position.y;
-
-		// also massage it to fix the path usage elsewhere.
-		p[idx] = {x : r[0], y : r[1]};
-		return r;
-	});
-	
-	return path;
-
-}
-
-function textureIsPassable(v){
 
 }
 
@@ -981,14 +876,13 @@ function playGame(){
 }
 
 function checkOverlay(){
-	activeMap.playerPos.x
 
 	var x, y, cx, cy, opactiy, o, cell;
 	for(x = -player.skills.vision; x <= player.skills.vision; x++){
-		cx = x + activeMap.playerPos.x;
+		cx = x + player.mapPos.x;
 		if(cx >= 0 && cx < activeMap.width){
 			for(y = -player.skills.vision; y <= player.skills.vision; y++){
-				cy = y + activeMap.playerPos.y;
+				cy = y + player.mapPos.y;
 				if(cy >= 0 && cy < activeMap.height){
 					if(squareDistance(x, y, 0, 0) < Math.pow(player.skills.vision, 2)){
 						activeMap.hideMap[cx][cy] = false;
@@ -1027,35 +921,6 @@ var initialize = function(){
 		console.log('doing step "' + step + '"');
 		switch(step){
 			case 'initialize':
-				
-				pathCanvas = document.createElement('CANVAS');
-				pathCanvas.width = 102;
-				pathCanvas.height = 102;
-				pathCanvas.style.float = "right";
-				pathContext = pathCanvas.getContext('2d');
-				pathContext.webkitImageSmoothingEnabled = false;
-				pathContext.mozImageSmoothingEnabled = false;
-				pathContext.imageSmoothingEnabled = false; /// future
-				document.getElementById('overlay').appendChild(pathCanvas);
-				pathContext.fillStyle = 'rgba(80, 120, 200, 0.6)';
-				pathContext.fillRect(0, 0, 102, 102);
-
-				plotPixel = pathContext.createImageData(1, 1);
-				var d = plotPixel.data;
-				d[0] = 255;
-				d[1] = 255;
-				d[2] = 255;
-				d[3] = 255;
-
-				redPixel = pathContext.createImageData(1, 1);
-				var d = redPixel.data;
-				d[0] = 255;
-				d[1] = 80;
-				d[2] = 80;
-				d[3] = 255;
-
-
-
 				gameCanvas = document.getElementById('gameCanvas');
 				gameCanvas.width = window.innerWidth;
 				gameCanvas.height = window.innerHeight;
@@ -1072,10 +937,48 @@ var initialize = function(){
 
 				writeText(5, 5, "DungeonCrawler v.0.0");
 				setTimeout(function(){
-					doStep('load spriteSets');
+					doStep('build console');
 				}, 1);
 				break;
+			case 'build console':
+				console.log_classic = console.log;
+				console.log = (function(){
+					// create a translucent backdrop for cool factor +1
+					var logBackdrop = document.createElement('DIV');
+					logBackdrop.setAttribute("id", "logBackdrop");
+					logBackdrop.setAttribute("class", "logElement");
+					document.getElementById('overlay').appendChild(logBackdrop);
 
+					// build the element that will hold the actual output
+					var logTarget = document.createElement('DIV');
+					logTarget.setAttribute("id", "logWindow");
+					logTarget.setAttribute("class", "logElement");
+					document.getElementById('overlay').appendChild(logTarget);
+
+					// catch any click events within the element
+					var eventChecks = {
+						'mousemove' : 'handleMouseMove',
+						'mousedown' : 'handleMouseDown',
+						'mouseup' : 'handleMouseUp'
+					};
+					for(var evt in eventChecks){
+						logTarget.addEventListener(evt, function(e){ 
+							e.stopPropagation();
+							return false; 
+						});
+					}
+
+					// and here's the actual function getting used
+					return function(output){
+						logTarget.innerHTML += output + '<br/>';
+						logTarget.scrollTop = logTarget.scrollHeight;
+					};
+				})();
+				setTimeout(function(){
+					doStep('load spriteSets');
+				}, 1);
+
+				break;
 
 			case 'load spriteSets':
 				if(spriteList.length > 0){
@@ -1118,14 +1021,18 @@ var initialize = function(){
 				///////////////////////////////////////////////////////////////
 				/////////// FIXME switch this back when done testing //////////
 				///////////////////////////////////////////////////////////////
-				maps[mapIdx].loadImageMap('maps/Map1.map', function(){
-				//maps[mapIdx].loadImageMap('maps/test.map', function(){
+				//maps[mapIdx].loadImageMap('maps/Map1.map', function(){
+				maps[mapIdx].loadImageMap('maps/test.map', function(){
 					console.log('map loaded, placing player');
 					activeMap = maps[mapIdx];
 
 
 					player.position.x = Math.floor(cellSize * activeMap.playerPos.x);
 					player.position.y = Math.floor(cellSize * activeMap.playerPos.y);
+					player.mapPos = {
+						x : activeMap.playerPos.x,
+						y : activeMap.playerPos.y
+					};
 					player.skills.vision = 5;
 
 					// make the whole map visible
@@ -1147,12 +1054,15 @@ var initialize = function(){
 				keyboard.listen();
 				loadDefaultMotionControls();
 				*/
+
+				document.getElementById('overlay').addEventListener('contextmenu', function(e){
+					e.preventDefault();
+				});
 				mouse = new mouseHandler();
 				mouse.pointers = {}; // <-- might as well add the mouse icons to the event object
 
 				mouse.listen(document.getElementById('overlay'));
 				setTimeout(function(){doStep('load mouse pointers');}, 1);
-				//setTimeout(function(){doStep('load test character');}, 1);
 				break;
 
 
