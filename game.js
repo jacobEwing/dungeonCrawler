@@ -15,7 +15,7 @@ var viewRange = {};
 var playerSpriteSet = new spriteSet();
 var spriteSets = {}, sprites = {};
 var player;
-var gameScale = 4, cellSize = 12;
+var gameScale = 3, cellSize = 12;
 var maps = Array();
 var activeMap;
 var context;
@@ -383,6 +383,13 @@ characterClass.prototype.optimizePath = function(path){
 	for(var idx = path.length - 2; idx > 0; idx--){
 		if(!this.collidesOnPath(path[idx - 1].x, path[idx - 1].y, path[idx + 1].x, path[idx + 1].y)){
 			path.splice(idx, 1);
+		}
+	}
+
+	// check the current location as well
+	if(path.length > 1){
+		if(!this.collidesOnPath(this.position.x, this.position.y, path[1].x, path[1].y)){
+			path.splice(0, 1);
 		}
 	}
 
