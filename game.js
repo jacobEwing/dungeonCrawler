@@ -317,17 +317,7 @@ characterClass.prototype.distanceToMouseEvent = function(e){
 };
 
 characterClass.prototype.setTarget = function(dx, dy){
-
-	// this is the old code that just sets the target as the point we walk toward
-	/*
-	var tx = this.position.x + dx;
-	var ty = this.position.y + dy;
-	this.walkPath = [
-		{x : tx, y : ty}
-
-	];
-	*/
-	// target is the actual point to which we're walking, which gets pulled out of the walk path
+	// this.target is the actual pixel point to which we're walking, which gets pulled out of the walk path
 	this.target = null;
 
 	// the actual pixel target we want
@@ -335,6 +325,13 @@ characterClass.prototype.setTarget = function(dx, dy){
 		x : this.position.x + dx,
 		y : this.position.y + dy
 	};
+
+	// can we walk straight threre?
+	if(!this.collidesOnPath(this.position.x, this.position.y, target.x, target.y)){
+		// We can!  Return that!
+		this.walkPath = [target];
+		return;
+	}
 
 	// gridRadius is the width and height of the region to use for mapping (in cells)
 	var gridRadius = Math.max(viewRange.width, viewRange.height) >> 1;
@@ -345,9 +342,8 @@ characterClass.prototype.setTarget = function(dx, dy){
 		x : Math.floor(target.x / cellSize) - this.mapPos.x,
 		y : Math.floor(target.y / cellSize) - this.mapPos.y
 	};
-//	console.log(gridTarget.x + ', ' + gridTarget.y);
 
-	
+	// get a collision map to test against	
 	var collisionMap = activeMap.readCollisionMap(
 		this.mapPos.x - gridRadius,
 		this.mapPos.y - gridRadius,
@@ -355,7 +351,7 @@ characterClass.prototype.setTarget = function(dx, dy){
 		this.mapPos.y + gridRadius
 	);
 
-	// first we'll generate a map to calculate the best path with
+	// pass it into the A* path finder
 	var graph = new Graph(collisionMap);
 
 	// now plot the best path!
@@ -372,10 +368,74 @@ characterClass.prototype.setTarget = function(dx, dy){
 			y : cellSize * (this.mapPos.y + path[p].y - gridRadius + .5)
 		};
 	}
-
 	this.walkPath[this.walkPath.length] = target;
 
+	// and finally, optimize the path to skip unnecessary steps
+	this.walkPath = this.optimizePath(this.walkPath);
+
+
 }
+
+// reduces unnecessary steps from a calculated path
+characterClass.prototype.optimizePath = function(path){
+	if(path.length < 3) return path;
+
+	for(var idx = path.length - 2; idx > 0; idx--){
+		if(!this.collidesOnPath(path[idx - 1].x, path[idx - 1].y, path[idx + 1].x, path[idx + 1].y)){
+			path.splice(idx, 1);
+		}
+	}
+
+	return path;
+}
+
+characterClass.prototype.collidesOnPath = function(x1, y1, x2, y2){
+	var tally = 0, i;
+	var dx = x2 - x1;
+	var dy = y2 - y1;
+	var sgndx = Math.sign(dx);
+	var absdx = Math.abs(dx);
+	var sgndy = Math.sign(dy);
+	var absdy = Math.abs(dy);
+	var rval = false;
+
+	if (absdx >= absdy){
+		for(i = 0; i < absdx && rval == false; i++){
+			tally += absdy;
+			if (tally >= absdx){
+				tally -= absdx;
+				if(this.canWalkOn(x1, y1 + sgndy)){
+					y1 += sgndy;
+				}else{
+					rval = true;
+				}
+			}
+			if(this.canWalkOn(x1 + sgndx, y1)){
+				x1 += sgndx;
+			}else{
+				rval = true;
+			}
+		}
+	}else{
+		for(i = 0; i < absdy && rval == false; i++){
+			tally += absdx;
+			if(tally >= absdy){
+				tally -= absdy;
+				if(this.canWalkOn(x1 + sgndx, y1)){
+					x1 += sgndx;
+				}else{
+					rval = true;
+				}
+			}
+			if(this.canWalkOn(x1, y1 + sgndy)){
+				y1 += sgndy;
+			}else{
+				rval = true;
+			}
+		}
+	}
+	return rval;
+};
 
 function useEntrance(entrance){
 
@@ -721,6 +781,7 @@ var renderView = (function(){
 				*/
 		}
 		if(showGameGrid){
+			context.strokeStyle = "rgba(0,0,0, 0.2)";
 			context.strokeRect(gridX * gameScale, gridY * gameScale, cellSize * gameScale, cellSize * gameScale);
 		}
 	};
@@ -797,8 +858,16 @@ var renderView = (function(){
 		}
 
 		// if there's a target location, draw it here
-		if(player.target != null){
-			// the zero should probably be the center of the sprite
+		if(player.walkPath.length > 0){
+			var pointerx = cellSize * middleX + player.walkPath[player.walkPath.length - 1].x - player.position.x - 0;
+			var pointery = cellSize * middleY + player.walkPath[player.walkPath.length - 1].y - player.position.y - 0;
+
+
+			mouse.pointers.target.draw(context, {
+				x : pointerx,
+				y : pointery
+			});
+		}else if(player.target != null){
 			var pointerx = cellSize * middleX + player.target.x - player.position.x - 0;
 			var pointery = cellSize * middleY + player.target.y - player.position.y - 0;
 
@@ -809,7 +878,7 @@ var renderView = (function(){
 			});
 		}
 
-
+		// draw additional characters
 		for(o of characters){
 			var offset = {
 				x : o.sprite.frameWidth >> 1,
@@ -820,12 +889,17 @@ var renderView = (function(){
 				y : cellSize * middleY + o.position.y - player.position.y - offset.y
 			});
 		}
+
+		// draw the player
 		player.sprite.setPosition(
 			cellSize * middleX - (player.sprite.frameWidth >> 1),
 			cellSize * middleY - player.sprite.frameHeight + 1,
 			1
 		);
+
 		player.sprite.draw(context);
+
+		// draw top level elements (e.g. tree tops)
 		for(o of topLayer){
 			o.sprite.setFrame(o.frame);
 			o.sprite.draw(context, {
@@ -962,7 +1036,8 @@ var initialize = function(){
 
 				writeText(5, 5, "DungeonCrawler v.0.0");
 				setTimeout(function(){
-					doStep('build console');
+					doStep('load spriteSets');
+					//doStep('build console');
 				}, 1);
 				break;
 			case 'build console':
@@ -1000,7 +1075,7 @@ var initialize = function(){
 					};
 				})();
 
-				showGameGrid = true;
+				//showGameGrid = true;
 
 				setTimeout(function(){
 					doStep('load spriteSets');
@@ -1047,10 +1122,10 @@ var initialize = function(){
 				maps[mapIdx] = new mapBuilder();
 				console.log('calling loadImageMap');
 				///////////////////////////////////////////////////////////////
-				/////////// FIXME switch this back when done testing //////////
+				/////////// Swap the next two lines for test map /// //////////
 				///////////////////////////////////////////////////////////////
-				//maps[mapIdx].loadImageMap('maps/Map1.map', function(){
-				maps[mapIdx].loadImageMap('maps/test.map', function(){
+				maps[mapIdx].loadImageMap('maps/Map1.map', function(){
+				//maps[mapIdx].loadImageMap('maps/test.map', function(){
 					console.log('map loaded, placing player');
 					activeMap = maps[mapIdx];
 
