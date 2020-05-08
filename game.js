@@ -15,7 +15,7 @@ var viewRange = {};
 var playerSpriteSet = new spriteSet();
 var spriteSets = {}, sprites = {};
 var player;
-var gameScale = 3, cellSize = 12;
+var gameScale = 5, cellSize = 12;
 var maps = Array();
 var activeMap;
 var context;
@@ -35,7 +35,7 @@ var characterClass = function(){
 	this.category = null;
 	this.skills = {
 		speed : walkSpeed,
-		vision: 3
+		vision: 6
 	};
 	this.target = null;
 	this.walkPath = [];
@@ -174,37 +174,14 @@ characterClass.prototype.findTarget = function(){
 		if(this.target == null && this.walkPath.length > 0){
 			this.target = this.walkPath.shift();
 		}
-		
 	}else{
-		if(viewRange.height * cellSize  < Math.abs(this.position.y - player.position.y)){
-			this.target = null;
-			return;
-		}
-		if(viewRange.width * cellSize < Math.abs(this.position.x - player.position.x)){
-			this.target = null;
-			return;
-		}
-
-		var diametersq = squareDistance(
-			this.position.x,
-			this.position.y,
-			player.position.x,
-			player.position.y
-		);
-		if(diametersq <= Math.pow(2 * this.skills.vision  * cellSize, 2)){
-			if(diametersq <= cellSize){
-				// here should be interaction between characters (fighting/whatever)
-				this.target = null;
-			}else{
-				// this should check the aggression of the character first.  In fact, it should
-				// probably just call a function to get the character's "desire".
-				this.target = {
-					x : player.position.x,
-					y : player.position.y
-				};
-			}
-		}else{
-			//this.target = null;
+		// we only follow the player if they're in this character's vision range
+		var dx = player.position.x - this.position.x;
+		var dy = player.position.y - this.position.y;
+		if(dx * dx + dy * dy < this.skills.vision * this.skills.vision * cellSize * cellSize){
+			// this character is not the player, so we'll recalculate our path to the player
+			this.setTarget(player.position.x - this.position.x, player.position.y - this.position.y);
+			this.target = this.walkPath.shift();
 		}
 	}
 }
@@ -347,8 +324,8 @@ characterClass.prototype.setTarget = function(dx, dy){
 	var collisionMap = activeMap.readCollisionMap(
 		this.mapPos.x - gridRadius,
 		this.mapPos.y - gridRadius,
-		this.mapPos.x + gridRadius,
-		this.mapPos.y + gridRadius
+		this.mapPos.x + gridRadius + 1,
+		this.mapPos.y + gridRadius + 1
 	);
 
 	// pass it into the A* path finder
@@ -954,7 +931,8 @@ function checkMouse(){
 
 	if(state.e.buttons & 1){
 		delta = player.distanceToMouseEvent(state.e);
-		if(Math.abs(delta.x) < cellSize >> 1 && Math.abs(delta.y) < cellSize >> 1){
+		if(delta.x * delta.x + delta.y * delta.y < cellSize * cellSize * .25){
+//		if(Math.abs(delta.x) < cellSize >> 1 && Math.abs(delta.y) < cellSize >> 1){
 			// clicked on the cell we're standing on
 			handleActiveCellClick();
 		}else{
@@ -1199,8 +1177,8 @@ var initialize = function(){
 					///////////////////////////////////////////////////////////////
 					/////////// FIXME switch this back when done testing //////////
 					///////////////////////////////////////////////////////////////
-					//doStep('load test character');
-					doStep('finish');
+					doStep('load test character');
+					//doStep('finish');
 				}
 				break;
 
@@ -1216,6 +1194,8 @@ var initialize = function(){
 					characters[0].sprite.setScale(gameScale);
 					characters[0].sprite.setFrame('front_idle');
 					characters[0].skills.speed *= .5;
+
+					characters[0].skills.vision = 6;
 
 					setTimeout(function(){doStep('finish');}, 1);
 				});
