@@ -4,6 +4,7 @@ var kbListener = function(){
 	this.KEYMAP = {};
 	this.REV_KEYMAP = {};
 	this.initialize();
+	this.combos = [];
 };
 
 // initialize map keyboard map
@@ -67,12 +68,39 @@ kbListener.prototype.initialize = function(){
 		this.REV_KEYMAP[this.KEYMAP[n]] = n;
 	}
 }
+
+kbListener.prototype.checkCombos = function(key){
+	for(var combo of this.combos){
+		if(this.REV_KEYMAP[key] == combo.sequence[combo.currentIndex].toUpperCase()){
+			combo.currentIndex ++;
+			if(combo.currentIndex >= combo.sequence.length){
+				console.log('charlie');
+				combo.currentIndex = 0;
+				combo.callback();
+			}
+		}else{
+			combo.currentIndex = 0;
+		}
+	}
+}
+
+kbListener.prototype.onCombo = function(sequence, callback){
+	this.combos[this.combos.length] = {
+		sequence : sequence,
+		callback : callback,
+		currentIndex : 0
+	};
+}
+
 // this is called to listen to any element for keyboard events.  If none is specified, 'document' is defaulted to
 kbListener.prototype.listen = function(element){
 	if(element == undefined) element = document;
 
 	var downfunction = function(e){
+		e.preventDefault()
 		me.keyState[e.which] = 1;
+		me.checkCombos(e.which);
+
 	}
 	var upfunction = function(e){
 		me.keyState[e.which] = 0;

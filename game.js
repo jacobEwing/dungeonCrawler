@@ -8,7 +8,7 @@ Math.random = (function(){
 	}
 })();
 */
-//var keyboard;
+var keyboard;
 var mouse;
 var gameCanvas;
 var viewRange = {};
@@ -39,6 +39,7 @@ var characterClass = function(){
 	};
 	this.target = null;
 	this.walkPath = [];
+	this.possessions = [];
 };
 
 characterClass.prototype.setMapPos = function(x, y){
@@ -517,8 +518,9 @@ function useEntrance(entrance){
 
 function handleActiveCellClick(){
 	var item;
-
-	for(item of player.touchingItems()){
+	var items = player.touchingItems();
+	
+	for(item of items){
 		switch(item.content){
 			case 'stairup':
 				useEntrance(item);
@@ -533,6 +535,8 @@ function handleActiveCellClick(){
 				console.log(item.content);
 		}
 	}
+
+	return items.length;
 
 }
 
@@ -784,8 +788,8 @@ var renderView = (function(){
 
 		waterCycle++;
 
-		var middleX = Math.floor(screenMiddle.x / (gameScale * cellSize))
-		var middleY = Math.floor(screenMiddle.y / (gameScale * cellSize))
+		var middleX = Math.floor(screenMiddle.x / (gameScale * cellSize)) + 1
+		var middleY = Math.floor(screenMiddle.y / (gameScale * cellSize)) + 1
 
 
 
@@ -932,9 +936,10 @@ function checkMouse(){
 	if(state.e.buttons & 1){
 		delta = player.distanceToMouseEvent(state.e);
 		if(delta.x * delta.x + delta.y * delta.y < cellSize * cellSize * .25){
-//		if(Math.abs(delta.x) < cellSize >> 1 && Math.abs(delta.y) < cellSize >> 1){
 			// clicked on the cell we're standing on
-			handleActiveCellClick();
+			if(!handleActiveCellClick()){
+				player.setTarget(delta.x, delta.y);
+			}
 		}else{
 			player.setTarget(delta.x, delta.y);
 		}
@@ -988,7 +993,9 @@ var initialize = function(){
 		{'name' : 'dungeonElements', 'file' : 'dungeonElements.sprite'},
 		{'name' : 'longGrass', 'file' : 'longGrass.sprite'},
 		{'name' : 'caveEntrance' , 'file' : 'caveEntrance.sprite'},
-		{'name' : 'waterWaves' , 'file' : 'waterWaves.sprite'}
+		{'name' : 'waterWaves' , 'file' : 'waterWaves.sprite'},
+
+		{'name' : 'rat', 'file' : 'rat.sprite'}
 	);
 	var pointerSet;
 	var pointerList = Array(
@@ -1137,11 +1144,13 @@ var initialize = function(){
 				break;
 			case 'initialize events':
 				// the functions used here are defined in keyboard.js and mouseHandler.js
-				/*
 				keyboard = new kbListener();
 				keyboard.listen();
-				loadDefaultMotionControls();
-				*/
+				keyboard.onCombo(['CTRL', 'G'], function(){
+					showGameGrid = !showGameGrid;
+				});
+				//loadDefaultMotionControls();
+
 
 				document.getElementById('overlay').addEventListener('contextmenu', function(e){
 					e.preventDefault();

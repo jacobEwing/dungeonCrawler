@@ -1,0 +1,72 @@
+{
+	"image" : "sprites/rat.png",
+	"frameRate" : 100,
+	"frameWidth" : 7,
+	"frameHeight" : 3,
+	"frames" : {
+		"up_1" : { "xoffset" : 0, "yoffset" : 12, "width" : 3, "height" : 4 },
+		"down_1" : { "xoffset" : 3, "yoffset" : 12, "width" : 3, "height" : 4 },
+		"left_1" : { "xoffset" : 0, "yoffset" : 0, "width" : 7, "height" : 3 },
+		"left_2" : { "xoffset" : 0, "yoffset" : 3, "width" : 7, "height" : 3 },
+		"right_1" : { "xoffset" : 0, "yoffset" : 6, "width" : 7, "height" : 3 },
+		"right_2" : { "xoffset" : 0, "yoffset" : 9, "width" : 7, "height" : 3 },
+		"upLeft_1" : { "xoffset" : 12, "yoffset" : 0, "width" : 5, "height" : 4 },
+		"upLeft_2" : { "xoffset" : 12, "yoffset" : 4, "width" : 5, "height" : 4 },
+		"upRight_1" : { "xoffset" : 7, "yoffset" : 0, "width" : 5, "height" : 4 },
+		"upRight_2" : { "xoffset" : 7, "yoffset" : 4, "width" : 5, "height" : 4 },
+		"downLeft_1" : { "xoffset" : 7, "yoffset" : 13, "width" : 4, "height" : 5 },
+		"downLeft_2" : { "xoffset" : 11, "yoffset" : 13, "width" : 4, "height" : 5 },
+		"downRight_1" : { "xoffset" : 7, "yoffset" : 8, "width" : 4, "height" : 5 },
+		"downRight_2" : { "xoffset" : 11, "yoffset" : 8, "width" : 4, "height" : 5 }
+	},
+	"sequences" : {
+		"walkdownright" : {
+			"frames" : ["downRight_1", "downRight_2"]
+		},
+		"walkdownleft" : {
+			"frames" : ["downLeft_1", "downLeft_2"]
+		},
+		"walkupright" : {
+			"frames" : ["upRight_1", "upRight_2"]
+		},
+		"walkupleft" : {
+			"frames" : ["upLeft_1", "upLeft_2"]
+		},
+		"walkleft" : {
+			"frames" : ["left_1", "left_2"]
+		},
+		"walkright" : {
+			"frames" : ["right_1", "right_2"]
+		},
+		"walkdown" : {
+			"frames" : ["down_1"]
+		},
+		"walkup" : {
+			"frames" : ["up_1"]
+		},
+		"attackdownright" : {
+			"frames" : ["downRight_1", "downRight_2"]
+		},
+		"attackdownleft" : {
+			"frames" : ["downLeft_1", "downLeft_2"]
+		},
+		"attackupright" : {
+			"frames" : ["upRight_1", "upRight_2"]
+		},
+		"attackupleft" : {
+			"frames" : ["upLeft_1", "upLeft_2"]
+		},
+		"attackleft" : {
+			"frames" : ["left_1", "left_2"]
+		},
+		"attackright" : {
+			"frames" : ["right_1", "right_2"]
+		},
+		"attackdown" : {
+			"frames" : ["down_1"]
+		},
+		"attackup" : {
+			"frames" : ["up_1"]
+		}
+	}
+}
