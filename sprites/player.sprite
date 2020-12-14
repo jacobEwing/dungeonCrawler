@@ -106,28 +106,28 @@
 		"climb" : {
 			"frames" : ["back_climbing_1", "back_climbing_2"]
 		},
-		"attack_front" : {
+		"attackdown" : {
 			"frames" : ["front_sword_3", "front_sword_1", "front_sword_2", "front_sword_1"]
 		},
-		"attack_back" : {
+		"attackup" : {
 			"frames" : ["back_sword_3", "back_sword_1", "back_sword_2", "back_sword_1"]
 		},
-		"attack_left" : {
+		"attackleft" : {
 			"frames" : ["left_sword_2", "left_sword_1", "left_sword_3", "left_sword_1"]
 		},
-		"attack_right" : {
+		"attackright" : {
 			"frames" : ["right_sword_2", "right_sword_1", "right_sword_3", "right_sword_1"]
 		},
-		"attack_up_left" : {
+		"attackupleft" : {
 			"frames" : ["back_left_sword_1", "back_left_sword_2", "back_left_sword_3", "back_left_sword_2"]
 		},
-		"attack_up_right" : {
+		"attackupright" : {
 			"frames" : ["back_right_sword_1", "back_right_sword_2", "back_right_sword_3", "back_right_sword_2"]
 		},
-		"attack_down_left" : {
+		"attackdownleft" : {
 			"frames" : ["front_left_sword_1", "front_left_sword_2", "front_left_sword_3", "front_left_sword_2"]
 		},
-		"attack_down_right" : {
+		"attackdownright" : {
 			"frames" : ["front_right_sword_1", "front_right_sword_2", "front_right_sword_3", "front_right_sword_2"]
 		}
 	}
