@@ -935,7 +935,7 @@ function checkMouse(){
 
 	if(state.e.buttons & 1){
 		delta = player.distanceToMouseEvent(state.e);
-		if(delta.x * delta.x + delta.y * delta.y < cellSize * cellSize * .25){
+		if(delta.x * delta.x + delta.y * delta.y < cellSize * cellSize * 1){// <-- this "1" was previously .25
 			// clicked on the cell we're standing on
 			if(!handleActiveCellClick()){
 				player.setTarget(delta.x, delta.y);
@@ -943,13 +943,6 @@ function checkMouse(){
 		}else{
 			player.setTarget(delta.x, delta.y);
 		}
-	}else{
-		/*
-		player.target = {
-			x : player.position.x,
-			y : player.position.y
-		}
-		*/
 	}
 
 }
@@ -1186,8 +1179,8 @@ var initialize = function(){
 					///////////////////////////////////////////////////////////////
 					/////////// FIXME switch this back when done testing //////////
 					///////////////////////////////////////////////////////////////
-					doStep('load test character');
-					//doStep('finish');
+					//doStep('load test character');
+					doStep('finish');
 				}
 				break;
 
