@@ -91,7 +91,7 @@ function sideOfLine(){
 		px = arguments[2].val(0, 0);
 		py = arguments[2].val(0, 1);
 	}else{
-		throw "sideOfLine expects either six or three parameters";
+		throw new Error("sideOfLine expects either six or three parameters");
 	}
 	var a = (px - x1) * (y2 - y1);
 	var b = (py - y1) * (x2 - x1);
@@ -161,9 +161,9 @@ function buildConvexHull(minPoint, maxPoint, points) {
 // If the argument is an array, then the return value is an array.
 function getSurroundingBox(){
 	var n, rval;
-	var minx, miny, maxx, maxy;
+	var minx, miny, maxx, maxy, x, y;
 	if(arguments.length != 1){
-		throw "getSurroundingBox requires one parameter.";
+		throw new Error("getSurroundingBox requires one parameter.");
 	}
 
 	if(typeof arguments[0] == 'object'){

@@ -259,15 +259,11 @@ characterClass.prototype.act = function(){
 	}else if(sequence != this.currentSequence){
 		this.currentEndFrame = endFrame;
 		this.currentSequence = sequence;
-		this.sprite.startSequence(sequence, {
-			iterations: 0,
-			method : 'manual',
-			callback: function(){
-				// `this` inside the callback is not guaranteed to be the
-				// character, so use the captured `self` reference instead.
-				self.currentSequence = null;
-				self.sprite.setFrame(endFrame);
-			}
+		this.sprite.startSequence(sequence, function(){
+			// `this` inside the callback is not guaranteed to be the
+			// character, so use the captured `self` reference instead.
+			self.currentSequence = null;
+			self.sprite.setFrame(endFrame);
 		});
 	}else{
 		//this.sprite.doSequenceStep();
@@ -1231,10 +1227,7 @@ var initialize = function(){
 					});
 
 				}else{
-					mousePointers['target'].startSequence('spin', {
-						iterations: 0,
-						method : 'manual'
-					});
+					mousePointers['target'].startSequence('spin', null);
 					///////////////////////////////////////////////////////////////
 					/////////// FIXME switch this back when done testing //////////
 					///////////////////////////////////////////////////////////////

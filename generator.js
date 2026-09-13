@@ -176,6 +176,8 @@ mapBuilder.prototype.build = function(params){
 
 // read a subset area of the collision map and return it as an array
 mapBuilder.prototype.readCollisionMap = function(x1, y1, x2, y2){
+	// Convention: 0 = wall, 1 = walkable.  Matches GridNode.isWall() in astar.js,
+	// which treats weight 0 as impassable.
 	var rval = [];
 	var x, y, width, height;
 	var mapX, mapY;
@@ -186,19 +188,20 @@ mapBuilder.prototype.readCollisionMap = function(x1, y1, x2, y2){
 	for(x = 0; x < width; x++){
 		mapX = x + x1;
 		if(mapX < 0 || mapX >= this.width){
-			rval[x] = Array.apply(null, Array(height)).fill(1);
+			rval[x] = Array.apply(null, Array(height)).fill(0);
 		}else{
 			rval[x] = [];
 			for(y = 0; y < height; y++){
 				mapY = y + y1;
 				if(mapY < 0 || mapY >= this.height){
-					rval[x][y] = 1;
+					rval[x][y] = 0;
 				}else{
 					rval[x][y] = this.collisionMap[mapX][mapY] ? 0 : 1;
 				}
 			}
 		}
 	}
+
 	return rval;
 }
 

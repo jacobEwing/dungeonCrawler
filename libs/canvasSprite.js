@@ -224,14 +224,9 @@ cSprite.prototype.setScale = function(newScale){
 	this.scale = newScale;
 };
 
-cSprite.prototype.setPosition = function(x, y, useScale){
-	this.centerx = this.centery = 0;
+cSprite.prototype.setPosition = function(x, y){
 	this.position.x = x;
 	this.position.y = y;
-	if(this.frame != undefined){
-		this.centerx = this.frame.centerx;
-		this.centery = this.frame.centery;
-	}
 };
 
 // parent/child sprite management functions
@@ -476,7 +471,7 @@ spriteSet.prototype.loadJSON = function(data, callback){
 				rfunc();
 		}
 	}else if(callback != undefined){
-		this.roady = true;
+		this.ready = true;
 		callback.call(this, data);
 	}
 };

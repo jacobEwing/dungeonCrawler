@@ -60,8 +60,10 @@ function getArraySubset(source, x1, y1, w, h, filler){
 	// now if there are any overlaps outside the array, we need to use the filler
 	// add the left padding
 	if(padding.left > 0){
-		extra = new Array(padding.left);
-		extra.fill(Array(y2 - y1 + 1).fill(filler), 0, padding.left);
+		extra = [];
+		for(var i = 0; i < padding.left; i++){
+			extra.push(Array(y2 - y1 + 1).fill(filler));
+		}
 		subset = extra.concat(subset);
 	}
 
@@ -118,12 +120,13 @@ var randomText = (function(){
 	// returns "numChars" random characters that have not been returned previously
 	return function(numChars){
 		var n, c, i;
-		var returnval = '';
+		var returnval, inUse;
 
 		// note: this will cause an infinite loop if more than 26^numChars strings are asked for. 
 		do{
+			returnval = '';
 			for(n = 0; n < numChars; n++){
-				i = Math.round(Math.random() * 25);
+				i = Math.floor(Math.random() * 26);
 				c = String.fromCharCode(65 + i);
 				returnval = returnval + c;
 			}
@@ -153,7 +156,7 @@ function quickSort(sourcelist, comparison){
 
 	var n, middle;
 	middle = list.pop();
-	var greater = Array(), lesser = Array();
+	var greater = [], lesser = [];
 	for(n = 0; n < list.length; n++){
 		if(comparison(middle, list[n])){
 			lesser.push(list[n]);
@@ -190,14 +193,15 @@ var globalRefs = {
 
 // tell me if it's an array
 function is_array(input){
-	return typeof(input) == 'object' && (input instanceof Array);
+	// old legacy code that should be deprecated, but for now we'll just return the correct functionality
+	return Array.isArray(input);
 }
 
 // precede backslash characters and double quotes with backslash characters
 function parseQuotes(text){
 	if(text == undefined) return text;
 
-	returnval = text.replace(/\\/g, '\\\\');
+	var returnval = text.replace(/\\/g, '\\\\');
 	returnval = returnval.replace(/\"/g, '\\"');
 	return returnval;
 }
