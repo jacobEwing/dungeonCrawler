@@ -207,13 +207,7 @@ cSprite.prototype.draw = function(context, params) {
 			}
 		}
 
-		context.drawImage(
-				this.image,
-				frameX, frameY,
-				frameWidth, frameHeight,
-				0, 0,
-				frameWidth, frameHeight
-				);
+		context.drawImage( this.image, frameX, frameY, frameWidth, frameHeight, 0, 0, frameWidth, frameHeight );
 
 		for (var j = 0; j < this.children.length; j++) {
 			if (this.children[j].zIndex <= this.zIndex) {
@@ -225,31 +219,9 @@ cSprite.prototype.draw = function(context, params) {
 		context.restore();
 	}
 };
+
 cSprite.prototype.setScale = function(newScale){
 	this.scale = newScale;
-	/*
-	this.centerx = this.centery = 0;
-	if(this.frame != undefined){
-		this.centerx = this.frame.centerx;
-		this.centery = this.frame.centery;
-	}
-
-	// also need to adjust our element's position, as that will be
-	// dependent on scale when we have a center point other than 0,0
-	this.element.style.left = (this.position.x - this.centerx * this.scale) + 'px';
-	this.element.style.top = (this.position.y - this.centery * this.scale) + 'px';
-	
-	this.image.style.width = this.image.width * this.scale + 'px';
-	this.image.style.height = this.image.height * this.scale + 'px';
-
-	if(this.frame != undefined){
-		this.setFrameSize(this.frame.width * this.scale, this.frame.height * this.scale);
-		this.refreshFrame();
-	}else{
-		this.element.style.width = this.image.width * this.scale + 'px';
-		this.element.style.height = this.image.height * this.scale + 'px';
-	}
-	*/
 };
 
 cSprite.prototype.setPosition = function(x, y, useScale){
