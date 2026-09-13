@@ -1,3 +1,4 @@
+'use strict';
 var keyState = {};
 var keyBuffer = Array();
 var KEYMAP, REV_KEYMAP;

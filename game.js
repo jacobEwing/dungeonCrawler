@@ -1136,7 +1136,7 @@ var initialize = function(){
 				});
 				break;
 			case 'initialize events':
-				// the functions used here are defined in keyboard.js and mouseHandler.js
+				// the functions used here are defined in kbListener.js and mouseHandler.js
 				keyboard = new kbListener();
 				keyboard.listen();
 				keyboard.onCombo(['CTRL', 'G'], function(){

@@ -1,3 +1,4 @@
+'use strict';
 // grab a rectangular subset of a 2d array.  This will use the x1, x2 etc. values strictly as real locations, so there
 // will be no available tricks with negative numbers and the like as you get with Array.slice.
 function getArraySubset(source, x1, y1, w, h, filler){

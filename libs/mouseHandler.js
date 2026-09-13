@@ -1,3 +1,5 @@
+'use strict';
+
 var mouseHandler = function(){
 	this.stateQueue = [];
 	var n;

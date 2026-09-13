@@ -1,3 +1,5 @@
+'use strict';
+
 // a class for listening to keyboard events on specific elements, tracking the up/down state of keys
 var kbListener = function(){
 	this.keyState = {};

@@ -1,3 +1,4 @@
+'use strict';
 /*****
 An assortment of convenient geometry functions.
 Note that most of these functions are written to accept some arguments as
