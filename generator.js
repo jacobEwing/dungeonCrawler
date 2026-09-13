@@ -46,6 +46,7 @@ var mapBuilder = function(){
 	// items and mappedItems hold the same data, but indexed differently for convenience
 	this.mappedItems = [];
 	this.items = {};
+	this.entities = [];
 	this.defaultParams = {
 		'category' : 'dungeon',
 		'width' : 60,
@@ -67,6 +68,7 @@ mapBuilder.prototype.loadImageMap = function(mapFile){
 		me.width = me.height = 0;
 		me.mappedItems = [];
 		me.items = {};
+		me.entities = [];
 
 		var loc = window.location.pathname;
 		var dir = loc.substring(0, loc.lastIndexOf('/'));

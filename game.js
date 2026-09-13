@@ -112,7 +112,7 @@ class Entity {
 
 		this.target = null;
 		this.walkPath = [];
-		this.possessions = [];
+		this.possessions = options.possessions || [];
 		this.moveBudget = 0;
 		this.walkOctant = null;
 
@@ -172,9 +172,25 @@ class Entity {
 	touchingItems(){
 		var x = this.mapPos.x;
 		var y = this.mapPos.y;
+
+		var result = [];
+
+		// Map items at this cell
 		var mapped = this.game.activeMap.mappedItems;
-		if(mapped[x] == undefined || mapped[x][y] == undefined) return [];
-		return mapped[x][y].slice();
+		if(mapped[x] != undefined && mapped[x][y] != undefined){
+			result = result.concat(mapped[x][y]);
+		}
+
+		// Live entities at this cell (excludes self)
+		for(var n = 0; n < this.game.characters.length; n++){
+			var c = this.game.characters[n];
+			if(c === this) continue;
+			if(c.mapPos.x === x && c.mapPos.y === y){
+				result.push(c);
+			}
+		}
+
+		return result;
 	}
 
 	moveTowardsTarget(pixelsBudget){
@@ -333,6 +349,8 @@ class Entity {
 	}
 
 	act(dtSeconds){
+		if(!this.isAlive) return;
+
 		var self = this;
 
 		// --- combat timers ---
@@ -580,6 +598,7 @@ class Player extends Entity {
 			attackRange : 20
 		});
 		this.damageFlash = 0;
+		this.gold = 0;
 	}
 
 	findTarget(dtSeconds){
@@ -636,6 +655,14 @@ class Enemy extends Entity {
 		// How far the enemy will wander from its current position when idle,
 		// in cells.
 		this.wanderRadius = 3;
+
+		// Seed some loot for the corpse to drop.  For now, always a small
+		// amount of gold.  Later this can be driven by a loot table on the
+		// enemy type.
+		this.possessions = options.possessions || [];
+		if(this.possessions.length === 0){
+			this.possessions.push({ name : 'gold', amount : 1 + Math.floor(Math.random() * 5) });
+		}
 	}
 
 	findTarget(dtSeconds){
@@ -697,6 +724,27 @@ class Enemy extends Entity {
 			this.advanceWaypoint();
 			this.aiTimer = 0.5 + Math.random() * 2.0;
 		}
+	}
+}
+
+// ----------------------------------------------------------------------------
+// Corpse — a dead enemy left on the map.  No AI, no movement, no combat.
+// Holds whatever the dead enemy was carrying; click to loot it.
+// ----------------------------------------------------------------------------
+
+class Corpse extends Entity {
+	constructor(game, options){
+		super(game, options || {});
+		this.category = 'corpse';
+
+		// Corpse is not "alive" — combat and click-targeting skip it — but it
+		// must not be removed by the death cleanup loop.  The removal loop
+		// checks category for that reason.
+		this.isAlive = false;
+
+		// The direction the dead entity was facing; used to select the idle
+		// frame we render the corpse with.
+		this.facing = options.facing != undefined ? options.facing : 4;
 	}
 }
 
@@ -1035,6 +1083,18 @@ function createRenderView(game){
 			game.ctx.fillText(hpText, 10, 20);
 			game.ctx.restore();
 		}
+
+		// --- Gold readout ---
+		if(game.player){
+			var goldText = 'Gold ' + game.player.gold;
+			game.ctx.save();
+			game.ctx.font = '14px monospace';
+			game.ctx.fillStyle = '#000';
+			game.ctx.fillText(goldText, 11, 41);
+			game.ctx.fillStyle = '#FFD700';
+			game.ctx.fillText(goldText, 10, 40);
+			game.ctx.restore();
+		}
 	};
 }
 
@@ -1056,7 +1116,6 @@ class Game {
 
 		this.maps = [];
 		this.activeMap = null;
-		this.characters = [];
 		this.player = null;
 
 		this.viewRange = {};
@@ -1075,25 +1134,41 @@ class Game {
 		this.renderView = createRenderView(this);
 	}
 
+	// Entities belong to the map they were spawned on.  Reading game.characters
+	// returns the active map's entity list.  Writing to it (via push, splice, etc.)
+	// modifies that same list.  When the player transitions to a new map, the
+	// old map's entities stop being updated and stop rendering, but stay intact
+	// for when the player returns.
+	get characters(){
+		return this.activeMap ? this.activeMap.entities : [];
+	}
+
 	// ------------------------------------------------------------------
 	// initialization
 	// ------------------------------------------------------------------
 
 	async init(){
 		this.setupCanvas();
-		this.writeText(5, 5, "DungeonCrawler v.0.0");
+		//this.writeText(5, 5, "DungeonCrawler v.0.0");
 
 		try {
 			await this.loadSpriteSets();
 			await this.loadPlayerSprite();
-			await this.loadMap('maps/test.map');
+			await this.loadMap('maps/Map2.map');
+			for(let n = 0; n < 3; n++){
+				let theta = Math.random() * 2 * Math.PI;
+				let radius = 3 + Math.floor(Math.random() * 3);
+				let dx = Math.floor(Math.sin(theta) * radius);
+				let dy = Math.floor(Math.cos(theta) * radius);
 
-			await this.spawnEntity(Enemy, 'sprites/knight.sprite', {
-				x : this.activeMap.playerPos.x + 3,
-				y : this.activeMap.playerPos.y + 2,
-				speed : 20,
-				vision: 4
-			});
+				await this.spawnEntity(Enemy, n % 2 ? 'sprites/knight.sprite' : 'sprites/humanFemale.sprite', {
+					x : this.activeMap.playerPos.x + dx,
+					y : this.activeMap.playerPos.y + dy,
+					speed : 20,
+					vision: 4
+				});
+			}
+
 
 			this.initializeEvents();
 			await this.loadMousePointers();
@@ -1152,7 +1227,7 @@ class Game {
 	async loadPlayerSprite(){
 		this.player = new Player(this);
 
-		await this.playerSpriteSet.load("sprites/foo.sprite");
+		await this.playerSpriteSet.load("sprites/player.sprite");
 		this.player.sprite = new cSprite(this.playerSpriteSet);
 		this.player.sprite.setScale(gameScale);
 		this.player.sprite.setPosition(this.screenMiddle.x, this.screenMiddle.y, true);
@@ -1175,6 +1250,9 @@ class Game {
 	// initialFrame, and spriteName.
 	async spawnEntity(Class, spriteFile, options){
 		options = options || {};
+		if(!this.activeMap){
+			throw new Error("spawnEntity: cannot spawn before a map is loaded");
+		}
 
 		var setName = options.spriteName != undefined
 			? options.spriteName
@@ -1302,13 +1380,15 @@ class Game {
 			this.waterCycle++;
 		}
 
-		// Remove any entities that died this frame (player death handled separately).
+		// Convert dead enemies into corpses; keep corpses in the world.
 		for(var n = this.characters.length - 1; n >= 0; n--){
 			var c = this.characters[n];
-			if(!c.isAlive){
-				// TODO (slice 5c): drop loot / leave a corpse.
-				this.characters.splice(n, 1);
-			}
+			if(c.isAlive) continue;
+			if(c.category === 'corpse') continue;
+			if(c === this.player) continue;
+
+			this.spawnCorpseFor(c);
+			this.characters.splice(n, 1);
 		}
 
 		this.renderView(this.activeMap);
@@ -1374,6 +1454,13 @@ class Game {
 		var items = this.player.touchingItems();
 
 		for(var item of items){
+			// Corpse entities
+			if(item.category === 'corpse'){
+				this.lootCorpse(item);
+				continue;
+			}
+
+			// Map items with a .content string
 			switch(item.content){
 				case 'stairup':
 				case 'stairdown':
@@ -1396,7 +1483,6 @@ class Game {
 
 		for(var n = 0; n < this.characters.length; n++){
 			var c = this.characters[n];
-			if(!c.isAlive) continue;
 			if(c === this.player) continue;
 
 			if(this.pointInEntityBounds(c, worldX, worldY, padding)){
@@ -1442,11 +1528,72 @@ class Game {
 
 		if(distSq > rangeSq) return false;
 
+		// Corpses are lootable, not attackable.
+		if(target.category === 'corpse'){
+			this.lootCorpse(target);
+			return true;
+		}
+
+		// Living entities are attacked.  Face them, then swing.
 		var oct = computeWalkOctant(dx, dy);
 		if(oct != null) player.facing = oct;
 
 		return player.startAttack();
 	}
+
+	spawnCorpseFor(deadEntity){
+		var corpse = new Corpse(this, {
+			facing      : deadEntity.facing,
+			possessions : deadEntity.possessions
+		});
+
+		// Reuse the dead entity's sprite template (image + frame definitions),
+		// but as a fresh sprite instance so its animation state doesn't
+		// bleed over from the death frame.
+		corpse.sprite = new cSprite(deadEntity.sprite.template);
+		corpse.sprite.setScale(gameScale);
+
+		// Show the idle frame in the direction the entity died facing.  A
+		// proper death sprite would be better; this is a placeholder that
+		// reads as "a knight, standing still, dead."
+		corpse.sprite.setFrame(WALK_SEQUENCES[deadEntity.facing][1]);
+
+		// Snap to the exact pixel where the entity fell, not the cell center.
+		corpse.position.x = deadEntity.position.x;
+		corpse.position.y = deadEntity.position.y;
+		corpse.mapPos.x = deadEntity.mapPos.x;
+		corpse.mapPos.y = deadEntity.mapPos.y;
+
+		this.characters.push(corpse);
+		return corpse;
+	}
+
+	lootCorpse(corpse){
+		var lootedAny = false;
+
+		for(var item of corpse.possessions){
+			if(item.name === 'gold'){
+				this.player.gold += item.amount;
+				console.log('Picked up ' + item.amount + ' gold.');
+				lootedAny = true;
+			}else{
+				this.player.possessions.push(item);
+				console.log('Picked up: ' + (item.name || 'item'));
+				lootedAny = true;
+			}
+		}
+
+		if(!lootedAny){
+			console.log('Corpse is empty.');
+		}
+		corpse.possessions = [];
+
+		// Remove the corpse from the world after looting, whether or not
+		// anything was actually in it.
+		var idx = this.characters.indexOf(corpse);
+		if(idx !== -1) this.characters.splice(idx, 1);
+	}
+
 	// ------------------------------------------------------------------
 	// map transitions
 	// ------------------------------------------------------------------
@@ -1586,6 +1733,27 @@ class Game {
 		span.style.color = '#FFF';
 		this.overlay.appendChild(span);
 	}
+
+	async spawnNearPlayer(Class, spriteFile, count, options){
+	    options = options || {};
+	    var radiusMin = options.radiusMin != undefined ? options.radiusMin : 3;
+	    var radiusMax = options.radiusMax != undefined ? options.radiusMax : 6;
+
+	    for(var n = 0; n < count; n++){
+		var theta  = Math.random() * 2 * Math.PI;
+		var radius = radiusMin + Math.floor(Math.random() * (radiusMax - radiusMin + 1));
+		var dx = Math.floor(Math.sin(theta) * radius);
+		var dy = Math.floor(Math.cos(theta) * radius);
+
+		var opts = Object.assign({}, options);
+		opts.x = this.player.mapPos.x + dx;
+		opts.y = this.player.mapPos.y + dy;
+		delete opts.radiusMin;
+		delete opts.radiusMax;
+
+		await this.spawnEntity(Class, spriteFile, opts);
+	    }
+	}
 }
 
 
@@ -1596,6 +1764,7 @@ window.addEventListener('load', function(){
 	var canvas = document.getElementById('gameCanvas');
 	var overlay = document.getElementById('overlay');
 	var game = new Game(canvas, overlay);
+	window.__game = game;
 	game.init().catch(function(e){
 		console.error("Fatal error during initialization:", e);
 	});
