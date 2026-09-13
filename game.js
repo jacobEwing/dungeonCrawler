@@ -6,7 +6,7 @@ var cellSize = 12;
 
 // Old model: walkSpeed = 3, meaning 3 pixels per 70ms setInterval tick.
 // New model: pixels per second.  Tuned empirically.
-var walkSpeed = 34;
+var walkSpeed = 44;
 
 // How many water animation steps happen per second of wall-clock time.
 var waterCycleRate = 14;
@@ -28,6 +28,41 @@ var WALK_SEQUENCES = [
 	['walkleft',      'left_idle'],
 	['walkupleft',    'back_left_idle']
 ];
+
+// Half-width of a cardinal octant, in degrees.  22.5° would make all eight
+// octants exactly 45° wide (the standard split).  Larger values make
+// cardinals wider and diagonals narrower, and vice versa.  Default 25° gives
+// 50° cardinals and 40° diagonals, which is close to what you described.
+var WALK_CARDINAL_HALF_WIDTH_DEG = 20;
+
+// Determine which of the eight walk-direction octants the vector (dx, dy)
+// points into, using WALK_CARDINAL_HALF_WIDTH_DEG as the boundary from each
+// cardinal axis.  Returns an integer 0..7 matching WALK_SEQUENCES.
+function computeWalkOctant(dx, dy){
+	if(dx == 0 && dy == 0) return null;
+
+	// rel_ang returns: 0 = up, π/2 = right, π = down, 3π/2 = left.
+	var alpha = rel_ang(0, 0, dx, dy);
+
+	// Map alpha into [0, 8); integers 0..7 sit at the eight compass points.
+	var f = (4 * alpha / Math.PI) % 8;
+	if(f < 0) f += 8;
+
+	var halfWidth = WALK_CARDINAL_HALF_WIDTH_DEG / 45;  // as a fraction of 45°
+	var nearest = Math.round(f);
+	var dist = Math.abs(f - nearest);
+	var isCardinal = (nearest % 2 == 0);
+	var limit = isCardinal ? halfWidth : (1 - halfWidth);
+
+	if(dist < limit){
+		return ((nearest % 8) + 8) % 8;
+	}
+
+	// Crossed the boundary; step into the adjacent octant in the direction
+	// the angle is heading.
+	var direction = (f > nearest) ? 1 : -1;
+	return (((nearest + direction) % 8) + 8) % 8;
+}
 
 class Character {
 	constructor(game){
@@ -164,6 +199,7 @@ class Character {
 		if(this === game.player){
 			if(this.target == null && this.walkPath.length > 0){
 				this.target = this.walkPath.shift();
+				this.updateWalkOctant();
 			}
 		}else{
 			var dx = game.player.position.x - this.position.x;
@@ -172,19 +208,34 @@ class Character {
 			if(dx * dx + dy * dy < vision * vision){
 				this.setTarget(game.player.position.x - this.position.x, game.player.position.y - this.position.y);
 				this.target = this.walkPath.shift();
+				this.updateWalkOctant();
 			}
 		}
 	}
 
 	act(dtSeconds){
-		var sequence = null, endFrame;
 		var self = this;
 
-		this.moveBudget += this.skills.speed * dtSeconds;
+		this.findTarget();
+
+		// Scale the movement budget so Euclidean velocity is constant regardless
+		// of direction.  The Bresenham stepper advances 1 pixel along the
+		// dominant axis per iteration, plus roughly |secondary|/|primary| pixels
+		// along the other; dividing the budget by that distance-per-iteration
+		// normalises the two.
+		var scale = 1;
+		if(this.target != null){
+			var adx = Math.abs(this.target.x - this.position.x);
+			var ady = Math.abs(this.target.y - this.position.y);
+			var hyp = Math.sqrt(adx * adx + ady * ady);
+			if(hyp > 0) scale = Math.max(adx, ady) / hyp;
+		}
+
+		this.moveBudget += this.skills.speed * dtSeconds * scale;
 		var pixelsThisTick = Math.floor(this.moveBudget);
 		this.moveBudget -= pixelsThisTick;
 
-		this.findTarget();
+		var sequence = null, endFrame;
 
 		if(this.target != null){
 			var tdx = this.target.x - this.position.x;
@@ -202,21 +253,9 @@ class Character {
 					}
 				}
 
-				if(this.target != null){
-					// Direction to the current waypoint (signs only), not the
-					// last single step taken.  Bresenham alternates between the
-					// dominant and secondary axis on adjacent frames, so
-					// deriving the animation from one step causes octant
-					// flicker.  Sign-vector is stable across the whole walk.
-					tdx = this.target.x - this.position.x;
-					tdy = this.target.y - this.position.y;
-					var sdx = Math.sign(tdx);
-					var sdy = Math.sign(tdy);
-					if(sdx != 0 || sdy != 0){
-						var frameIndex = Math.round(4 * rel_ang(0, 0, sdx, sdy) / Math.PI) % 8;
-						sequence = WALK_SEQUENCES[frameIndex][0];
-						endFrame = WALK_SEQUENCES[frameIndex][1];
-					}
+				if(this.target != null && this.walkOctant != null){
+					sequence = WALK_SEQUENCES[this.walkOctant][0];
+					endFrame = WALK_SEQUENCES[this.walkOctant][1];
 				}
 			}
 		}
@@ -232,9 +271,9 @@ class Character {
 			this.currentEndFrame = endFrame;
 			this.currentSequence = sequence;
 			this.sprite.startSequence(sequence, function(){
-				self.currentSequence = null;
-				self.sprite.setFrame(endFrame);
-			});
+					self.currentSequence = null;
+					self.sprite.setFrame(endFrame);
+					});
 		}
 	}
 
@@ -372,6 +411,20 @@ class Character {
 			}
 		}
 		return rval;
+	}
+
+	updateWalkOctant(){
+		if(this.target == null){
+			this.walkOctant = null;
+			return;
+		}
+		var dx = this.target.x - this.position.x;
+		var dy = this.target.y - this.position.y;
+		if(dx == 0 && dy == 0){
+			this.walkOctant = null;
+			return;
+		}
+		this.walkOctant = computeWalkOctant(dx, dy);
 	}
 }
 
@@ -625,7 +678,7 @@ function createRenderView(game){
 				gridX = x * cellSize - worldPosition.x;
 				gridY = y * cellSize - worldPosition.y;
 
-				randomKey = Math.abs(Math.sin(mapX + mapY * game.viewRange.width) * 10000);
+				randomKey = Math.abs(Math.sin(mapX + mapY * area.map.length) * 10000);
 				randomKey -= Math.floor(randomKey);
 				renderCell(area, area.spritemap[area.map[mapX][mapY]]);
 
