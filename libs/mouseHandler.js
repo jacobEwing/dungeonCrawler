@@ -1,36 +1,38 @@
 'use strict';
 
 var mouseHandler = function(){
-	this.stateQueue = [];
-	var n;
-	for(n = 0; n < 5; n++){
-		this.stateQueue[this.stateQueue.length] = {time : 0, e : {}};
+	this.isDown = false;
+	this.lastEvent = null;
+	this.handlers = {
+		mousedown : [],
+		mousemove : [],
+		mouseup   : []
+	};
+};
+
+mouseHandler.prototype.on = function(eventName, handler){
+	if(!this.handlers[eventName]){
+		throw new Error("mouseHandler.on: unknown event '" + eventName + "'");
+	}
+	this.handlers[eventName].push(handler);
+};
+
+mouseHandler.prototype.fire = function(eventName, e){
+	var list = this.handlers[eventName];
+	for(var n = 0; n < list.length; n++){
+		list[n](e);
 	}
 };
 
 mouseHandler.prototype.listen = function(element){
-	var evt, me = this;
-	var eventChecks = {
-		'mousemove' : 'handleMouseMove',
-		'mousedown' : 'handleMouseDown',
-		'mouseup' : 'handleMouseUp'
-	};
-	for(evt in eventChecks){
-		element.addEventListener(evt, function(e){me.recordEvent.call(me, e)});
-	}
-}
-
-mouseHandler.prototype.recordEvent = function(e){
-	if(this.stateQueue[0].e.buttons == e.buttons){
-		this.stateQueue[0] = {
-			time : Date.now(),
-			e : e
-		}
-	}else{
-		this.stateQueue.pop();
-		this.stateQueue.unshift({
-			time : Date.now(),
-			e : e
+	var me = this;
+	var events = ['mousedown', 'mousemove', 'mouseup'];
+	events.forEach(function(name){
+		element.addEventListener(name, function(e){
+			me.lastEvent = e;
+			if(name === 'mousedown' && (e.buttons & 1)) me.isDown = true;
+			if(name === 'mouseup' && !(e.buttons & 1))    me.isDown = false;
+			me.fire(name, e);
 		});
-	}
-}
+	});
+};

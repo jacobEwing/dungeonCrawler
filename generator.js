@@ -61,61 +61,62 @@ var mapBuilder = function(){
 	this.collidablesMapping = {' ' : 1, '#' : 1, 'W' : 1};
 };
 
-mapBuilder.prototype.loadImageMap = function(mapFile, callback){
-	this.width = this.height = 0;
-	this.mappedItems = [];
-	this.items = {};
-
+mapBuilder.prototype.loadImageMap = function(mapFile){
 	var me = this;
+	return new Promise(function(resolve, reject){
+		me.width = me.height = 0;
+		me.mappedItems = [];
+		me.items = {};
 
+		var loc = window.location.pathname;
+		var dir = loc.substring(0, loc.lastIndexOf('/'));
+		var client = new XMLHttpRequest();
 
+		client.onreadystatechange = function(){
+			if(this.readyState !== 4) return;
+			if(this.status !== 200){
+				reject(new Error("mapBuilder::loadImageMap: HTTP " + this.status + " for " + mapFile));
+				return;
+			}
 
-	var loc = window.location.pathname;
-	var dir = loc.substring(0, loc.lastIndexOf('/'));
-	var client = new XMLHttpRequest();
+			var data;
+			try {
+				data = JSON.parse(this.responseText);
+			} catch(e) {
+				reject(new Error("mapBuilder::loadImageMap: " + e));
+				return;
+			}
 
-	client.onreadystatechange = function() {
-		if (this.readyState == 4 && this.status == 200) {
-
-			try{
-				console.log('loading map');
-				let data = JSON.parse(this.responseText);
-				var img = new Image();
-				img.onload = function(){
-					console.log('map loaded');
-					var x, y, n, c, hexcode, decvals;
+			var img = new Image();
+			img.onload = function(){
+				try {
+					var x, y, n, c, hexcode;
 					me.width = this.width;
 					me.height = this.height;
 					me.map = me.makeEmptyMap(' ', me.width, me.height);
 
 					if(data.category != undefined){
 						me.category = data.category;
-						console.log('set category to ' + me.category);
 					}
-
 					if(data.playerPos != undefined){
 						me.playerPos = {
 							x : data.playerPos.x,
 							y : data.playerPos.y
 						};
-						console.log('assigned player position');
 					}
 					me.spritemap = data.spritemap;
-					console.log('got map legend');
 
 					var canvas = document.createElement('canvas');
 					canvas.width = me.width;
 					canvas.height = me.height;
-					var context = canvas.getContext('2d');
+					var ctxt = canvas.getContext('2d');
+					ctxt.drawImage(img, 0, 0);
 
-					context.drawImage(img, 0, 0);
-
-					console.log('reading map');
-					var imageData = context.getImageData(0, 0, me.width, me.height).data;
+					var imageData = ctxt.getImageData(0, 0, me.width, me.height).data;
 					var idx = 0, hexCode;
 					for(y = 0; y < me.height; y++){
 						for(x = 0; x < me.width; x++){
-							hexCode = ("0" + Number(imageData[idx]).toString(16)).slice(-2).toLowerCase();
+							hexCode  = ("0" + Number(imageData[idx    ]).toString(16)).slice(-2).toLowerCase();
 							hexCode += ("0" + Number(imageData[idx + 1]).toString(16)).slice(-2).toLowerCase();
 							hexCode += ("0" + Number(imageData[idx + 2]).toString(16)).slice(-2).toLowerCase();
 							c = data.colourmap[hexCode];
@@ -124,28 +125,28 @@ mapBuilder.prototype.loadImageMap = function(mapFile, callback){
 							}
 							idx += 4;
 						}
-
 					}
 
 					for(n in data.items){
 						me.addItem(data.items[n]);
 					}
-					console.log('data loaded');
+
 					me.resetHideMap();
 					me.buildCollisionMap();
-					if(typeof(callback) == 'function'){
-						setTimeout(callback, 0);
-					}
-					//context.getImageData(x, y, 1, 1).data;
+					resolve(me);
+				} catch(e) {
+					reject(e);
 				}
-				img.src = 'maps/' + data.image;
-			}catch(e){
-				throw new Error("mapBuilder::loadImageMap: " + e);
-			}
-		}
-	}
-	client.open('GET', dir + '/' + mapFile);
-	client.send();
+			};
+			img.onerror = function(){
+				reject(new Error("mapBuilder::loadImageMap: failed to load image maps/" + data.image));
+			};
+			img.src = 'maps/' + data.image;
+		};
+
+		client.open('GET', dir + '/' + mapFile);
+		client.send();
+	});
 };
 
 mapBuilder.prototype.build = function(params){

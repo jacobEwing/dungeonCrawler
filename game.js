@@ -19,12 +19,16 @@ var gameScale = 5, cellSize = 12;
 var maps = [];
 var activeMap;
 var context;
-var gameInterval; // <-- the animation interval object
-var walkSpeed = 3;
+var gamePaused = false;
+var lastFrameTime = 0;
+var walkSpeed = 3 * (1000 / 70);
 var screenMiddle = {x: 0, y : 0};
 var characters = [];
 var showGameGrid = false;
 var isTransitioning = false; // guards useEntrance against overlapping fades
+var waterCycle = 0;
+var waterCycleAccum = 0;
+var waterCycleRate = 14;   // advances per second; matches the old ~14 Hz tick
 
 var mousePointers = {};
 
@@ -42,6 +46,7 @@ var characterClass = function(){
 	this.target = null;
 	this.walkPath = [];
 	this.possessions = [];
+	this.moveBudget = 0;    // <-- new: fractional pixel carry-over between frames
 };
 
 characterClass.prototype.setMapPos = function(x, y){
@@ -97,27 +102,19 @@ characterClass.prototype.touchingItems = function(){
 	return activeMap.mappedItems[x][y].slice();
 };
 
-characterClass.prototype.moveTowardsTarget = function(){
+characterClass.prototype.moveTowardsTarget = function(pixelsBudget){
 	if(this.motionData == undefined){
 		this.motionData = {
 			xTally : 0,
 			yTally : 0,
-			oldTarget : {
-				x : 0, y : 0
-			}
+			lastDirX : 0,
+			lastDirY : 0,
+			hasDir : false
 		};
 	}
 
 	if(this.target == null) return;
-	if(this.motionData.oldTarget.x != this.target.x || this.motionData.oldTarget.y != this.target.y){
-		this.motionData.oldTarget = {
-			x : this.target.x,
-			y : this.target.y
-		};
-		this.motionData.xTally = Math.abs(this.target.x - this.position.x) >> 1;
-		this.motionData.yTally = Math.abs(this.target.y - this.position.y) >> 1;
-	}
-	var i;
+
 	var dx = this.target.x - this.position.x;
 	var dy = this.target.y - this.position.y;
 	var sgndx = Math.sign(dx);
@@ -125,8 +122,25 @@ characterClass.prototype.moveTowardsTarget = function(){
 	var sgndy = Math.sign(dy);
 	var absdy = Math.abs(dy);
 
+	// Reinitialize the Bresenham tallies only when the direction to the
+	// target changes.  While the mouse is held, this.target moves every
+	// frame to track the cursor's world position — but if the direction is
+	// unchanged, the fractional tallies must persist, or the character
+	// only ever steps along the dominant axis.
+	if(!this.motionData.hasDir
+			|| sgndx !== this.motionData.lastDirX
+			|| sgndy !== this.motionData.lastDirY){
+		this.motionData.xTally = absdx >> 1;
+		this.motionData.yTally = absdy >> 1;
+		this.motionData.lastDirX = sgndx;
+		this.motionData.lastDirY = sgndy;
+		this.motionData.hasDir = true;
+	}
+
+	var i;
+
 	if (absdx >= absdy){
-		for(i = 0; i < absdx && i < this.skills.speed; i++){
+		for(i = 0; i < absdx && i < pixelsBudget; i++){
 			this.motionData.yTally += absdy;
 			if (this.motionData.yTally >= absdx){
 				this.motionData.yTally -= absdx;
@@ -139,7 +153,7 @@ characterClass.prototype.moveTowardsTarget = function(){
 			}
 		}
 	}else{
-		for(i = 0; i < absdy && i < this.skills.speed; i++){
+		for(i = 0; i < absdy && i < pixelsBudget; i++){
 			this.motionData.xTally += absdx;
 			if(this.motionData.xTally >= absdy){
 				this.motionData.xTally -= absdy;
@@ -186,9 +200,16 @@ characterClass.prototype.findTarget = function(){
 	}
 }
 
-characterClass.prototype.act = function(){
+characterClass.prototype.act = function(dtSeconds){
 	var frameIndex, sequence = null, endFrame, oldx, oldy;
 	var self = this; // captured so the sprite callback can reference the character
+
+	// Accumulate this frame's movement allowance and extract whole pixels.
+	// The fractional remainder carries over to the next frame.
+	this.moveBudget += this.skills.speed * dtSeconds;
+	var pixelsThisTick = Math.floor(this.moveBudget);
+	this.moveBudget -= pixelsThisTick;
+
 	this.findTarget();
 
 	if(this.target != null){
@@ -202,71 +223,77 @@ characterClass.prototype.act = function(){
 				this.target.y
 			) / Math.PI) % 8;
 
-			// this oldx, oldy comparison tells us if a collision stopped them entirely.
-			oldx = this.position.x;
-			oldy = this.position.y;
-			this.moveTowardsTarget();
-			if(oldx == this.position.x && oldy == this.position.y){
-				this.target = null;
+			// Attempt to move if we have any pixels to spend this frame.
+			// If a collision stops us entirely, drop the target.
+			if(pixelsThisTick > 0){
+				oldx = this.position.x;
+				oldy = this.position.y;
+				this.moveTowardsTarget(pixelsThisTick);
+				if(oldx == this.position.x && oldy == this.position.y){
+					this.target = null;
+				}
 			}
 
-			switch(frameIndex){
-				case 0:
-					sequence = 'walkup';
-					endFrame = 'back_idle';
-					break;
-				case 1:
-					sequence = 'walkupright';
-					endFrame = 'back_right_idle';
-					break;
-				case 2:
-					sequence = 'walkright';
-					endFrame = 'right_idle';
-					break;
-				case 3:
-					sequence = 'walkdownright';
-					endFrame = 'front_right_idle';
-					break;
-				case 4:
-					sequence = 'walkdown';
-					endFrame = 'front_idle';
-					break;
-				case 5:
-					sequence = 'walkdownleft';
-					endFrame = 'front_left_idle';
-					break;
-				case 6:
-					sequence = 'walkleft';
-					endFrame = 'left_idle';
-					break;
-				case 7:
-					sequence = 'walkupleft';
-					endFrame = 'back_left_idle';
-					break;
+			// As long as a target still exists, keep the walk animation
+			// selected.  This is intentionally independent of whether we
+			// actually moved this particular frame, so that the walk cycle
+			// doesn't stutter at high framerates where pixelsThisTick is
+			// often 0.
+			if(this.target != null){
+				switch(frameIndex){
+					case 0:
+						sequence = 'walkup';
+						endFrame = 'back_idle';
+						break;
+					case 1:
+						sequence = 'walkupright';
+						endFrame = 'back_right_idle';
+						break;
+					case 2:
+						sequence = 'walkright';
+						endFrame = 'right_idle';
+						break;
+					case 3:
+						sequence = 'walkdownright';
+						endFrame = 'front_right_idle';
+						break;
+					case 4:
+						sequence = 'walkdown';
+						endFrame = 'front_idle';
+						break;
+					case 5:
+						sequence = 'walkdownleft';
+						endFrame = 'front_left_idle';
+						break;
+					case 6:
+						sequence = 'walkleft';
+						endFrame = 'left_idle';
+						break;
+					case 7:
+						sequence = 'walkupleft';
+						endFrame = 'back_left_idle';
+						break;
+				}
 			}
 		}
 	}
 
 	if(sequence == null){
 		if(this.currentSequence != null){
-			//this.sprite.stopSequence(this.currentSequence);
+			this.sprite.stopSequence();
 			this.sprite.setFrame(this.currentEndFrame);
 			this.currentSequence = null;
 			this.sprite.currentSequence = null;
-			this.sprite.animating = false;
 		}
-
 	}else if(sequence != this.currentSequence){
 		this.currentEndFrame = endFrame;
 		this.currentSequence = sequence;
 		this.sprite.startSequence(sequence, function(){
-			// `this` inside the callback is not guaranteed to be the
-			// character, so use the captured `self` reference instead.
 			self.currentSequence = null;
 			self.sprite.setFrame(endFrame);
 		});
 	}else{
-		//this.sprite.doSequenceStep();
+		// sequence already running; do nothing
 	}
 };
 
@@ -489,8 +516,9 @@ function useEntrance(entrance){
 		}
 	}
 	player.target = null;
-	clearInterval(gameInterval);
+	gamePaused = true;
 	var opacity = 1, faderate = .2;
+
 	gameCanvas.style.opacity = opacity;
 	var fadeOut = function(){
 		opacity -= faderate;
@@ -505,7 +533,7 @@ function useEntrance(entrance){
 			player.position.y += cellSize >> 1;
 			checkOverlay();
 			renderView(activeMap);
-			gameInterval = setInterval(playGame, 70);
+			gamePaused = false;
 			gameCanvas.style.opacity = 0;
 			setTimeout(fadeIn, 500);
 		}
@@ -558,7 +586,6 @@ var renderView = (function(){
 	var topLayer;
 	var randomKey, worldPosition, treeFrame;
 	var x, y, mapX, mapY, gridX, gridY, n;
-	var waterCycle = 0;
 	// Position-indexed lookup of items in the current area, rebuilt once per
 	// render instead of scanning the whole item list for every visible cell.
 	var itemsIndex;
@@ -812,8 +839,6 @@ var renderView = (function(){
 		};
 		context.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
 
-		waterCycle++;
-
 		var middleX = Math.floor(screenMiddle.x / (gameScale * cellSize)) + 1
 		var middleY = Math.floor(screenMiddle.y / (gameScale * cellSize)) + 1
 
@@ -946,22 +971,15 @@ function writeText(x, y, text){
 
 }
 
-function checkMouse(){
-	var state = mouse.stateQueue[0];
-	if(state == undefined) return;
+function handlePointer(e){
+	if(!(e.buttons & 1)) return;
 
-	// Button not held: clear tracking so the next press is a fresh target.
-	if(!(state.e.buttons & 1)){
-		mouse.lastTarget = null;
-		return;
-	}
+	var delta = player.distanceToMouseEvent(e);
 
-	var delta = player.distanceToMouseEvent(state.e);
-
-	// The world-space point under the cursor.  This is the quantity that
-	// actually needs to change before we re-run pathfinding — it changes
-	// when the mouse moves AND when the player walks, but stays constant
-	// when both are still, which is the case we want to short-circuit.
+	// The world-space point under the cursor — this is what actually needs
+	// to change before we re-run pathfinding.  It changes when the mouse
+	// moves AND when the player walks, but stays constant when both are
+	// still, which is the case we want to short-circuit.
 	var worldTarget = {
 		x : player.position.x + delta.x,
 		y : player.position.y + delta.y
@@ -986,13 +1004,42 @@ function checkMouse(){
 	}
 }
 
-function playGame(){
-	var n;
-	checkMouse();
-	player.act();
-	for(n = 0; n < characters.length; n++){
-		characters[n].act();
+function gameLoop(time){
+	if(lastFrameTime === 0) lastFrameTime = time;
+	var dt = (time - lastFrameTime) / 1000;   // seconds
+	lastFrameTime = time;
+
+	// Clamp dt so that tab-switching or debugger pauses don't cause
+	// a multi-second "catch-up" frame.
+	if(dt > 0.1) dt = 0.1;
+
+	if(!gamePaused && activeMap != null){
+		playGame(dt);
 	}
+
+	requestAnimationFrame(gameLoop);
+}
+
+function playGame(dt){
+	var n;
+
+	// If the player walked last frame, the world point under a held cursor
+	// has changed.  Recompute the target only while the button is down.
+	if(mouse != null && mouse.isDown && mouse.lastEvent != null){
+		handlePointer(mouse.lastEvent);
+	}
+
+	player.act(dt);
+	for(n = 0; n < characters.length; n++){
+		characters[n].act(dt);
+	}
+
+	waterCycleAccum += dt * waterCycleRate;
+	while(waterCycleAccum >= 1){
+		waterCycleAccum -= 1;
+		waterCycle++;
+	}
+
 	renderView(activeMap);
 }
 
@@ -1020,15 +1067,51 @@ function handleResize(){
 	gameCanvas.height = window.innerHeight;
 	screenMiddle = { x : gameCanvas.width >> 1, y : gameCanvas.height >> 1 };
 	viewRange = {
-		width: Math.ceil(gameCanvas.width / (gameScale * cellSize)) + 1,
+		width:  Math.ceil(gameCanvas.width  / (gameScale * cellSize)) + 1,
 		height: Math.ceil(gameCanvas.height / (gameScale * cellSize)) + 1
 	};
+	// canvas resize resets context state — re-disable smoothing
+	context.webkitImageSmoothingEnabled = false;
+	context.mozImageSmoothingEnabled = false;
+	context.imageSmoothingEnabled = false;
 	if(activeMap != undefined){
 		renderView(activeMap);
 	}
 }
+async function initialize(){
+	// --- setup canvas and context ---
+	gameCanvas = document.getElementById('gameCanvas');
+	gameCanvas.width = window.innerWidth;
+	gameCanvas.height = window.innerHeight;
 
-var initialize = function(){
+	screenMiddle = { x : gameCanvas.width >> 1, y : gameCanvas.height >> 1 };
+	viewRange = {
+		width:  Math.ceil(gameCanvas.width  / (gameScale * cellSize)) + 1,
+		height: Math.ceil(gameCanvas.height / (gameScale * cellSize)) + 1
+	};
+	context = gameCanvas.getContext('2d');
+	context.webkitImageSmoothingEnabled = false;
+	context.mozImageSmoothingEnabled = false;
+	context.imageSmoothingEnabled = false;
+
+	window.addEventListener('resize', handleResize);
+
+	writeText(5, 5, "DungeonCrawler v.0.0");
+
+	// --- sequential load pipeline ---
+	try {
+		await loadSpriteSets();
+		await loadPlayerSprite();
+		await loadMap('maps/Map1.map');
+		initializeEvents();
+		await loadMousePointers();
+		startGameLoop();
+	} catch(e) {
+		console.error("Initialization failed:", e);
+	}
+}
+
+async function loadSpriteSets(){
 	var spriteList = [
 		{'name' : 'grass', 'file' : 'grass.sprite'},
 		{'name' : 'tree', 'file' : 'tree.sprite'},
@@ -1040,226 +1123,109 @@ var initialize = function(){
 		{'name' : 'longGrass', 'file' : 'longGrass.sprite'},
 		{'name' : 'caveEntrance' , 'file' : 'caveEntrance.sprite'},
 		{'name' : 'waterWaves' , 'file' : 'waterWaves.sprite'},
-
 		{'name' : 'rat', 'file' : 'rat.sprite'}
 	];
-	var pointerSet;
+
+	// pop() from the end, matching the original load order
+	while(spriteList.length > 0){
+		const dat = spriteList.pop();
+		const set = new spriteSet();
+		await set.load('sprites/' + dat.file);
+		spriteSets[dat.name] = set;
+		sprites[dat.name] = new cSprite(set);
+		sprites[dat.name].setScale(gameScale);
+	}
+
+	sprites.waterWaves.setFrame('0');
+}
+
+async function loadPlayerSprite(){
+	player = new characterClass();
+	player.category = 'player';
+
+	await playerSpriteSet.load("sprites/player.sprite");
+	player.sprite = new cSprite(playerSpriteSet);
+	player.sprite.setScale(gameScale);
+	player.sprite.setPosition(screenMiddle.x, screenMiddle.y, true);
+	player.sprite.setFrame('front_idle');
+}
+
+async function loadMap(mapFile){
+	const map = new mapBuilder();
+	await map.loadImageMap(mapFile);
+	maps.push(map);
+	activeMap = map;
+
+	player.position.x = Math.floor(cellSize * (activeMap.playerPos.x + .5));
+	player.position.y = Math.floor(cellSize * (activeMap.playerPos.y + .5));
+	player.mapPos = {
+		x : activeMap.playerPos.x,
+		y : activeMap.playerPos.y
+	};
+	player.skills.vision = 5;
+
+	// make the whole map visible
+	for(let x = 0; x < activeMap.width; x++){
+		for(let y = 0; y < activeMap.height; y++){
+			activeMap.hideMap[x][y] = false;
+		}
+	}
+
+	renderView(activeMap);
+}
+
+function initializeEvents(){
+	keyboard = new kbListener();
+	keyboard.listen();
+	keyboard.onCombo(['CTRL', 'G'], function(){
+		showGameGrid = !showGameGrid;
+	});
+
+	document.getElementById('overlay').addEventListener('contextmenu', function(e){
+		e.preventDefault();
+	});
+
+	mouse = new mouseHandler();
+	mouse.lastTarget = null;
+	mouse.listen(document.getElementById('overlay'));
+
+	// --- new: event-driven pointer handling ---
+	mouse.on('mousedown', function(e){
+		handlePointer(e);
+	});
+	mouse.on('mousemove', function(e){
+		if(mouse.isDown) handlePointer(e);
+	});
+	mouse.on('mouseup', function(e){
+		mouse.lastTarget = null;
+	});
+}
+
+async function loadMousePointers(){
 	var pointerList = [
 		{'name' : 'target', 'file' : 'target.sprite'}
 	];
 
-	var doStep = function(step){
-		var x, y;
-		var dat;
-		// pre-load any data we need to get the game started.
-		// Note that using callbacks on this method prevents it from building a stack.
-		// It also allows us to wait for each step to complete before calling the next
-		// one.
-		console.log('doing step "' + step + '"');
-		switch(step){
-			case 'initialize':
-				gameCanvas = document.getElementById('gameCanvas');
-				gameCanvas.width = window.innerWidth;
-				gameCanvas.height = window.innerHeight;
-
-				screenMiddle = { x : gameCanvas.width >> 1, y : gameCanvas.height >> 1 };
-				viewRange = {
-					width: Math.ceil(gameCanvas.width / (gameScale * cellSize)) + 1,
-					height: Math.ceil(gameCanvas.height / (gameScale * cellSize)) + 1
-				}
-				context = gameCanvas.getContext('2d');
-				context.webkitImageSmoothingEnabled = false;
-				context.mozImageSmoothingEnabled = false;
-				context.imageSmoothingEnabled = false; /// future
-
-				window.addEventListener('resize', handleResize);
-
-				writeText(5, 5, "DungeonCrawler v.0.0");
-				setTimeout(function(){
-					doStep('load spriteSets');
-					//doStep('build console');
-				}, 1);
-				break;
-			case 'build console':
-				console.log_classic = console.log;
-				console.log = (function(){
-					// create a translucent backdrop for cool factor +1
-					var logBackdrop = document.createElement('DIV');
-					logBackdrop.setAttribute("id", "logBackdrop");
-					logBackdrop.setAttribute("class", "logElement");
-					document.getElementById('overlay').appendChild(logBackdrop);
-
-					// build the element that will hold the actual output
-					var logTarget = document.createElement('DIV');
-					logTarget.setAttribute("id", "logWindow");
-					logTarget.setAttribute("class", "logElement");
-					document.getElementById('overlay').appendChild(logTarget);
-
-					// catch any click events within the element
-					var eventChecks = {
-						'mousemove' : 'handleMouseMove',
-						'mousedown' : 'handleMouseDown',
-						'mouseup' : 'handleMouseUp'
-					};
-					for(var evt in eventChecks){
-						logTarget.addEventListener(evt, function(e){
-							e.stopPropagation();
-							return false;
-						});
-					}
-
-					// and here's the actual function getting used
-					return function(output){
-						logTarget.innerHTML += output + '<br/>';
-						logTarget.scrollTop = logTarget.scrollHeight;
-					};
-				})();
-
-				//showGameGrid = true;
-
-				setTimeout(function(){
-					doStep('load spriteSets');
-				}, 1);
-
-				break;
-
-			case 'load spriteSets':
-				if(spriteList.length > 0){
-					dat = spriteList.pop();
-					spriteSets[dat.name] = new spriteSet('sprites/' + dat.file, function(){
-						sprites[dat.name] = new cSprite(spriteSets[dat.name]);
-						sprites[dat.name].setScale(gameScale);
-						setTimeout(function(){
-							doStep('load spriteSets');
-						}, 1);
-					});
-
-				}else{
-
-					sprites.waterWaves.setFrame('0');
-
-
-					doStep('load player sprite');
-				}
-				break;
-
-
-			case 'load player sprite':
-				player = new characterClass();
-				player.category = 'player';
-				playerSpriteSet.load("sprites/player.sprite", function(){
-					player.sprite = new cSprite(this);
-					player.sprite.setScale(gameScale);
-					player.sprite.setPosition(screenMiddle.x, screenMiddle.y, true);
-
-					player.sprite.setFrame('front_idle');
-					setTimeout(function(){doStep('load map');}, 0);
-				});
-				break;
-
-			case 'load map':
-				var mapIdx = maps.length;
-				maps[mapIdx] = new mapBuilder();
-				console.log('calling loadImageMap');
-				///////////////////////////////////////////////////////////////
-				/////////// Swap the next two lines for test map /// //////////
-				///////////////////////////////////////////////////////////////
-				maps[mapIdx].loadImageMap('maps/Map1.map', function(){
-				//maps[mapIdx].loadImageMap('maps/test.map', function(){
-					console.log('map loaded, placing player');
-					activeMap = maps[mapIdx];
-
-
-					player.position.x = Math.floor(cellSize * (activeMap.playerPos.x + .5));
-					player.position.y = Math.floor(cellSize * (activeMap.playerPos.y + .5));
-					player.mapPos = {
-						x : activeMap.playerPos.x,
-						y : activeMap.playerPos.y
-					};
-					player.skills.vision = 5;
-
-					// make the whole map visible
-					for(x = 0; x < activeMap.width; x++){
-						for(y = 0; y < activeMap.height; y++){
-							activeMap.hideMap[x][y] = false;
-						}
-					}
-//					checkOverlay();
-					renderView(activeMap);
-
-					doStep('initialize events');
-				});
-				break;
-			case 'initialize events':
-				// the functions used here are defined in kbListener.js and mouseHandler.js
-				keyboard = new kbListener();
-				keyboard.listen();
-				keyboard.onCombo(['CTRL', 'G'], function(){
-					showGameGrid = !showGameGrid;
-				});
-				//loadDefaultMotionControls();
-
-
-				document.getElementById('overlay').addEventListener('contextmenu', function(e){
-					e.preventDefault();
-				});
-				mouse = new mouseHandler();
-				mouse.lastTarget = null;
-
-				mouse.listen(document.getElementById('overlay'));
-				setTimeout(function(){doStep('load mouse pointers');}, 1);
-				break;
-
-
-			case 'load mouse pointers':
-
-				// this step has to happen after initializing events, as that's where the mouse
-				// handler is defined, (mouse), and that's where we're storing the sprites as
-				// well.
-				if(pointerList.length > 0){
-					dat = pointerList.pop();
-					pointerSet = new spriteSet('sprites/' + dat.file, function(){
-						mousePointers[dat.name] = new cSprite(pointerSet);
-						mousePointers[dat.name].setScale(gameScale);
-						setTimeout(function(){
-							doStep('load mouse pointers');
-						}, 1);
-					});
-
-				}else{
-					mousePointers['target'].startSequence('spin', null);
-					///////////////////////////////////////////////////////////////
-					/////////// FIXME switch this back when done testing //////////
-					///////////////////////////////////////////////////////////////
-					//doStep('load test character');
-					doStep('finish');
-				}
-				break;
-
-			case 'load test character':
-				// let's add a character
-				var knightSprite = new spriteSet('sprites/humanFemale.sprite', function(){
-					characters[0] = new characterClass();
-					characters[0].category = 'hominid';
-					characters[0].position.x = player.position.x - 25;
-					characters[0].position.y = player.position.y + 25;
-					//debugger;
-					characters[0].sprite = new cSprite(knightSprite);
-					characters[0].sprite.setScale(gameScale);
-					characters[0].sprite.setFrame('front_idle');
-					characters[0].skills.speed *= .5;
-
-					characters[0].skills.vision = 6;
-
-					setTimeout(function(){doStep('finish');}, 1);
-				});
-				break;
-
-			case 'finish':
-				gameInterval = setInterval(playGame, 70);
-		}
+	while(pointerList.length > 0){
+		const dat = pointerList.pop();
+		const set = new spriteSet();
+		await set.load('sprites/' + dat.file);
+		mousePointers[dat.name] = new cSprite(set);
+		mousePointers[dat.name].setScale(gameScale);
 	}
-	doStep('initialize');
-};
 
-window.addEventListener('load', initialize);
+	mousePointers['target'].startSequence('spin', {
+		iterations: 0,
+		method : 'manual'
+	});
+}
+
+function startGameLoop(){
+	requestAnimationFrame(gameLoop);
+}
+
+window.addEventListener('load', function(){
+	initialize().catch(function(e){
+		console.error("Fatal error during initialization:", e);
+	});
+});

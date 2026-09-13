@@ -53,6 +53,9 @@ cSprite.defaults = {
 
 	ready : false,
 
+	// internal: handle to the currently scheduled sequence tick
+	_sequenceTimer : null,
+
 	// parent/child sprite management variables
 	numChildren : 0,
 	myParent : 0
@@ -95,6 +98,8 @@ cSprite.prototype.setFrame = function(frameName) {
 };
 
 cSprite.prototype.startSequence = function(sequenceName, callback) {
+	this.stopSequence();
+
 	var seq = this.template.sequences[sequenceName];
 	if (!seq) return;
 
@@ -109,6 +114,14 @@ cSprite.prototype.startSequence = function(sequenceName, callback) {
 	this.sequenceFrameRate = seq.frameRate || this.template.defaultFrameRate;
 
 	this.doSequenceStep();
+};
+
+cSprite.prototype.stopSequence = function(){
+	this.animating = false;
+	if(this._sequenceTimer != null){
+		clearTimeout(this._sequenceTimer);
+		this._sequenceTimer = null;
+	}
 };
 
 cSprite.prototype.rotate = function(angle){
@@ -305,15 +318,18 @@ cSprite.prototype.doSequenceStep = function() {
 			delay = seq.frameTimes[this.currentFrameTime];
 			this.currentFrameTime = (this.currentFrameTime + 1) % seq.frameTimes.length;
 		}
-		setTimeout(() => this.doSequenceStep(), delay);
+		this._sequenceTimer = setTimeout(() => {
+				this._sequenceTimer = null;
+				this.doSequenceStep();
+				}, delay);
 	}
 };
 
 ////////////////////////////////////////////////////////////////////////////////////
 
-var spriteSet = function(filename, callback){
+var spriteSet = function(){
 	if (!(this instanceof spriteSet)) {
-		return new spriteSet(filename, callback);
+		return new spriteSet();
 	}
 
 	for(var n in spriteSet.defaults){
@@ -322,12 +338,7 @@ var spriteSet = function(filename, callback){
 	this.frames = [];
 	this.frameNames = [];
 	this.sequences = {};
-
-	if(filename != undefined){
-		this.load(filename, callback);
-	}
-
-}
+};
 
 spriteSet.defaults = {
 	defaultFrameRate : 40,
@@ -339,7 +350,7 @@ spriteSet.defaults = {
 
 spriteSet.prototype.newSprite = function(){
 	if(!this.ready){
-		throw new Error("spriteSet is not ready — call newSprite from the load callback");
+		throw new Error("spriteSet is not ready — await the load() promise before calling newSprite");
 	}
 	var sprite = new cSprite(this);
 	sprite.scale = this.scale;
@@ -350,31 +361,37 @@ spriteSet.prototype.setScale = function(scale){
 	this.scale = scale;
 }
 
-spriteSet.prototype.load = function(fileName, callback){
+spriteSet.prototype.load = function(fileName){
 	var me = this;
-	if(typeof(fileName) == 'object'){
-		// this allows passing in a raw json object instead of a file
-		me.loadJSON(fileName, callback);
-	} else {
+	return new Promise(function(resolve, reject){
+		if(typeof(fileName) == 'object'){
+			// raw json object rather than a file path
+			me.loadJSON(fileName).then(resolve, reject);
+			return;
+		}
+
 		var loc = window.location.pathname;
 		var dir = loc.substring(0, loc.lastIndexOf('/'));
 		var client = new XMLHttpRequest();
 
-		client.onreadystatechange = function() {
-			if (this.readyState == 4 && this.status == 200) {
-
-				try{
-					var data = JSON.parse(this.responseText);
-					me.loadJSON(data, callback);
-
-				}catch(e){
-					throw "spriteSet::load: " + e;
-				}
+		client.onreadystatechange = function(){
+			if(this.readyState !== 4) return;
+			if(this.status !== 200){
+				reject(new Error("spriteSet::load: HTTP " + this.status + " for " + fileName));
+				return;
 			}
-		}
+			var data;
+			try {
+				data = JSON.parse(this.responseText);
+			} catch(e) {
+				reject(new Error("spriteSet::load: " + e));
+				return;
+			}
+			me.loadJSON(data).then(resolve, reject);
+		};
 		client.open('GET', dir + '/' + fileName);
 		client.send();
-	}
+	});
 };
 
 spriteSet.prototype.addFrame = function(id, params){
@@ -423,57 +440,62 @@ spriteSet.prototype.addFrame = function(id, params){
 // can simply wait for an image to be fully loaded before returning the
 // callback.  Using a callback on each call to this function allows this
 // without getting a huge call stack.
-spriteSet.prototype.loadJSON = function(data, callback){
+spriteSet.prototype.loadJSON = function(data){
 	var me = this;
-	var key = Object.keys(data)[0];
-	var rfunc;
+	return new Promise(function(resolve, reject){
+		function step(){
+			try {
+				var key = Object.keys(data)[0];
+				if(key == undefined){
+					me.ready = true;
+					resolve(me);
+					return;
+				}
+				var val = data[key];
+				delete data[key];
+				var next = function(){ setTimeout(step, 0); };
 
-	if(key != undefined){
-		var val = data[key];
-		delete data[key];
-		rfunc = () => {
-			setTimeout( () => { me.loadJSON(data, callback);}, 0);
-		};
-
-		switch(key.toLowerCase()){
-			case 'image':
-				this.setImage(val, rfunc);
-				break;
-			case 'framewidth':
-				this.frameWidth = 1 * val;
-				rfunc();
-				break;
-			case 'frameheight':
-				this.frameHeight = 1 * val;
-				rfunc();
-				break;
-			case 'centerx': case 'cx':
-				this.centerx = 1 * val;
-				rfunc();
-				break;
-			case 'centery': case 'cy':
-				this.centery = 1 * val;
-				rfunc();
-				break;
-			case 'framerate':
-				this.defaultFrameRate = 1 * val;
-				rfunc();
-				break;
-			case 'frames':
-				this.load_frames(val);
-				rfunc();
-				break;
-			case 'sequences':
-				this.load_sequences(val);
-				rfunc();
-				break;
-			default:
-				rfunc();
+				switch(key.toLowerCase()){
+					case 'image':
+						me.setImage(val).then(next, reject);
+						break;
+					case 'framewidth':
+						me.frameWidth = 1 * val;
+						next();
+						break;
+					case 'frameheight':
+						me.frameHeight = 1 * val;
+						next();
+						break;
+					case 'centerx': case 'cx':
+						me.centerx = 1 * val;
+						next();
+						break;
+					case 'centery': case 'cy':
+						me.centery = 1 * val;
+						next();
+						break;
+					case 'framerate':
+						me.defaultFrameRate = 1 * val;
+						next();
+						break;
+					case 'frames':
+						me.load_frames(val);
+						next();
+						break;
+					case 'sequences':
+						me.load_sequences(val);
+						next();
+						break;
+					default:
+						next();
+				}
+			} catch(e) {
+				reject(e);
+			}
 		}
-	}else if(callback != undefined){
-		this.ready = true;
-		callback.call(this, data);
-	}
+		step();
+	});
 };
 
 spriteSet.prototype.setFrameSize = function(w, h){
@@ -555,10 +577,14 @@ spriteSet.prototype.load_frames = function(data){
 	}
 };
 
-spriteSet.prototype.setImage = function(filename, callback){
-	this.image = new Image();
-	if(typeof(callback) == 'function'){
-		this.image.onload = callback;
-	}
-	this.image.src = filename;
+spriteSet.prototype.setImage = function(filename){
+	var me = this;
+	return new Promise(function(resolve, reject){
+		me.image = new Image();
+		me.image.onload = function(){ resolve(me); };
+		me.image.onerror = function(){
+			reject(new Error("spriteSet::setImage: failed to load " + filename));
+		};
+		me.image.src = filename;
+	});
 };
