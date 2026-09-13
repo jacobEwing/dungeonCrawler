@@ -2,13 +2,13 @@
 
 // let's define trim as we need it here
 if (typeof trim === "undefined") {
-    var trim = function(stringToTrim) {
-        return String(stringToTrim).replace(/^\s+|\s+$/g, "");
-    };
+	var trim = function(stringToTrim) {
+		return String(stringToTrim).replace(/^\s+|\s+$/g, "");
+	};
 }
 
 var cSprite = function(newTemplate){
-    	if(!(this instanceof cSprite)) {
+	if(!(this instanceof cSprite)) {
 		return new cSprite(newTemplate);
 	}
 
@@ -51,6 +51,7 @@ cSprite.defaults = {
 	sequenceMethod : 'auto',
 	sequenceFrameRate : 0,
 
+	ready : false,
 
 	// parent/child sprite management variables
 	numChildren : 0,
@@ -60,12 +61,29 @@ cSprite.defaults = {
 cSprite.prototype.setTemplate = function(template){
 	this.template = template;
 	this.image = template.image;
-
-	this.imageWidth = this.image.naturalWidth || this.image.width;
-	this.imageHeight = this.image.naturalHeight || this.image.height;
-
+	this.resolveImageDimensions();
 	this.frameWidth = template.frameWidth;
 	this.frameHeight = template.frameHeight;
+};
+
+cSprite.prototype.resolveImageDimensions = function(){
+	var img = this.image;
+	if (!img) {
+		this.imageWidth = 0;
+		this.imageHeight = 0;
+		return;
+	}
+	if (img.complete && img.naturalWidth) {
+		this.imageWidth = img.naturalWidth;
+		this.imageHeight = img.naturalHeight;
+	} else {
+		this.imageWidth = 0;
+		this.imageHeight = 0;
+		img.addEventListener('load', () => {
+			this.imageWidth = img.naturalWidth;
+			this.imageHeight = img.naturalHeight;
+		}, { once: true });
+	}
 };
 
 cSprite.prototype.setFrame = function(frameName) {
@@ -77,20 +95,20 @@ cSprite.prototype.setFrame = function(frameName) {
 };
 
 cSprite.prototype.startSequence = function(sequenceName, callback) {
-    var seq = this.template.sequences[sequenceName];
-    if (!seq) return;
+	var seq = this.template.sequences[sequenceName];
+	if (!seq) return;
 
-    this.animating = true;
-    this.currentSequenceName = sequenceName;
-    this.currentSequence = seq;          // reference to the immutable definition
-    this.frameIndex = 0;
-    this.currentFrameTime = 0;
-    this.sequenceIterations = (seq.iterations !== undefined) ? seq.iterations : 0;
-    this.sequenceCallback = callback || seq.callback || null;
-    this.sequenceMethod = seq.method || 'auto';
-    this.sequenceFrameRate = seq.frameRate || this.template.defaultFrameRate;
+	this.animating = true;
+	this.currentSequenceName = sequenceName;
+	this.currentSequence = seq;		  // reference to the immutable definition
+	this.frameIndex = 0;
+	this.currentFrameTime = 0;
+	this.sequenceIterations = (seq.iterations !== undefined) ? seq.iterations : 0;
+	this.sequenceCallback = callback || seq.callback || null;
+	this.sequenceMethod = seq.method || 'auto';
+	this.sequenceFrameRate = seq.frameRate || this.template.defaultFrameRate;
 
-    this.doSequenceStep();
+	this.doSequenceStep();
 };
 
 cSprite.prototype.rotate = function(angle){
@@ -353,6 +371,9 @@ spriteSet.defaults = {
 };
 
 spriteSet.prototype.newSprite = function(){
+	if(!this.ready){
+		throw new Error("spriteSet is not ready — call newSprite from the load callback");
+	}
 	var sprite = new cSprite(this);
 	sprite.scale = this.scale;
 	return sprite;
@@ -483,6 +504,7 @@ spriteSet.prototype.loadJSON = function(data, callback){
 				rfunc();
 		}
 	}else if(callback != undefined){
+		this.roady = true;
 		callback.call(this, data);
 	}
 };
