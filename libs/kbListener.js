@@ -76,7 +76,6 @@ kbListener.prototype.checkCombos = function(key){
 		if(this.REV_KEYMAP[key] == combo.sequence[combo.currentIndex].toUpperCase()){
 			combo.currentIndex ++;
 			if(combo.currentIndex >= combo.sequence.length){
-				console.log('charlie');
 				combo.currentIndex = 0;
 				combo.callback();
 			}
@@ -96,10 +95,15 @@ kbListener.prototype.onCombo = function(sequence, callback){
 
 // this is called to listen to any element for keyboard events.  If none is specified, 'document' is defaulted to
 kbListener.prototype.listen = function(element){
+	var me = this;
+	var oldDownListener, oldUpListener;
+
 	if(element == undefined) element = document;
 
 	var downfunction = function(e){
-		e.preventDefault()
+		if(me.REV_KEYMAP[e.which] !== undefined){
+			e.preventDefault()
+		}
 		me.keyState[e.which] = 1;
 		me.checkCombos(e.which);
 
@@ -107,26 +111,8 @@ kbListener.prototype.listen = function(element){
 	var upfunction = function(e){
 		me.keyState[e.which] = 0;
 	}
-	var me = this;
-	var oldDownListener, oldUpListener;
 
-	if(element.onkeydown != null){
-		oldDownListener = element.onkeydown;
-		element.onkeydown = function(evt){
-			oldDownListener(evt);
-			downfunction(evt);
-		}
-	}else{
-		element.onkeydown = downfunction;	
-	}
+	element.addEventListener("keydown", downfunction);
+	element.addEventListener("keyup", upfunction);
 
-	if(element.onkeyup != null){
-		oldUpListener = element.onkeyup;
-		element.onkeyup = function(evt){
-			oldUpListener(evt);
-			upfunction(evt);
-		}
-	}else{
-		element.onkeyup = upfunction;	
-	}
 }

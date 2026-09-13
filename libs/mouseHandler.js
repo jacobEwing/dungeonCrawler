@@ -16,12 +16,11 @@ mouseHandler.prototype.listen = function(element){
 		'mouseup' : 'handleMouseUp'
 	};
 	for(evt in eventChecks){
-		element.addEventListener(evt, function(e){me.handleEvent.call(me, e)});
+		element.addEventListener(evt, function(e){me.recordEvent.call(me, e)});
 	}
 }
 
-mouseHandler.prototype.handleEvent = function(e){
-	var delta;
+mouseHandler.prototype.recordEvent = function(e){
 	if(this.stateQueue[0].e.buttons == e.buttons){
 		this.stateQueue[0] = {
 			time : Date.now(),
@@ -35,11 +34,3 @@ mouseHandler.prototype.handleEvent = function(e){
 		});
 	}
 }
-/*
-
- assssigned from game.js
-
- sprites:
- mouse.pointers.target
-
-*/

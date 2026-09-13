@@ -16,7 +16,7 @@ var playerSpriteSet = new spriteSet();
 var spriteSets = {}, sprites = {};
 var player;
 var gameScale = 5, cellSize = 12;
-var maps = Array();
+var maps = [];
 var activeMap;
 var context;
 var gameInterval; // <-- the animation interval object
@@ -24,11 +24,13 @@ var walkSpeed = 3;
 var screenMiddle = {x: 0, y : 0};
 var characters = [];
 var showGameGrid = false;
+var isTransitioning = false; // guards useEntrance against overlapping fades
+
+var mousePointers = {};
 
 var characterClass = function(){
 	this.position = {x : 0, y : 0};
 	this.mapPos = {x : 0, y : 0};
-	this.direction = 'down';
 	this.sprite = null;
 	this.currentSequence = null;
 	this.currentEndFrame = null;
@@ -85,17 +87,14 @@ characterClass.prototype.currentMapVal = function(){
 };
 
 characterClass.prototype.touchingItems = function(){
-	var rval = Array();
 	var x = this.mapPos.x;
 	var y = this.mapPos.y;
-	if(activeMap.mappedItems[x] != undefined){
-		if(activeMap.mappedItems[x][y] != undefined){
-			for(var i of activeMap.mappedItems[x][y]){
-				rval = rval.concat(activeMap.mappedItems[x][y]);
-			}
-		}
-	}
-	return rval;
+	if(activeMap.mappedItems[x] == undefined) return [];
+	if(activeMap.mappedItems[x][y] == undefined) return [];
+	// Return a shallow copy of the cell's item list.  The previous version
+	// concatenated the same array once per element, which multiplied the
+	// contents by the array length.
+	return activeMap.mappedItems[x][y].slice();
 };
 
 characterClass.prototype.moveTowardsTarget = function(){
@@ -188,7 +187,8 @@ characterClass.prototype.findTarget = function(){
 }
 
 characterClass.prototype.act = function(){
-	var frameIndex, sequence, endFrame, diametersq, oldx, oldy;
+	var frameIndex, sequence = null, endFrame, oldx, oldy;
+	var self = this; // captured so the sprite callback can reference the character
 	this.findTarget();
 
 	if(this.target != null){
@@ -211,45 +211,37 @@ characterClass.prototype.act = function(){
 			}
 
 			switch(frameIndex){
-				case 0: 
+				case 0:
 					sequence = 'walkup';
 					endFrame = 'back_idle';
-					this.frameIndex = 'up';
 					break;
-				case 1: 
+				case 1:
 					sequence = 'walkupright';
 					endFrame = 'back_right_idle';
-					this.frameIndex = 'upright';
 					break;
-				case 2: 
+				case 2:
 					sequence = 'walkright';
 					endFrame = 'right_idle';
-					this.frameIndex = 'right';
 					break;
-				case 3: 
+				case 3:
 					sequence = 'walkdownright';
 					endFrame = 'front_right_idle';
-					this.frameIndex = 'downright';
 					break;
-				case 4: 
+				case 4:
 					sequence = 'walkdown';
 					endFrame = 'front_idle';
-					this.frameIndex = 'down';
 					break;
-				case 5: 
+				case 5:
 					sequence = 'walkdownleft';
 					endFrame = 'front_left_idle';
-					this.frameIndex = 'downleft';
 					break;
-				case 6: 
+				case 6:
 					sequence = 'walkleft';
 					endFrame = 'left_idle';
-					this.frameIndex = 'left';
 					break;
-				case 7: 
+				case 7:
 					sequence = 'walkupleft';
 					endFrame = 'back_left_idle';
-					this.frameIndex = 'upleft';
 					break;
 			}
 		}
@@ -271,8 +263,10 @@ characterClass.prototype.act = function(){
 			iterations: 0,
 			method : 'manual',
 			callback: function(){
-				this.currentSequence = null;
-				this.sprite.setFrame(endFrame);
+				// `this` inside the callback is not guaranteed to be the
+				// character, so use the captured `self` reference instead.
+				self.currentSequence = null;
+				self.sprite.setFrame(endFrame);
 			}
 		});
 	}else{
@@ -321,7 +315,7 @@ characterClass.prototype.setTarget = function(dx, dy){
 		y : Math.floor(target.y / cellSize) - this.mapPos.y
 	};
 
-	// get a collision map to test against	
+	// get a collision map to test against
 	var collisionMap = activeMap.readCollisionMap(
 		this.mapPos.x - gridRadius,
 		this.mapPos.y - gridRadius,
@@ -334,9 +328,31 @@ characterClass.prototype.setTarget = function(dx, dy){
 
 	// now plot the best path!
 	var start = graph.grid[gridRadius][gridRadius];
-	var end = graph.grid[gridTarget.x + gridRadius][gridTarget.y + gridRadius];
-	var path = astar.search(graph, start, end);
 
+	// guard against the target falling outside of the local collision window
+	var endX = gridTarget.x + gridRadius;
+	var endY = gridTarget.y + gridRadius;
+	if(
+		endX < 0 || endY < 0
+		|| endX >= graph.grid.length
+		|| endY >= graph.grid[0].length
+	){
+		// fall back to the raw target; the straight-walk test already failed
+		// so this may not go anywhere, but at least it won't throw.
+		this.walkPath = [];
+		return;
+	}
+
+	var end = graph.grid[endX][endY];
+	var path = astar.search(graph, start, end);
+/*
+	// If A* couldn't find a route, give up rather than sending the character
+	// on a straight line into a wall.
+	if(path.length === 0){
+		this.walkPath = [];
+		return;
+	}
+*/
 	// excellent, now we need to translate this resulting path into valid output
 	this.walkPath = [];
 
@@ -423,6 +439,10 @@ characterClass.prototype.collidesOnPath = function(x1, y1, x2, y2){
 };
 
 function useEntrance(entrance){
+	// Prevent overlapping transitions if the player triggers another entrance
+	// during the fade.
+	if(isTransitioning) return;
+	isTransitioning = true;
 
 	/*
 		This entire if structure needs to be replaced with something better.
@@ -448,33 +468,27 @@ function useEntrance(entrance){
 		});
 		entrance.target = maps[mapIdx];
 
+		var linkTarget = function(oppositeKey){
+			var opposite = entrance.target.items[oppositeKey];
+			if(opposite == undefined || opposite.length === 0) return;
+			entrance.target.playerPos = {
+				x : opposite[0].x,
+				y : opposite[0].y
+			};
+			if(opposite[0].target == undefined){
+				opposite[0].target = activeMap;
+			}
+		};
+
 		switch(entrance.content){
 			case 'stairup':
-				entrance.target.playerPos = {
-					x : entrance.target.items['stairdown'][0].x,
-					y : entrance.target.items['stairdown'][0].y
-				};
-				if(entrance.target.items['stairdown'][0].target == undefined){
-					entrance.target.items['stairdown'][0].target = activeMap;
-				}
+				linkTarget('stairdown');
 				break;
 			case 'stairdown':
-				entrance.target.playerPos = {
-					x : entrance.target.items['stairup'][0].x,
-					y : entrance.target.items['stairup'][0].y
-				};
-				if(entrance.target.items['stairup'][0].target == undefined){
-					entrance.target.items['stairup'][0].target = activeMap;
-				}
+				linkTarget('stairup');
 				break;
 			case 'caveEntrance':
-				entrance.target.playerPos = {
-					x : entrance.target.items['stairup'][0].x,
-					y : entrance.target.items['stairup'][0].y
-				};
-				if(entrance.target.items['stairup'][0].target == undefined){
-					entrance.target.items['stairup'][0].target = activeMap;
-				}
+				linkTarget('stairup');
 				break;
 		}
 	}
@@ -510,6 +524,7 @@ function useEntrance(entrance){
 		}else{
 			console.log('setting opacity to 1');
 			gameCanvas.style.opacity = 1;
+			isTransitioning = false;
 		}
 	}
 
@@ -519,7 +534,7 @@ function useEntrance(entrance){
 function handleActiveCellClick(){
 	var item;
 	var items = player.touchingItems();
-	
+
 	for(item of items){
 		switch(item.content){
 			case 'stairup':
@@ -548,6 +563,9 @@ var renderView = (function(){
 	var randomKey, worldPosition, treeFrame;
 	var x, y, mapX, mapY, gridX, gridY, n;
 	var waterCycle = 0;
+	// Position-indexed lookup of items in the current area, rebuilt once per
+	// render instead of scanning the whole item list for every visible cell.
+	var itemsIndex;
 
 	var renderCell = function(area, sprite, underlay){
 		underlay = underlay == undefined ? false : (underlay ? true : false);
@@ -572,7 +590,7 @@ var renderView = (function(){
 				}else{
 					sprites.waterWaves.setFrame(5);
 				}
-				
+
 				sprites.waterWaves.setPosition(gridX, gridY, false);
 				sprites.waterWaves.draw(context);
 				break;
@@ -679,7 +697,7 @@ var renderView = (function(){
 						sprites.sandTiles.setPosition(gridX, gridY, false);
 						sprites.sandTiles.draw(context);
 						break;
-					
+
 					case 6:
 						sprites.sandTiles.setFrame('wall');
 						sprites.sandTiles.rotation = Math.PI / 2;
@@ -777,8 +795,20 @@ var renderView = (function(){
 
 	return function(area){
 		var o;
-		playerLayer = Array();
-		topLayer = Array();
+		playerLayer = [];
+		topLayer = [];
+
+		// Rebuild the item index for this frame.  O(items), not O(cells * items).
+		itemsIndex = {};
+		for(var itemName in area.items){
+			var itemList = area.items[itemName];
+			for(var ii = 0; ii < itemList.length; ii++){
+				var it = itemList[ii];
+				var ikey = it.x + ',' + it.y;
+				if(itemsIndex[ikey] == undefined) itemsIndex[ikey] = [];
+				itemsIndex[ikey].push(it);
+			}
+		}
 
 		worldPosition = {
 			x : player.position.x % cellSize,
@@ -801,35 +831,37 @@ var renderView = (function(){
 				mapX = player.mapPos.x + x - middleX;
 				if(mapX < 0 || mapX > area.map.length - 1) continue;
 
-				if(area.hideMap[mapX][mapY] == true){
+				if(area.hideMap[mapX][mapY] === true){
 					continue;
 				}
 
 				gridX = x * cellSize - worldPosition.x;
 				gridY = y * cellSize - worldPosition.y;
-		 
+
 
 				randomKey = Math.abs(Math.sin(mapX + mapY * viewRange.width) * 10000);
 				randomKey -= Math.floor(randomKey);
 				renderCell(area, area.spritemap[area.map[mapX][mapY]]);
 
-				for(var itemName in area.items){
-					for(item of area.items[itemName]){
-						if(item.x == mapX && item.y == mapY){
-							frameName = {
-								'stairup' : 'stairsUp',
-								'stairdown' : 'stairsDown',
-								'caveEntrance' : 'caveEntrance'
-							}[item.content];
-							switch(frameName){
-								case 'stairsUp': case 'stairsDown': 
-									sprites.dungeonElements.setFrame(frameName);
-									sprites.dungeonElements.draw(context, {x : gridX, y: gridY});
-									break;
-								case 'caveEntrance':
-									sprites.caveEntrance.setFrame(frameName);
-									sprites.caveEntrance.draw(context, {x : gridX, y : gridY});
-							}
+				// Look up items at this cell via the index instead of scanning
+				// the whole item collection.
+				var cellItems = itemsIndex[mapX + ',' + mapY];
+				if(cellItems != undefined){
+					for(var ci = 0; ci < cellItems.length; ci++){
+						var cellItem = cellItems[ci];
+						frameName = {
+							'stairup' : 'stairsUp',
+							'stairdown' : 'stairsDown',
+							'caveEntrance' : 'caveEntrance'
+						}[cellItem.content];
+						switch(frameName){
+							case 'stairsUp': case 'stairsDown':
+								sprites.dungeonElements.setFrame(frameName);
+								sprites.dungeonElements.draw(context, {x : gridX, y: gridY});
+								break;
+							case 'caveEntrance':
+								sprites.caveEntrance.setFrame(frameName);
+								sprites.caveEntrance.draw(context, {x : gridX, y : gridY});
 						}
 					}
 				}
@@ -840,7 +872,7 @@ var renderView = (function(){
 		for(o of playerLayer){
 			o.sprite.setFrame(o.frame);
 			o.sprite.draw(context, {
-				x : o.x, 
+				x : o.x,
 				y : o.y
 			});
 		}
@@ -851,7 +883,7 @@ var renderView = (function(){
 			var pointery = cellSize * middleY + player.walkPath[player.walkPath.length - 1].y - player.position.y - 0;
 
 
-			mouse.pointers.target.draw(context, {
+			mousePointers.target.draw(context, {
 				x : pointerx,
 				y : pointery
 			});
@@ -860,7 +892,7 @@ var renderView = (function(){
 			var pointery = cellSize * middleY + player.target.y - player.position.y - 0;
 
 
-			mouse.pointers.target.draw(context, {
+			mousePointers.target.draw(context, {
 				x : pointerx,
 				y : pointery
 			});
@@ -891,7 +923,7 @@ var renderView = (function(){
 		for(o of topLayer){
 			o.sprite.setFrame(o.frame);
 			o.sprite.draw(context, {
-				x : o.x, 
+				x : o.x,
 				y : o.y
 			});
 		}
@@ -900,16 +932,16 @@ var renderView = (function(){
 })();
 
 function writeText(x, y, text){
-	var span = document.createElement('span');
-	span.innerHTML = text;
-	span.style.position = 'absolute';
-	span.style.left = (x + 2) + 'px';
-	span.style.top = (y + 2) + 'px';
-	span.style.color = '#000';
-	document.getElementById('overlay').appendChild(span);
+	var shadow = document.createElement('span');
+	shadow.textContent = text;
+	shadow.style.position = 'absolute';
+	shadow.style.left = (x + 2) + 'px';
+	shadow.style.top = (y + 2) + 'px';
+	shadow.style.color = '#000';
+	document.getElementById('overlay').appendChild(shadow);
 
 	var span = document.createElement('span');
-	span.innerHTML = text;
+	span.textContent = text;
 	span.style.position = 'absolute';
 	span.style.left = x + 'px';
 	span.style.top = y + 'px';
@@ -919,32 +951,43 @@ function writeText(x, y, text){
 }
 
 function checkMouse(){
-	var delta;
 	var state = mouse.stateQueue[0];
+	if(state == undefined) return;
+
+	// Button not held: clear tracking so the next press is a fresh target.
+	if(!(state.e.buttons & 1)){
+		mouse.lastTarget = null;
+		return;
+	}
+
+	var delta = player.distanceToMouseEvent(state.e);
+
+	// The world-space point under the cursor.  This is the quantity that
+	// actually needs to change before we re-run pathfinding — it changes
+	// when the mouse moves AND when the player walks, but stays constant
+	// when both are still, which is the case we want to short-circuit.
+	var worldTarget = {
+		x : player.position.x + delta.x,
+		y : player.position.y + delta.y
+	};
 
 	if(
-		   (!mouse.stateQueue[0].e.buttons & 1)
-		&& (mouse.stateQueue[1].e.buttons & 1)
-		&& (!mouse.stateQueue[2].e.buttons & 1)
-		&& (mouse.stateQueue[3].e.buttons & 1)
+		mouse.lastTarget != null
+		&& mouse.lastTarget.x === worldTarget.x
+		&& mouse.lastTarget.y === worldTarget.y
 	){
-		if(Date.now() - mouse.stateQueue[3].time < 1000){
-			console.log('double click');
-		}
+		return;
 	}
+	mouse.lastTarget = worldTarget;
 
-	if(state.e.buttons & 1){
-		delta = player.distanceToMouseEvent(state.e);
-		if(delta.x * delta.x + delta.y * delta.y < cellSize * cellSize * 1){// <-- this "1" was previously .25
-			// clicked on the cell we're standing on
-			if(!handleActiveCellClick()){
-				player.setTarget(delta.x, delta.y);
-			}
-		}else{
+	if(delta.x * delta.x + delta.y * delta.y < cellSize * cellSize){
+		// clicked on the cell we're standing on
+		if(!handleActiveCellClick()){
 			player.setTarget(delta.x, delta.y);
 		}
+	}else{
+		player.setTarget(delta.x, delta.y);
 	}
-
 }
 
 function playGame(){
@@ -959,7 +1002,7 @@ function playGame(){
 
 function checkOverlay(){
 
-	var x, y, cx, cy, opactiy, o, cell;
+	var x, y, cx, cy, o, cell;
 	for(x = -player.skills.vision; x <= player.skills.vision; x++){
 		cx = x + player.mapPos.x;
 		if(cx >= 0 && cx < activeMap.width){
@@ -975,8 +1018,22 @@ function checkOverlay(){
 	}
 }
 
+function handleResize(){
+	if(gameCanvas == undefined) return;
+	gameCanvas.width = window.innerWidth;
+	gameCanvas.height = window.innerHeight;
+	screenMiddle = { x : gameCanvas.width >> 1, y : gameCanvas.height >> 1 };
+	viewRange = {
+		width: Math.ceil(gameCanvas.width / (gameScale * cellSize)) + 1,
+		height: Math.ceil(gameCanvas.height / (gameScale * cellSize)) + 1
+	};
+	if(activeMap != undefined){
+		renderView(activeMap);
+	}
+}
+
 var initialize = function(){
-	var spriteList = Array(
+	var spriteList = [
 		{'name' : 'grass', 'file' : 'grass.sprite'},
 		{'name' : 'tree', 'file' : 'tree.sprite'},
 		{'name' : 'stone', 'file': 'stone.sprite'},
@@ -989,11 +1046,11 @@ var initialize = function(){
 		{'name' : 'waterWaves' , 'file' : 'waterWaves.sprite'},
 
 		{'name' : 'rat', 'file' : 'rat.sprite'}
-	);
+	];
 	var pointerSet;
-	var pointerList = Array(
+	var pointerList = [
 		{'name' : 'target', 'file' : 'target.sprite'}
-	);
+	];
 
 	var doStep = function(step){
 		var x, y;
@@ -1018,6 +1075,8 @@ var initialize = function(){
 				context.webkitImageSmoothingEnabled = false;
 				context.mozImageSmoothingEnabled = false;
 				context.imageSmoothingEnabled = false; /// future
+
+				window.addEventListener('resize', handleResize);
 
 				writeText(5, 5, "DungeonCrawler v.0.0");
 				setTimeout(function(){
@@ -1047,9 +1106,9 @@ var initialize = function(){
 						'mouseup' : 'handleMouseUp'
 					};
 					for(var evt in eventChecks){
-						logTarget.addEventListener(evt, function(e){ 
+						logTarget.addEventListener(evt, function(e){
 							e.stopPropagation();
-							return false; 
+							return false;
 						});
 					}
 
@@ -1149,7 +1208,7 @@ var initialize = function(){
 					e.preventDefault();
 				});
 				mouse = new mouseHandler();
-				mouse.pointers = {}; // <-- might as well add the mouse icons to the event object
+				mouse.lastTarget = null;
 
 				mouse.listen(document.getElementById('overlay'));
 				setTimeout(function(){doStep('load mouse pointers');}, 1);
@@ -1164,15 +1223,15 @@ var initialize = function(){
 				if(pointerList.length > 0){
 					dat = pointerList.pop();
 					pointerSet = new spriteSet('sprites/' + dat.file, function(){
-						mouse.pointers[dat.name] = new cSprite(pointerSet);
-						mouse.pointers[dat.name].setScale(gameScale);
+						mousePointers[dat.name] = new cSprite(pointerSet);
+						mousePointers[dat.name].setScale(gameScale);
 						setTimeout(function(){
 							doStep('load mouse pointers');
 						}, 1);
 					});
 
 				}else{
-					mouse.pointers['target'].startSequence('spin', {
+					mousePointers['target'].startSequence('spin', {
 						iterations: 0,
 						method : 'manual'
 					});
@@ -1210,6 +1269,4 @@ var initialize = function(){
 	doStep('initialize');
 };
 
-window.onload = function(){
-	initialize();
-};
+window.addEventListener('load', initialize);

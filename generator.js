@@ -42,10 +42,10 @@ roomClass.prototype.setArea = function(x, y, gridStep, zoom){
 
 var mapBuilder = function(){
 	this.width = this.height = 0;
-	this.rooms = Array();
+	this.rooms = [];
 	// items and mappedItems hold the same data, but indexed differently for convenience
-	this.mappedItems = Array();
-	this.items = {};//Array();
+	this.mappedItems = [];
+	this.items = {};
 	this.defaultParams = {
 		'category' : 'dungeon',
 		'width' : 60,
@@ -58,12 +58,13 @@ var mapBuilder = function(){
 		'waterChance' : 20,
 		'reedChance' : 80
 	}
+	this.collidablesMapping = {' ' : 1, '#' : 1, 'W' : 1};
 };
 
 mapBuilder.prototype.loadImageMap = function(mapFile, callback){
 	this.width = this.height = 0;
-	this.mappedItems = Array();
-	this.items = {};//Array();
+	this.mappedItems = [];
+	this.items = {};
 
 	var me = this;
 
@@ -130,7 +131,7 @@ mapBuilder.prototype.loadImageMap = function(mapFile, callback){
 						me.addItem(data.items[n]);
 					}
 					console.log('data loaded');
-					me.hideMap();
+					me.resetHideMap();
 					me.buildCollisionMap();
 					if(typeof(callback) == 'function'){
 						setTimeout(callback, 0);
@@ -139,25 +140,12 @@ mapBuilder.prototype.loadImageMap = function(mapFile, callback){
 				}
 				img.src = 'maps/' + data.image;
 			}catch(e){
-				throw "spriteSet::load: " + e;
+				throw new Error("mapBuilder::loadImageMap: " + e);
 			}
 		}
 	}
 	client.open('GET', dir + '/' + mapFile);
 	client.send();
-
-/*
-
-
-
-	var img = new Image();
-	img.src = 'maps/' + map.image;
-	var canvas = document.createElement('canvas');
-	var context = canvas.getContext('2d');
-	context.drawImage(img, 0, 0);
-	return context.getImageData(x, y, 1, 1).data;
-*/
-
 };
 
 mapBuilder.prototype.build = function(params){
@@ -173,7 +161,7 @@ mapBuilder.prototype.build = function(params){
 			this.buildForest();
 			break;
 		default:
-			throw "invalied map type";
+			throw new Error("invalid map type");
 	}
 	this.spritemap = {
 		"T" : "trees",
@@ -182,13 +170,13 @@ mapBuilder.prototype.build = function(params){
 		"#" : "stone wall",
 		"W" : "water"
 	};
-	this.hideMap();
+	this.resetHideMap();
 	this.buildCollisionMap();
 }
 
 // read a subset area of the collision map and return it as an array
 mapBuilder.prototype.readCollisionMap = function(x1, y1, x2, y2){
-	var rval = Array();
+	var rval = [];
 	var x, y, width, height;
 	var mapX, mapY;
 
@@ -198,9 +186,9 @@ mapBuilder.prototype.readCollisionMap = function(x1, y1, x2, y2){
 	for(x = 0; x < width; x++){
 		mapX = x + x1;
 		if(mapX < 0 || mapX >= this.width){
-			rval[x] = Array.apply(null, Array(height)).fill(0);
+			rval[x] = Array.apply(null, Array(height)).fill(1);
 		}else{
-			rval[x] = Array();
+			rval[x] = [];
 			for(y = 0; y < height; y++){
 				mapY = y + y1;
 				if(mapY < 0 || mapY >= this.height){
@@ -214,10 +202,10 @@ mapBuilder.prototype.readCollisionMap = function(x1, y1, x2, y2){
 	return rval;
 }
 
-mapBuilder.prototype.hideMap = function(){
-	this.hideMap = Array();
+mapBuilder.prototype.resetHideMap = function(){
+	this.hideMap = [];
 	for(var x = 0; x < this.width; x++){
-		this.hideMap[x] = Array();
+		this.hideMap[x] = [];
 		for(var y = 0; y < this.height; y++){
 			this.hideMap[x][y] = true;
 		}
@@ -225,11 +213,11 @@ mapBuilder.prototype.hideMap = function(){
 }
 
 mapBuilder.prototype.buildCollisionMap = function(){
-	this.collisionMap = Array();
+	this.collisionMap = [];
 	for(var x = 0; x < this.width; x++){
-		this.collisionMap[x] = Array();
+		this.collisionMap[x] = [];
 		for(var y = 0; y < this.height; y++){
-			this.collisionMap[x][y] = {' ' : 1, '#' : 1, 'W' : 1}[this.map[x][y]] != undefined ? 1 : 0;
+			this.collisionMap[x][y] = this.collidablesMapping[this.map[x][y]] != undefined ? 1 : 0;
 		}
 	}
 }
@@ -239,26 +227,19 @@ mapBuilder.prototype.readParams = function(){
 		arguments[0]= {};
 	}
 
-	for(var param in this.defaultParams){
-		let defaultval = this.defaultParams[param];
-
-		if(arguments[0][param] != undefined){
-			let quote = typeof(arguments[0][param]) == 'string' ? '"' : '';
-			eval('this.' + param + ' = ' + quote + arguments[0][param] + quote); 
-		}else{
-			let quote = typeof(defaultval) == 'string' ? '"' : '';
-			eval('this.' + param + ' = ' + quote + defaultval + quote); 
-		}
+	for(const param in this.defaultParams){
+		const defaultval = this.defaultParams[param];
+		this[param] = arguments[0][param] !== undefined ? arguments[0][param] : defaultval;
 	}
 
-	this.width *= 1;
+	this.width = Number(this.width);
 	if(this.width < 3){
-		throw "mapBuilder: Invaid width parameter:" + this.width;
+		throw new Error("mapBuilder: Invaid width parameter:" + this.width);
 	}
 
-	this.height *= 1;
+	this.height = Number(this.height);
 	if(this.height < 3){
-		throw "mapBuilder: Invaid height parameter" + this.height;
+		throw new Error("mapBuilder: Invaid height parameter" + this.height);
 	}
 }
 
@@ -270,6 +251,7 @@ mapBuilder.prototype.buildDungeon = function(){
 	var area = this.width * this.height;
 
 	this.map = this.makeEmptyMap(' ');
+	this.rooms = [];
 
 	// ok, we have our empty map, now let's do the dirty business!
 	var zoom, room, dx, dy, n, m, x, y;
@@ -280,9 +262,7 @@ mapBuilder.prototype.buildDungeon = function(){
 	var xGrid = Math.floor(this.width / gridStep);
 	var yGrid = Math.floor(this.height / gridStep);
 
-	var hypsq = xGrid * xGrid + yGrid * yGrid;
-
-	for(var attemptTally = 0; this.rooms.length < 3 && (attemptTally < 1000 || count(this.rooms) == 0); attemptTally++){
+	for(var attemptTally = 0; this.rooms.length < 3 && (attemptTally < 1000 || this.rooms.length === 0); attemptTally++){
 		for(x = 0; x < xGrid; x++){
 			for(y = 0; y < yGrid; y++){
 				// edit this zoom and the if condition to change the varying size of the rooms
@@ -333,7 +313,15 @@ mapBuilder.prototype.placeinRandomRoom = function(content, emptyTarget, targetTe
 		goodSpot = 1;
 		// check to see if it's got a one-block clearance from other objects 
 		for(x = this.rooms[upRoom].x - 1; x <= this.rooms[upRoom].x + 1 && goodSpot; x++){
+			if(x < 0 || x >= this.map.length){
+				goodSpot = 0;
+				break;
+			}
 			for(y = this.rooms[upRoom].y - 1; y <= this.rooms[upRoom].y + 1 && goodSpot; y++){
+				if(y < 0 || y >= this.map[x].length){
+					goodSpot = 0;
+					break;
+				}
 				if(this.map[x][y] != targetTexture){
 					goodSpot = 0;
 				}else if(emptyTarget && this.mappedItems[x] != undefined){
@@ -362,41 +350,47 @@ mapBuilder.prototype.placeinRandomRoom = function(content, emptyTarget, targetTe
 }
 
 mapBuilder.prototype.linkRooms = function(){
+	if(this.rooms.length === 0) return;
+
 	// now connect them with hallways
-	var connectedRooms = {};
-	var m, n, x, y, dx, dy, ix, iy;
-	connectedRooms[Math.floor(Math.random() * this.rooms.length)] = 1;
+	var connected = {};
+	var connectedList = [];
+	var n, m, x, y, dx, dy, ix, iy, link, numLinks, minDist, nearestIndex, dist, pick;
+
+	// start with one randomly chosen room
+	var first = Math.floor(Math.random() * this.rooms.length);
+	connected[first] = true;
+	connectedList.push(first);
+
 	for(n = 0; n < this.rooms.length; n++){
-		if(connectedRooms[n] != undefined){
+		if(connected[n] != undefined){
 			continue;
 		}
-		var didOnce = 0;
 
 		// this random numLinks, which links to multiple rooms, should be tweakable
-		for(var numLinks = Math.floor(Math.random() * 2 + 1); numLinks != 0; numLinks --){
-			let minDist = null;
-			let nearestIndex = null;
-			if(!didOnce){
-				for(m in connectedRooms){
-					let dist = Math.hypot(this.rooms[n].x - this.rooms[m].x, this.rooms[n].y - this.rooms[m].y);
-					if(minDist === null || dist < minDist){
+		numLinks = Math.floor(Math.random() * 2 + 1);
+		for(link = 0; link < numLinks; link++){
+			if(link === 0){
+				// first link: connect to the nearest already-connected room
+				minDist = Infinity;
+				nearestIndex = connectedList[0];
+				for(m = 0; m < connectedList.length; m++){
+					var other = connectedList[m];
+					dist = Math.hypot(
+						this.rooms[n].x - this.rooms[other].x,
+						this.rooms[n].y - this.rooms[other].y
+					);
+					if(dist < minDist){
 						minDist = dist;
-						nearestIndex = m;
+						nearestIndex = other;
 					}
 				}
-				didOnce = 1;
 			}else{
-				let rnum = Math.floor(2 + Math.random() * 10);
-				while(rnum > 0){
-					for(m in connectedRooms){
-						rnum--;
-						if(!rnum) break;
-					}
-				}
-				nearestIndex = m;
+				// subsequent links: pick a random already-connected room
+				pick = Math.floor(Math.random() * connectedList.length);
+				nearestIndex = connectedList[pick];
 			}
 
-			connectedRooms[n] = 1;
 			dx = this.rooms[nearestIndex].x - this.rooms[n].x;
 			dy = this.rooms[nearestIndex].y - this.rooms[n].y;
 
@@ -419,9 +413,13 @@ mapBuilder.prototype.linkRooms = function(){
 				}
 			}
 		}
+
+		// mark n as connected only after its links are drawn, so it can't be
+		// chosen as its own target on a subsequent link iteration
+		connected[n] = true;
+		connectedList.push(n);
 	}
 };
-
 mapBuilder.prototype.encloseWithBricks = function(){
 	// now we surround the rooms with brick
 	var x, y, dx, dy;
@@ -519,13 +517,13 @@ mapBuilder.prototype.findTextureSpot = function(targetTexture){
 // we have an item created and placed, throw it in the map's data
 mapBuilder.prototype.addItem = function(item){
 	if(this.mappedItems[item.x] == undefined){
-		this.mappedItems[item.x] = Array();
+		this.mappedItems[item.x] = [];
 	}
 	if(this.mappedItems[item.x][item.y] == undefined){
-		this.mappedItems[item.x][item.y] = Array();
+		this.mappedItems[item.x][item.y] = [];
 	}
 	if(this.items[item.content] == undefined){
-		this.items[item.content] = Array();
+		this.items[item.content] = [];
 	}
 	this.items[item.content].push(item);
 	this.mappedItems[item.x][item.y][this.mappedItems[item.x][item.y].length] = item;
@@ -611,7 +609,7 @@ mapBuilder.prototype.buildSwamp = function(){
 				}else{
 					drawchar = '"';
 				}
-					drawchar = 'T';
+
 				for(dx = 0; dx < gridStep; dx++){
 					for(dy = 0; dy < gridStep; dy++){
 						this.map[x * gridStep + dx][y * gridStep + dy] = drawchar;
@@ -629,11 +627,12 @@ mapBuilder.prototype.buildSwamp = function(){
 // a competetive version of the game of life, which allows competing life forms
 mapBuilder.prototype.life = function(iterations, deadchar){
 	var newMap = this.makeEmptyMap(' ', this.map.length, this.map[0].length);
-	var x, y, dx, dy, tally, rx, ry, n, charval;
+	var x, y, dx, dy, tally, rx, ry, n, m, charval;
+	var bestTally = -1;
 	for(n = 0; n < iterations; n++){
 		for(x = 0; x < this.map.length; x++){
 			for(y = 0; y < this.map[x].length; y++){
-				tally = Array();
+				tally = [];
 				for(dx = -1; dx <= 1; dx++){
 					for(dy = -1; dy <= 1; dy++){
 						if(dx == 0 && dy == 0) continue;
@@ -683,9 +682,9 @@ mapBuilder.prototype.makeEmptyMap = function (fillchar, width, height){
 	if(width == undefined) width = this.width;
 	if(height == undefined) height = this.height;
 	if(fillchar == undefined) fillchar = ' ';
-	var newmap = Array();
+	var newmap = [];
 	for(var n = 0; n < width; n++){
-		newmap[n] = Array.apply(null, Array(height)).map(String.prototype.valueOf, fillchar);
+		newmap[n] = Array.apply(null, Array(height)).fill(fillchar);
 	}
 	return newmap;
 };
