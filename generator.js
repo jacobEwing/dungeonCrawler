@@ -1,4 +1,4 @@
-
+'use strict';
 /* this is a simple chunk of code for generating terrain types, which should
  * vary depending on circumstance.  For instance "dungeon" would be different
  * from "cave", "city", "castle", etc.  We'll start with dungeon. */
@@ -78,7 +78,7 @@ mapBuilder.prototype.loadImageMap = function(mapFile, callback){
 
 			try{
 				console.log('loading map');
-				data = JSON.parse(this.responseText);
+				let data = JSON.parse(this.responseText);
 				var img = new Image();
 				img.onload = function(){
 					console.log('map loaded');
@@ -111,7 +111,7 @@ mapBuilder.prototype.loadImageMap = function(mapFile, callback){
 
 					console.log('reading map');
 					var imageData = context.getImageData(0, 0, me.width, me.height).data;
-					var idx = 0;
+					var idx = 0, hexCode;
 					for(y = 0; y < me.height; y++){
 						for(x = 0; x < me.width; x++){
 							hexCode = ("0" + Number(imageData[idx]).toString(16)).slice(-2).toLowerCase();
@@ -125,23 +125,7 @@ mapBuilder.prototype.loadImageMap = function(mapFile, callback){
 						}
 
 					}
-/*
-					for(x = 0; x < me.width; x++){
-						for(y = 0; y < me.height; y++){
-							decvals = context.getImageData(x, y, 1, 1).data;
-							hexCode = '';
-							for(n = 0 ; n < 3; n++){
-								hexCode += ("0" + (Number(decvals[n]).toString(16))).slice(-2).toLowerCase();
-							}
 
-							c = data.colourmap[hexCode];
-							if(c != undefined){
-								me.map[x][y] = c;
-							}
-
-						}
-					}
-*/
 					for(n in data.items){
 						me.addItem(data.items[n]);
 					}
@@ -254,14 +238,15 @@ mapBuilder.prototype.readParams = function(){
 	if(arguments[0] == undefined){
 		arguments[0]= {};
 	}
-	for(param in this.defaultParams){
-		defaultval = this.defaultParams[param];
+
+	for(var param in this.defaultParams){
+		let defaultval = this.defaultParams[param];
 
 		if(arguments[0][param] != undefined){
-			quote = typeof(arguments[0][param]) == 'string' ? '"' : '';
+			let quote = typeof(arguments[0][param]) == 'string' ? '"' : '';
 			eval('this.' + param + ' = ' + quote + arguments[0][param] + quote); 
 		}else{
-			quote = typeof(defaultval) == 'string' ? '"' : '';
+			let quote = typeof(defaultval) == 'string' ? '"' : '';
 			eval('this.' + param + ' = ' + quote + defaultval + quote); 
 		}
 	}
@@ -333,6 +318,7 @@ mapBuilder.prototype.buildDungeon = function(){
 }
 
 mapBuilder.prototype.placeinRandomRoom = function(content, emptyTarget, targetTexture){
+	var x, y, offset, goodSpot, upRoom, uR;
 	if(targetTexture == undefined){
 		targetTexture = '.';
 	}
@@ -378,8 +364,9 @@ mapBuilder.prototype.placeinRandomRoom = function(content, emptyTarget, targetTe
 mapBuilder.prototype.linkRooms = function(){
 	// now connect them with hallways
 	var connectedRooms = {};
+	var m, n, x, y, dx, dy, ix, iy;
 	connectedRooms[Math.floor(Math.random() * this.rooms.length)] = 1;
-	for(var n = 0; n < this.rooms.length; n++){
+	for(n = 0; n < this.rooms.length; n++){
 		if(connectedRooms[n] != undefined){
 			continue;
 		}
@@ -387,11 +374,11 @@ mapBuilder.prototype.linkRooms = function(){
 
 		// this random numLinks, which links to multiple rooms, should be tweakable
 		for(var numLinks = Math.floor(Math.random() * 2 + 1); numLinks != 0; numLinks --){
-			minDist = null;
-			nearestIndex = null;
+			let minDist = null;
+			let nearestIndex = null;
 			if(!didOnce){
 				for(m in connectedRooms){
-					dist = Math.hypot(this.rooms[n].x - this.rooms[m].x, this.rooms[n].y - this.rooms[m].y);
+					let dist = Math.hypot(this.rooms[n].x - this.rooms[m].x, this.rooms[n].y - this.rooms[m].y);
 					if(minDist === null || dist < minDist){
 						minDist = dist;
 						nearestIndex = m;
@@ -399,7 +386,7 @@ mapBuilder.prototype.linkRooms = function(){
 				}
 				didOnce = 1;
 			}else{
-				var rnum = Math.floor(2 + Math.random() * 10);
+				let rnum = Math.floor(2 + Math.random() * 10);
 				while(rnum > 0){
 					for(m in connectedRooms){
 						rnum--;
@@ -437,6 +424,7 @@ mapBuilder.prototype.linkRooms = function(){
 
 mapBuilder.prototype.encloseWithBricks = function(){
 	// now we surround the rooms with brick
+	var x, y, dx, dy;
 	for(x = 1; x < this.width - 1; x++){
 		for(y = 1; y < this.height - 1; y++){
 			if(this.map[x][y] == "."){
