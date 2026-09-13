@@ -101,7 +101,10 @@ cSprite.prototype.startSequence = function(sequenceName, callback) {
 	this.stopSequence();
 
 	var seq = this.template.sequences[sequenceName];
-	if (!seq) return;
+	if (!seq) {
+		console.warn("cSprite.startSequence: no such sequence '" + sequenceName + "'");
+		return;
+	}
 
 	this.animating = true;
 	this.currentSequenceName = sequenceName;
@@ -522,6 +525,15 @@ spriteSet.prototype.load_sequences = function(data){
 					break;
 				case 'framerate':
 					newSequence.frameRate = 1 * data[name][param];
+					break;
+				case 'iterations':
+					newSequence.iterations = 1 * data[name][param];
+					break;
+				case 'method':
+					newSequence.method = data[name][param];
+					break;
+				case 'frametimes':
+					newSequence.frameTimes = data[name][param];
 					break;
 			}
 		}

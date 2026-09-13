@@ -106,29 +106,44 @@
 		"climb" : {
 			"frames" : ["back_climbing_1", "back_climbing_2"]
 		},
-		"attack_front" : {
-			"frames" : ["front_sword_3", "front_sword_1", "front_sword_2", "front_sword_1"]
+		"attackdown" : {
+			"frames" : ["front_sword_3", "front_sword_1", "front_sword_2", "front_sword_1"],
+			"iterations" : 1
 		},
-		"attack_back" : {
-			"frames" : ["back_sword_3", "back_sword_1", "back_sword_2", "back_sword_1"]
+		"attackup" : {
+			"frames" : ["back_sword_3", "back_sword_1", "back_sword_2", "back_sword_1"],
+			"iterations" : 1
+
 		},
-		"attack_left" : {
-			"frames" : ["left_sword_2", "left_sword_1", "left_sword_3", "left_sword_1"]
+		"attackleft" : {
+			"frames" : ["left_sword_2", "left_sword_1", "left_sword_3", "left_sword_1"],
+			"iterations" : 1
+
 		},
-		"attack_right" : {
-			"frames" : ["right_sword_2", "right_sword_1", "right_sword_3", "right_sword_1"]
+		"attackright" : {
+			"frames" : ["right_sword_2", "right_sword_1", "right_sword_3", "right_sword_1"],
+			"iterations" : 1
+
 		},
-		"attack_up_left" : {
-			"frames" : ["back_left_sword_1", "back_left_sword_2", "back_left_sword_3", "back_left_sword_2"]
+		"attackupleft" : {
+			"frames" : ["back_left_sword_1", "back_left_sword_2", "back_left_sword_3", "back_left_sword_2"],
+			"iterations" : 1
+
 		},
-		"attack_up_right" : {
-			"frames" : ["back_right_sword_1", "back_right_sword_2", "back_right_sword_3", "back_right_sword_2"]
+		"attackupright" : {
+			"frames" : ["back_right_sword_1", "back_right_sword_2", "back_right_sword_3", "back_right_sword_2"],
+			"iterations" : 1
+
 		},
-		"attack_down_left" : {
-			"frames" : ["front_left_sword_1", "front_left_sword_2", "front_left_sword_3", "front_left_sword_2"]
+		"attackdownleft" : {
+			"frames" : ["front_left_sword_1", "front_left_sword_2", "front_left_sword_3", "front_left_sword_2"],
+			"iterations" : 1
+
 		},
-		"attack_down_right" : {
-			"frames" : ["front_right_sword_1", "front_right_sword_2", "front_right_sword_3", "front_right_sword_2"]
+		"attackdownright" : {
+			"frames" : ["front_right_sword_1", "front_right_sword_2", "front_right_sword_3", "front_right_sword_2"],
+			"iterations" : 1
+
 		}
 	}
 }

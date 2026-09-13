@@ -7,6 +7,7 @@ class KeyboardListener {
 		this.REV_KEYMAP = {};
 		this.combos = [];
 		this.initialize();
+		this.pressHandlers = [];
 	}
 
 	initialize(){
@@ -83,6 +84,15 @@ class KeyboardListener {
 		};
 	}
 
+	onPress(keyName, callback){
+		var code = this.KEYMAP[keyName.toUpperCase()];
+		if(code == undefined){
+			throw new Error("KeyboardListener.onPress: unknown key '" + keyName + "'");
+		}
+		if(!this.pressHandlers[code]) this.pressHandlers[code] = [];
+		this.pressHandlers[code].push(callback);
+	}
+
 	listen(element){
 		var me = this;
 		if(element == undefined) element = document;
@@ -91,9 +101,17 @@ class KeyboardListener {
 			if(me.REV_KEYMAP[e.which] !== undefined){
 				e.preventDefault();
 			}
+			var wasDown = me.keyState[e.which] === 1;
 			me.keyState[e.which] = 1;
+			if(!wasDown && me.pressHandlers[e.which]){
+				var list = me.pressHandlers[e.which];
+				for(var n = 0; n < list.length; n++){
+					list[n](e);
+				}
+			}
 			me.checkCombos(e.which);
 		};
+
 		var upfunction = function(e){
 			me.keyState[e.which] = 0;
 		};

@@ -11,6 +11,26 @@ var walkSpeed = 44;
 // How many water animation steps happen per second of wall-clock time.
 var waterCycleRate = 14;
 
+// --- combat timing ---
+var ATTACK_DURATION = 0.4;    // seconds, matches the 4-frame attack sequences at 100ms/frame
+var ATTACK_HIT_TIME = 0.15;   // seconds into the attack when damage is applied
+var ATTACK_COOLDOWN = 0.3;    // seconds after an attack before another can start
+var ATTACK_HIT_ARC  = Math.PI / 4;   // ±45° cone in front of the attacker
+
+// Octant-indexed attack sequence names.  Note the sprite files use
+// 'front'/'back' for the cardinal up/down (as seen from the viewer) and
+// 'up_left'/'down_right' etc. for the diagonals, which don't match the
+// walking sequence naming.
+var ATTACK_SEQUENCES = [
+	'attackup',        // 0 up
+	'attackupright',   // 1 upright
+	'attackright',     // 2 right
+	'attackdownright', // 3 downright
+	'attackdown',      // 4 down
+	'attackdownleft',  // 5 downleft
+	'attackleft',      // 6 left
+	'attackupleft'     // 7 upleft
+];
 
 // ============================================================================
 // characterClass
@@ -64,23 +84,38 @@ function computeWalkOctant(dx, dy){
 	return (((nearest + direction) % 8) + 8) % 8;
 }
 
-class Character {
-	constructor(game){
+// ============================================================================
+// Entity hierarchy
+// ============================================================================
+
+// Base class for anything that has a position on the map, a sprite, and the
+// ability to walk around.  Subclasses (Player, Enemy, NPC) implement their own
+// findTarget() to decide where to go; everything else is shared.
+class Entity {
+	constructor(game, options){
+		options = options || {};
+
 		this.game = game;
+		this.category = options.category || 'entity';
+
 		this.position = {x : 0, y : 0};
 		this.mapPos = {x : 0, y : 0};
 		this.sprite = null;
+
 		this.currentSequence = null;
 		this.currentEndFrame = null;
-		this.category = null;
+
 		this.skills = {
-			speed : walkSpeed,
-			vision: 6
+			speed  : options.speed  != undefined ? options.speed  : walkSpeed,
+			vision : options.vision != undefined ? options.vision : 6
 		};
+
 		this.target = null;
 		this.walkPath = [];
 		this.possessions = [];
 		this.moveBudget = 0;
+		this.walkOctant = null;
+
 		this.motionData = {
 			xTally : 0,
 			yTally : 0,
@@ -88,14 +123,27 @@ class Character {
 			lastDirY : 0,
 			hasDir : false
 		};
+
+		// --- combat / life state ---
+		this.maxHealth    = options.health      != undefined ? options.health      : 10;
+		this.health       = this.maxHealth;
+		this.isAlive      = true;
+		this.attackPower  = options.attackPower != undefined ? options.attackPower : 5;
+		this.attackRange  = options.attackRange != undefined ? options.attackRange : 18;
+
+		// Last octant the entity faced, updated by updateWalkOctant and by
+		// explicit attack facing.  Never null after the first update — we
+		// default to down so sprites have something to restore to.
+		this.facing = 4;
+
+		// Combat timers.  attackTimer > 0 means an attack is playing out;
+		// attackCooldown > 0 blocks the next attack.
+		this.attackTimer      = 0;
+		this.attackCooldown   = 0;
+		this.attackHitApplied = false;
 	}
 
 	setMapPos(x, y){
-		var game = this.game;
-		if(this === game.player){
-			game.activeMap.playerPos.x = x;
-			game.activeMap.playerPos.y = y;
-		}
 		this.mapPos.x = x;
 		this.mapPos.y = y;
 		this.position.x = cellSize * x;
@@ -142,7 +190,6 @@ class Character {
 
 		var md = this.motionData;
 
-		// Reinitialize the Bresenham tallies only when the direction changes.
 		if(!md.hasDir || sgndx !== md.lastDirX || sgndy !== md.lastDirY){
 			md.xTally = absdx >> 1;
 			md.yTally = absdy >> 1;
@@ -184,46 +231,141 @@ class Character {
 			y : Math.floor(this.position.y / cellSize)
 		};
 
-		if(this === this.game.player){
-			this.game.activeMap.playerPos = {
-				x : this.mapPos.x,
-				y : this.mapPos.y
-			};
-		}
-
-		this.game.checkOverlay();
+		this.onMoved();
 	}
 
-	findTarget(){
+	// Hook called after the entity's position has changed.  Player overrides
+	// this to update the camera-anchoring state; base implementation does
+	// nothing.
+	onMoved(){
+	}
+
+	// Subclasses override this to select a new this.target when appropriate.
+	// The base class never picks a target on its own.
+	findTarget(dtSeconds){
+	}
+
+	updateWalkOctant(){
+		if(this.target == null){
+			this.walkOctant = null;
+			return;
+		}
+		var dx = this.target.x - this.position.x;
+		var dy = this.target.y - this.position.y;
+		if(dx == 0 && dy == 0){
+			this.walkOctant = null;
+			return;
+		}
+		this.walkOctant = computeWalkOctant(dx, dy);
+		this.facing = this.walkOctant;
+	}
+
+	takeDamage(amount){
+		if(!this.isAlive) return;
+		this.health -= amount;
+		if(this.health <= 0){
+			this.health = 0;
+			this.isAlive = false;
+			this.onDeath();
+		}
+	}
+
+	onDeath(){
+		// Subclasses override.  Base: nothing; the game loop removes dead
+		// entities that aren't the player.
+	}
+
+	// Returns the idle frame name matching the current facing octant.
+	idleFrame(){
+		return WALK_SEQUENCES[this.facing][1];
+	}
+
+	// Begin an attack in the current facing direction.  Returns true if the
+	// attack started (i.e. wasn't blocked by an existing attack or a cooldown).
+	startAttack(){
+		if(!this.isAlive) return false;
+		if(this.attackTimer > 0 || this.attackCooldown > 0) return false;
+
+		this.attackTimer = ATTACK_DURATION;
+		this.attackHitApplied = false;
+
+		var seq = ATTACK_SEQUENCES[this.facing];
+		this.sprite.startSequence(seq);
+		this.currentSequence = seq;
+
+		return true;
+	}
+
+	// Called once per attack when the windup reaches ATTACK_HIT_TIME.  Finds
+	// every entity of a different category in range and within the attack arc,
+	// and applies damage.
+	applyAttackDamage(){
 		var game = this.game;
-		if(this === game.player){
-			if(this.target == null && this.walkPath.length > 0){
-				this.target = this.walkPath.shift();
-				this.updateWalkOctant();
-			}
-		}else{
-			var dx = game.player.position.x - this.position.x;
-			var dy = game.player.position.y - this.position.y;
-			var vision = this.skills.vision * cellSize;
-			if(dx * dx + dy * dy < vision * vision){
-				this.setTarget(game.player.position.x - this.position.x, game.player.position.y - this.position.y);
-				this.target = this.walkPath.shift();
-				this.updateWalkOctant();
-			}
+		var attackAngle = -Math.PI / 2 + this.facing * Math.PI / 4;
+		var rangeSq = this.attackRange * this.attackRange;
+
+		// Candidate list: everything in characters, plus the player if we're not them.
+		var candidates = [];
+		for(var n = 0; n < game.characters.length; n++){
+			candidates.push(game.characters[n]);
+		}
+		if(this !== game.player) candidates.push(game.player);
+
+		for(var n = 0; n < candidates.length; n++){
+			var other = candidates[n];
+			if(other === this) continue;
+			if(!other.isAlive) continue;
+			if(other.category === this.category) continue;
+
+			var dx = other.position.x - this.position.x;
+			var dy = other.position.y - this.position.y;
+			if(dx * dx + dy * dy > rangeSq) continue;
+
+			var angleToTarget = Math.atan2(dy, dx);
+			var diff = angleToTarget - attackAngle;
+			// Normalize to [-π, π]
+			while(diff >  Math.PI) diff -= 2 * Math.PI;
+			while(diff < -Math.PI) diff += 2 * Math.PI;
+			if(Math.abs(diff) > ATTACK_HIT_ARC) continue;
+
+			other.takeDamage(this.attackPower);
 		}
 	}
 
 	act(dtSeconds){
 		var self = this;
 
-		this.findTarget();
+		// --- combat timers ---
+		if(this.attackCooldown > 0) this.attackCooldown -= dtSeconds;
 
-		// Scale the movement budget so Euclidean velocity is constant regardless
-		// of direction.  The Bresenham stepper advances 1 pixel along the
-		// dominant axis per iteration, plus roughly |secondary|/|primary| pixels
-		// along the other; dividing the budget by that distance-per-iteration
-		// normalises the two.
+		if(this.attackTimer > 0){
+			this.attackTimer -= dtSeconds;
+
+			// Apply damage once, partway through the attack.
+			var elapsed = ATTACK_DURATION - this.attackTimer;
+			if(!this.attackHitApplied && elapsed >= ATTACK_HIT_TIME){
+				this.applyAttackDamage();
+				this.attackHitApplied = true;
+			}
+
+			if(this.attackTimer <= 0){
+				this.attackTimer = 0;
+				this.attackCooldown = ATTACK_COOLDOWN;
+				this.sprite.stopSequence();
+				this.sprite.setFrame(this.idleFrame());
+				this.currentSequence = null;
+				this.sprite.currentSequence = null;
+			}
+
+			// While attacking, do not move or change walk animation.
+			return;
+		}
+
+		this.findTarget(dtSeconds);
+		if(this.attackTimer > 0) return;
+
 		var scale = 1;
+
 		if(this.target != null){
 			var adx = Math.abs(this.target.x - this.position.x);
 			var ady = Math.abs(this.target.y - this.position.y);
@@ -243,6 +385,7 @@ class Character {
 
 			if(tdx == 0 && tdy == 0){
 				this.target = null;
+				this.advanceWaypoint();
 			}else{
 				if(pixelsThisTick > 0){
 					var oldx = this.position.x;
@@ -271,9 +414,9 @@ class Character {
 			this.currentEndFrame = endFrame;
 			this.currentSequence = sequence;
 			this.sprite.startSequence(sequence, function(){
-					self.currentSequence = null;
-					self.sprite.setFrame(endFrame);
-					});
+				self.currentSequence = null;
+				self.sprite.setFrame(endFrame);
+			});
 		}
 	}
 
@@ -294,8 +437,8 @@ class Character {
 		this.target = null;
 
 		var target = {
-			x : this.position.x + dx,
-			y : this.position.y + dy
+			x : Math.round(this.position.x + dx),
+			y : Math.round(this.position.y + dy)
 		};
 
 		if(!this.collidesOnPath(this.position.x, this.position.y, target.x, target.y)){
@@ -413,18 +556,147 @@ class Character {
 		return rval;
 	}
 
-	updateWalkOctant(){
-		if(this.target == null){
-			this.walkOctant = null;
+	advanceWaypoint(){
+		if(this.target == null && this.walkPath.length > 0){
+			this.target = this.walkPath.shift();
+			this.updateWalkOctant();
+			return true;
+		}
+		return false;
+	}
+}
+
+
+// ----------------------------------------------------------------------------
+// Player — input-driven targeting, and the anchor for the camera.
+// ----------------------------------------------------------------------------
+
+class Player extends Entity {
+	constructor(game){
+		super(game, {
+			category    : 'player',
+			health      : 100,
+			attackPower : 15,
+			attackRange : 20
+		});
+		this.damageFlash = 0;
+	}
+
+	findTarget(dtSeconds){
+		this.advanceWaypoint();
+	}
+
+	onMoved(){
+		this.game.activeMap.playerPos = {
+			x : this.mapPos.x,
+			y : this.mapPos.y
+		};
+		this.game.checkOverlay();
+	}
+
+	setMapPos(x, y){
+		super.setMapPos(x, y);
+		if(this.game.activeMap){
+			this.game.activeMap.playerPos.x = x;
+			this.game.activeMap.playerPos.y = y;
+		}
+	}
+
+	takeDamage(amount){
+		super.takeDamage(amount);
+		this.damageFlash = 0.3;    // seconds of red vignette
+	}
+
+	onDeath(){
+		console.log('Player died.');
+		this.game.gamePaused = true;
+	}
+
+	act(dtSeconds){
+		if(this.damageFlash > 0) this.damageFlash -= dtSeconds;
+		super.act(dtSeconds);
+	}
+}
+
+// ----------------------------------------------------------------------------
+// Enemy — wander/idle AI for now.  Combat comes in slice 5b.
+// ----------------------------------------------------------------------------
+
+class Enemy extends Entity {
+	constructor(game, options){
+		super(game, options || {});
+		this.category = 'enemy';
+
+		// AI state machine.  Values currently used:
+		//   'idle'   — standing still until aiTimer elapses
+		//   'wander' — walking toward this.target; when reached, back to idle
+		this.aiState = 'idle';
+		this.aiTimer = 0.5 + Math.random() * 2.0;   // seconds until next decision
+
+		// How far the enemy will wander from its current position when idle,
+		// in cells.
+		this.wanderRadius = 3;
+	}
+
+	findTarget(dtSeconds){
+		var game   = this.game;
+		var player = game.player;
+
+		// --- player visible? ---
+		var dx = player.position.x - this.position.x;
+		var dy = player.position.y - this.position.y;
+		var distSq = dx * dx + dy * dy;
+		var visionPx = this.skills.vision * cellSize;
+		var visionSq = visionPx * visionPx;
+
+		if(player.isAlive && distSq < visionSq){
+			var rangeSq = this.attackRange * this.attackRange;
+
+			if(distSq <= rangeSq){
+				// In melee range: face the player and swing.
+				this.target = null;
+				this.walkPath = [];
+				this.aiState = 'attack';
+				if(this.attackCooldown <= 0 && this.attackTimer <= 0){
+					var oct = computeWalkOctant(dx, dy);
+					if(oct != null) this.facing = oct;
+					this.startAttack();
+				}
+				return;
+			}
+
+			// Out of melee range but visible: chase.
+			this.aiState = 'chase';
+			if(this.target == null && this.walkPath.length == 0){
+				this.setTarget(dx, dy);
+			}
+			this.advanceWaypoint();
 			return;
 		}
-		var dx = this.target.x - this.position.x;
-		var dy = this.target.y - this.position.y;
-		if(dx == 0 && dy == 0){
-			this.walkOctant = null;
+
+		// --- player not visible: wander as before ---
+		if(this.target != null || this.walkPath.length > 0){
+			this.advanceWaypoint();
 			return;
 		}
-		this.walkOctant = computeWalkOctant(dx, dy);
+
+		this.aiTimer -= dtSeconds;
+		if(this.aiTimer > 0) return;
+
+		if(Math.random() < 0.5){
+			this.aiState = 'idle';
+			this.aiTimer = 0.5 + Math.random() * 2.0;
+		}else{
+			var angle  = Math.random() * Math.PI * 2;
+			var radius = Math.random() * this.wanderRadius * cellSize;
+			var tx = Math.round(this.position.x + Math.cos(angle) * radius);
+			var ty = Math.round(this.position.y + Math.sin(angle) * radius);
+
+			this.aiState = 'wander';
+			this.setTarget(tx - this.position.x, ty - this.position.y);
+			this.advanceWaypoint();
+			this.aiTimer = 0.5 + Math.random() * 2.0;
+		}
 	}
 }
 
@@ -742,6 +1014,27 @@ function createRenderView(game){
 			o.sprite.setFrame(o.frame);
 			o.sprite.draw(game.ctx, { x : o.x, y : o.y });
 		}
+
+		// --- damage vignette ---
+		if(game.player && game.player.damageFlash > 0){
+			var alpha = Math.min(0.6, game.player.damageFlash * 2);
+			game.ctx.save();
+			game.ctx.fillStyle = 'rgba(180, 0, 0, ' + alpha + ')';
+			game.ctx.fillRect(0, 0, game.canvas.width, game.canvas.height);
+			game.ctx.restore();
+		}
+
+		// --- HP readout ---
+		if(game.player && game.player.isAlive){
+			var hpText = 'HP ' + game.player.health + '/' + game.player.maxHealth;
+			game.ctx.save();
+			game.ctx.font = '14px monospace';
+			game.ctx.fillStyle = '#000';
+			game.ctx.fillText(hpText, 11, 21);
+			game.ctx.fillStyle = '#FFF';
+			game.ctx.fillText(hpText, 10, 20);
+			game.ctx.restore();
+		}
 	};
 }
 
@@ -793,9 +1086,18 @@ class Game {
 		try {
 			await this.loadSpriteSets();
 			await this.loadPlayerSprite();
-			await this.loadMap('maps/Map1.map');
+			await this.loadMap('maps/test.map');
+
+			await this.spawnEntity(Enemy, 'sprites/knight.sprite', {
+				x : this.activeMap.playerPos.x + 3,
+				y : this.activeMap.playerPos.y + 2,
+				speed : 20,
+				vision: 4
+			});
+
 			this.initializeEvents();
 			await this.loadMousePointers();
+
 			this.startGameLoop();
 		} catch(e){
 			console.error("Initialization failed:", e);
@@ -848,14 +1150,49 @@ class Game {
 	}
 
 	async loadPlayerSprite(){
-		this.player = new Character(this);
-		this.player.category = 'player';
+		this.player = new Player(this);
 
-		await this.playerSpriteSet.load("sprites/player.sprite");
+		await this.playerSpriteSet.load("sprites/foo.sprite");
 		this.player.sprite = new cSprite(this.playerSpriteSet);
 		this.player.sprite.setScale(gameScale);
 		this.player.sprite.setPosition(this.screenMiddle.x, this.screenMiddle.y, true);
 		this.player.sprite.setFrame('front_idle');
+	}
+
+	// Load (and cache) a spriteSet by name.  If it's already loaded, returns the
+	// cached instance.
+	async loadSpriteSet(name, file){
+		if(this.spriteSets[name] != undefined) return this.spriteSets[name];
+		const set = new spriteSet();
+		await set.load(file);
+		this.spriteSets[name] = set;
+		return set;
+	}
+
+	// Spawn an Entity subclass into the world.  Class must be a subclass of
+	// Entity.  spriteFile is a path like 'sprites/rat.sprite'.  options are
+	// passed through to the entity's constructor and can also include x, y,
+	// initialFrame, and spriteName.
+	async spawnEntity(Class, spriteFile, options){
+		options = options || {};
+
+		var setName = options.spriteName != undefined
+			? options.spriteName
+			: spriteFile.replace(/^.*\//, '').replace(/\.sprite$/, '');
+
+		var set = await this.loadSpriteSet(setName, spriteFile);
+
+		var entity = new Class(this, options);
+		entity.sprite = new cSprite(set);
+		entity.sprite.setScale(gameScale);
+		entity.sprite.setFrame(options.initialFrame || 'front_idle');
+
+		if(options.x != undefined && options.y != undefined){
+			entity.setMapPos(options.x, options.y);
+		}
+
+		this.characters.push(entity);
+		return entity;
 	}
 
 	async loadMap(mapFile){
@@ -892,14 +1229,15 @@ class Game {
 
 		this.mouse = new MouseHandler();
 		this.mouse.lastTarget = null;
+		this.mouse.consumedByInteraction = false;
 		this.mouse.listen(this.overlay);
-
-		this.mouse.on('mousedown', (e) => this.handlePointer(e));
+		this.mouse.on('mousedown', (e) => this.handlePointerDown(e));
 		this.mouse.on('mousemove', (e) => {
 			if(this.mouse.isDown) this.handlePointer(e);
 		});
 		this.mouse.on('mouseup', (e) => {
 			this.mouse.lastTarget = null;
+			this.mouse.consumedByInteraction = false;
 		});
 	}
 
@@ -948,7 +1286,7 @@ class Game {
 	playGame(dt){
 		var n;
 
-		if(this.mouse != null && this.mouse.isDown && this.mouse.lastEvent != null){
+		if(this.mouse != null && this.mouse.isDown && !this.mouse.consumedByInteraction && this.mouse.lastEvent != null){
 			this.handlePointer(this.mouse.lastEvent);
 		}
 
@@ -964,18 +1302,30 @@ class Game {
 			this.waterCycle++;
 		}
 
+		// Remove any entities that died this frame (player death handled separately).
+		for(var n = this.characters.length - 1; n >= 0; n--){
+			var c = this.characters[n];
+			if(!c.isAlive){
+				// TODO (slice 5c): drop loot / leave a corpse.
+				this.characters.splice(n, 1);
+			}
+		}
+
 		this.renderView(this.activeMap);
 	}
 
 	// ------------------------------------------------------------------
 	// input handling
 	// ------------------------------------------------------------------
-
 	handlePointer(e){
 		if(!(e.buttons & 1)) return;
 
 		var delta = this.player.distanceToMouseEvent(e);
 
+		// The world-space point under the cursor.  This is the quantity that
+		// actually needs to change before we re-run pathfinding — it changes
+		// when the mouse moves AND when the player walks, but stays constant
+		// when both are still, which is the case we want to short-circuit.
 		var worldTarget = {
 			x : this.player.position.x + delta.x,
 			y : this.player.position.y + delta.y
@@ -991,12 +1341,33 @@ class Game {
 		this.mouse.lastTarget = worldTarget;
 
 		if(delta.x * delta.x + delta.y * delta.y < cellSize * cellSize){
+			// clicked on the cell we're standing on
 			if(!this.handleActiveCellClick()){
 				this.player.setTarget(delta.x, delta.y);
 			}
 		}else{
 			this.player.setTarget(delta.x, delta.y);
 		}
+	}
+
+	handlePointerDown(e){
+		if(!(e.buttons & 1)) return;
+
+		var delta = this.player.distanceToMouseEvent(e);
+		var worldX = this.player.position.x + delta.x;
+		var worldY = this.player.position.y + delta.y;
+
+		var clickTarget = this.findClickTarget(worldX, worldY);
+		if(clickTarget && this.interactWith(clickTarget)){
+			this.mouse.consumedByInteraction = true;
+			this.mouse.lastTarget = { x : worldX, y : worldY };
+			return;
+		}
+
+		// No interactive target under the cursor — treat the press as the start
+		// of a normal walk.
+		this.mouse.consumedByInteraction = false;
+		this.handlePointer(e);
 	}
 
 	handleActiveCellClick(){
@@ -1017,6 +1388,65 @@ class Game {
 		return items.length;
 	}
 
+	findClickTarget(worldX, worldY){
+		var padding = 4;   // world pixels of extra hit area around each sprite
+
+		var best = null;
+		var bestDistSq = Infinity;
+
+		for(var n = 0; n < this.characters.length; n++){
+			var c = this.characters[n];
+			if(!c.isAlive) continue;
+			if(c === this.player) continue;
+
+			if(this.pointInEntityBounds(c, worldX, worldY, padding)){
+				var dx = c.position.x - this.player.position.x;
+				var dy = c.position.y - this.player.position.y;
+				var d2 = dx * dx + dy * dy;
+				if(d2 < bestDistSq){
+					bestDistSq = d2;
+					best = c;
+				}
+			}
+		}
+
+		if(best != null) return { type : 'entity', target : best };
+		return null;
+	}
+
+	pointInEntityBounds(entity, worldX, worldY, padding){
+		// Sprites are anchored center-bottom at entity.position.  See the draw
+		// offsets in renderView: x -= frameWidth/2, y -= frameHeight - 1.
+		var halfW  = entity.sprite.frameWidth / 2;
+		var height = entity.sprite.frameHeight;
+
+		var cx = entity.position.x;
+		var cy = entity.position.y;
+
+		return worldX >= cx - halfW - padding
+			&& worldX <= cx + halfW + padding
+			&& worldY >= cy - height - padding
+			&& worldY <= cy + padding;
+	}
+
+	interactWith(clickTarget){
+		if(clickTarget.type !== 'entity') return false;
+
+		var target = clickTarget.target;
+		var player = this.player;
+
+		var dx = target.position.x - player.position.x;
+		var dy = target.position.y - player.position.y;
+		var distSq = dx * dx + dy * dy;
+		var rangeSq = player.attackRange * player.attackRange;
+
+		if(distSq > rangeSq) return false;
+
+		var oct = computeWalkOctant(dx, dy);
+		if(oct != null) player.facing = oct;
+
+		return player.startAttack();
+	}
 	// ------------------------------------------------------------------
 	// map transitions
 	// ------------------------------------------------------------------
@@ -1162,7 +1592,6 @@ class Game {
 // ============================================================================
 // bootstrap
 // ============================================================================
-
 window.addEventListener('load', function(){
 	var canvas = document.getElementById('gameCanvas');
 	var overlay = document.getElementById('overlay');
