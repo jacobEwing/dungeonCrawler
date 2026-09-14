@@ -29,7 +29,14 @@ class Enemy extends Entity {
 		var visionPx = this.skills.vision * cellSize;
 		var visionSq = visionPx * visionPx;
 
-		if(player.isAlive && distSq < visionSq){
+		if(
+			player.isAlive
+			&& distSq < visionSq
+			&& this.game.activeMap.hasLineOfSight(
+				this.position.x, this.position.y,
+				player.position.x, player.position.y
+			)
+		){
 			var rangeSq = this.attackRange * this.attackRange;
 
 			if(distSq <= rangeSq){
@@ -79,13 +86,17 @@ class Enemy extends Entity {
 	onDeath(){
 		super.onDeath();
 
-		if(this.spawnPoint){
-			this.spawnPoint.activeEntity = null;
-			this.spawnPoint.cooldownTimer = SPAWN_RESPAWN_COOLDOWN;
+		if(!this.spawnPoint) return;
 
-			if(this.spawnPoint.mode === 'persistent'){
-				this.spawnPoint.exhausted = true;
-			}
+		this.spawnPoint.activeEntity = null;
+
+		if(this.spawnPoint.mode === SPAWN_MODE.PERSISTENT
+		   || this.spawnPoint.mode === SPAWN_MODE.RESET_ON_ENTER){
+			this.spawnPoint.exhausted = true;
+		}else{
+			// SPAWN_MODE.RESPAWN (and any future mode that recycles via
+			// cooldown rather than exhaustion).
+			this.spawnPoint.cooldownTimer = SPAWN_RESPAWN_COOLDOWN;
 		}
 	}
 }

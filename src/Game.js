@@ -74,23 +74,7 @@ class Game {
 		try {
 			await this.loadSpriteSets();
 			await this.loadPlayerSprite();
-			await this.loadMap('maps/Map2.map');
-			/*
-			for(let n = 0; n < 3; n++){
-				let theta = Math.random() * 2 * Math.PI;
-				let radius = 3 + Math.floor(Math.random() * 3);
-				let dx = Math.floor(Math.sin(theta) * radius);
-				let dy = Math.floor(Math.cos(theta) * radius);
-
-				await this.spawnEntity(Enemy, n % 2 ? 'sprites/knight.sprite' : 'sprites/humanFemale.sprite', {
-					x : this.activeMap.playerPos.x + dx,
-					y : this.activeMap.playerPos.y + dy,
-					speed : 20,
-					vision: 4
-				});
-			}
-			*/
-
+			await this.loadMap(MAP_FILE);
 
 			this.initializeEvents();
 			await this.loadMousePointers();
@@ -456,6 +440,15 @@ class Game {
 
 		if(distSq > rangeSq) return false;
 
+		// Wall between player and target blocks interaction, regardless of
+		// range.
+		if(!this.activeMap.hasLineOfSight(
+			player.position.x, player.position.y,
+			target.position.x, target.position.y
+		)){
+			return false;
+		}
+
 		// Corpses are lootable, not attackable.
 		if(target.category === 'corpse'){
 			this.lootCorpse(target);
@@ -546,7 +539,7 @@ class Game {
 				roomscale : .8,
 				stairup : true,
 				stairdown : true,
-				spawnMode : 'respawn',
+				spawnMode : SPAWN_MODE.RESET_ON_ENTER,
 				spawnTable : resolvedSpawns
 			});
 			entrance.target = this.maps[mapIdx];
@@ -584,7 +577,7 @@ class Game {
 			}else{
 				this.activeMap = entrance.target;
 				// Reset spawn state on entry, if this map is in resetOnEnter mode.
-				if(this.activeMap.spawnMode === 'resetOnEnter'){
+				if(this.activeMap.spawnMode === SPAWN_MODE.RESET_ON_ENTER){
 					this.activeMap.resetSpawnPoints();
 				}
 

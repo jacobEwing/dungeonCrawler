@@ -8,6 +8,28 @@ var gameScale = 5;
 var cellSize = 12;
 
 // ============================================================================
+// Assorted constants
+// ============================================================================
+
+
+// The world map
+var MAP_FILE = "maps/Map2.map";
+
+// Spawn modes — controls how a map's spawn points behave over time.
+var SPAWN_MODE = {
+	RESPAWN        : 'respawn',
+	PERSISTENT     : 'persistent',
+	RESET_ON_ENTER : 'resetOnEnter'
+};
+
+// Terrain sprite names that block line of sight.  Keyed by the sprite name
+// in a map's spritemap, not by the map character, so different maps can
+// reuse the same wall sprite or reuse `#` for a non-wall.
+var OPAQUE_SPRITES = {
+	'stone wall' : true
+};
+
+// ============================================================================
 // Gameplay tuning
 // ============================================================================
 

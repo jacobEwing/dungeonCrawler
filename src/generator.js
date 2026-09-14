@@ -49,7 +49,7 @@ var mapBuilder = function(){
 	this.entities = [];
 	this.spawnPoints = [];
 	this.rawSpawns = [];
-	this.spawnMode = 'respawn';
+	this.spawnMode = SPAWN_MODE.RESPAWN;
 	this.defaultParams = {
 		'category' : 'dungeon',
 		'width' : 60,
@@ -743,7 +743,7 @@ mapBuilder.prototype.addSpawnPoint = function(spec){
 		activeEntity : null,
 		spawning : false,
 		exhausted : false,
-		mode : spec.mode || this.spawnMode || 'respawn'
+		mode : spec.mode || this.spawnMode || SPAWN_MODE.RESPAWN
 	});
 };
 
@@ -762,5 +762,48 @@ mapBuilder.prototype.resetSpawnPoints = function(){
 		if(this.entities[m].spawnPoint){
 			this.entities.splice(m, 1);
 		}
+	}
+};
+
+// Is this cell opaque (blocks line of sight)?  Out-of-bounds cells are
+// treated as see-through so that an entity near the map edge can still
+// see off-map neighbours.
+mapBuilder.prototype.isOpaqueCell = function(cx, cy){
+	if(cx < 0 || cy < 0 || cx >= this.width || cy >= this.height){
+		return false;
+	}
+	var terrain = this.spritemap ? this.spritemap[this.map[cx][cy]] : null;
+	return OPAQUE_SPRITES[terrain] === true;
+};
+
+// Does an unobstructed straight line exist between the two pixel positions?
+// Uses a cell-resolution Bresenham trace, skipping the start and end cells
+// (an entity's own cell is never a wall, and the target's cell likewise).
+mapBuilder.prototype.hasLineOfSight = function(px1, py1, px2, py2){
+	var cx1 = Math.floor(px1 / cellSize);
+	var cy1 = Math.floor(py1 / cellSize);
+	var cx2 = Math.floor(px2 / cellSize);
+	var cy2 = Math.floor(py2 / cellSize);
+
+	// Same cell — trivially clear.
+	if(cx1 === cx2 && cy1 === cy2) return true;
+
+	var dx = Math.abs(cx2 - cx1);
+	var dy = Math.abs(cy2 - cy1);
+	var sx = cx1 < cx2 ? 1 : -1;
+	var sy = cy1 < cy2 ? 1 : -1;
+	var err = dx - dy;
+
+	var x = cx1, y = cy1;
+
+	while(true){
+		var e2 = 2 * err;
+		if(e2 > -dy){ err -= dy; x += sx; }
+		if(e2 <  dx){ err += dx; y += sy; }
+
+		// Reached the target cell.  Stop without checking it.
+		if(x === cx2 && y === cy2) return true;
+
+		if(this.isOpaqueCell(x, y)) return false;
 	}
 };

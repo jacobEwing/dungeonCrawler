@@ -270,6 +270,15 @@ class Entity {
 			var dy = other.position.y - this.position.y;
 			if(dx * dx + dy * dy > rangeSq) continue;
 
+			// A wall between attacker and target absorbs the blow.  This is what
+			// stops enemies from clawing at the player through a one-cell wall.
+			if(!game.activeMap.hasLineOfSight(
+				this.position.x, this.position.y,
+				other.position.x, other.position.y
+			)){
+				continue;
+			}
+
 			var angleToTarget = Math.atan2(dy, dx);
 			var diff = angleToTarget - attackAngle;
 			while(diff >  Math.PI) diff -= 2 * Math.PI;
