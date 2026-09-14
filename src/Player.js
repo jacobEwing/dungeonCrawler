@@ -21,7 +21,7 @@ class Player extends Entity {
 			x : this.mapPos.x,
 			y : this.mapPos.y
 		};
-		this.game.checkOverlay();
+		this.game.updateVisibility();
 	}
 
 	setMapPos(x, y){

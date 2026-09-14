@@ -29,6 +29,10 @@ var OPAQUE_SPRITES = {
 	'stone wall' : true
 };
 
+// How dark to make terrain the player has seen but cannot currently see.
+// 0.0 = no dimming, 1.0 = fully black.
+var VISIBILITY_DIM_ALPHA = 0.25;
+
 // ============================================================================
 // Gameplay tuning
 // ============================================================================

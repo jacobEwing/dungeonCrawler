@@ -200,6 +200,7 @@ class Game {
 			}
 		}
 
+		this.updateVisibility();
 		this.renderView(this.activeMap);
 	}
 
@@ -395,7 +396,7 @@ class Game {
 		for(var n = 0; n < this.characters.length; n++){
 			var c = this.characters[n];
 			if(c === this.player) continue;
-			if(!c.isVisible()) continue;
+			if(!this.isCellCurrentlyVisible(c.mapPos.x, c.mapPos.y)) continue;
 
 			if(this.pointInEntityBounds(c, worldX, worldY, padding)){
 				var dx = c.position.x - this.player.position.x;
@@ -539,7 +540,7 @@ class Game {
 				roomscale : .8,
 				stairup : true,
 				stairdown : true,
-				spawnMode : SPAWN_MODE.RESET_ON_ENTER,
+				spawnMode : SPAWN_MODE.RESPAWN,
 				spawnTable : resolvedSpawns
 			});
 			entrance.target = this.maps[mapIdx];
@@ -585,7 +586,7 @@ class Game {
 				this.player.setMapPos(this.activeMap.playerPos.x, this.activeMap.playerPos.y);
 				this.player.position.x += cellSize >> 1;
 				this.player.position.y += cellSize >> 1;
-				this.checkOverlay();
+				this.updateVisibility();
 				this.renderView(this.activeMap);
 				this.gamePaused = false;
 				this.canvas.style.opacity = 0;
@@ -607,25 +608,69 @@ class Game {
 		fadeOut();
 	}
 
-	// ------------------------------------------------------------------
-	// overlay / fog of war
-	// ------------------------------------------------------------------
+	// Recompute which cells the player can currently see, and reveal any
+	// newly-seen cells in the permanent hideMap.  Cheap enough to call on
+	// every player movement; early-outs if the player's map cell hasn't
+	// changed since the last call.
+	updateVisibility(){
+		if(!this.activeMap || !this.player) return;
 
-	checkOverlay(){
-		var x, y, cx, cy;
-		for(x = -this.player.skills.vision; x <= this.player.skills.vision; x++){
-			cx = x + this.player.mapPos.x;
-			if(cx >= 0 && cx < this.activeMap.width){
-				for(y = -this.player.skills.vision; y <= this.player.skills.vision; y++){
-					cy = y + this.player.mapPos.y;
-					if(cy >= 0 && cy < this.activeMap.height){
-						if(squareDistance(x, y, 0, 0) < Math.pow(this.player.skills.vision, 2)){
-							this.activeMap.hideMap[cx][cy] = false;
-						}
-					}
+		var map = this.activeMap;
+		var cx = this.player.mapPos.x;
+		var cy = this.player.mapPos.y;
+
+		if(map._lastVisX === cx && map._lastVisY === cy && map.visibilityMap){
+			return;
+		}
+		map._lastVisX = cx;
+		map._lastVisY = cy;
+
+		var radius = this.player.skills.vision;
+		var r2 = radius * radius;
+		var px = this.player.position.x;
+		var py = this.player.position.y;
+
+		map.visibilityMap = {};
+
+		for(var dx = -radius; dx <= radius; dx++){
+			var mx = cx + dx;
+			if(mx < 0 || mx >= map.width) continue;
+
+			var col = {};
+			map.visibilityMap[mx] = col;
+
+			for(var dy = -radius; dy <= radius; dy++){
+				var my = cy + dy;
+				if(my < 0 || my >= map.height) continue;
+
+				// Outside the Euclidean radius — not visible, don't bother
+				// with an LOS check.
+				if(dx * dx + dy * dy > r2){
+					col[my] = false;
+					continue;
+				}
+
+				// Target the centre of the cell we're checking.
+				var tx = mx * cellSize + cellSize / 2;
+				var ty = my * cellSize + cellSize / 2;
+
+				var visible = map.hasLineOfSight(px, py, tx, ty);
+				col[my] = visible;
+
+				// Permanent reveal: once seen, always remembered.
+				if(visible){
+					map.hideMap[mx][my] = false;
 				}
 			}
 		}
+	}
+
+	isCellCurrentlyVisible(cx, cy){
+		var map = this.activeMap;
+		if(!map || !map.visibilityMap) return false;
+		var col = map.visibilityMap[cx];
+		if(!col) return false;
+		return col[cy] === true;
 	}
 
 	// ------------------------------------------------------------------

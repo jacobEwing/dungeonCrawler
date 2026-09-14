@@ -282,6 +282,38 @@ function createRenderView(game){
 			o.sprite.draw(game.ctx, { x : o.x, y : o.y });
 		}
 
+		// Dim every cell that has been seen but is not currently visible.
+		// Batched into a single path so it's a single fill call.
+		game.ctx.save();
+		game.ctx.beginPath();
+		game.ctx.fillStyle = 'rgba(0, 0, 0, ' + VISIBILITY_DIM_ALPHA + ')';
+
+		for(y = -1; y <= game.viewRange.height + 1; y++){
+			mapY = game.player.mapPos.y + y - middleY;
+			if(mapY < 0 || mapY > area.map[0].length - 1) continue;
+
+			for(x = -1; x <= game.viewRange.width + 1; x++){
+				mapX = game.player.mapPos.x + x - middleX;
+				if(mapX < 0 || mapX > area.map.length - 1) continue;
+
+				if(area.hideMap[mapX][mapY] === true) continue;
+				if(game.isCellCurrentlyVisible(mapX, mapY)) continue;
+
+				gridX = x * cellSize - worldPosition.x;
+				gridY = y * cellSize - worldPosition.y;
+
+				game.ctx.rect(
+					gridX * gameScale,
+					gridY * gameScale,
+					cellSize * gameScale,
+					cellSize * gameScale
+				);
+			}
+		}
+		game.ctx.fill();
+		game.ctx.restore();
+
+
 		if(game.player.walkPath.length > 0){
 			var pointerx = cellSize * middleX + game.player.walkPath[game.player.walkPath.length - 1].x - game.player.position.x;
 			var pointery = cellSize * middleY + game.player.walkPath[game.player.walkPath.length - 1].y - game.player.position.y;
@@ -293,7 +325,7 @@ function createRenderView(game){
 		}
 
 		for(o of game.characters){
-			if(!o.isVisible()) continue;
+			if(!game.isCellCurrentlyVisible(o.mapPos.x, o.mapPos.y)) continue;
 
 			var offset = {
 				x : o.sprite.frameWidth >> 1,

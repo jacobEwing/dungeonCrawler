@@ -1,0 +1,10 @@
+With maps, instead of just having a seen/unseen state, we also partilaly darken any that are outside of a given radius from the player, not renderering anything outside of that range.
+It might be nice to have that visibility taper out a few cells
+
+Enemies should not spawn within a certain radius of the player (maybe five cells or so)
+
+No enemies should ever spawn (or respawn) within the player's view range, except on the initial drawing of the map.
+
+Give player a "sight" skill, and also add an optional "visibility" value on levels.  Perhaps a 0-1 value that can be multiplied by the player's sight skill to get their actual range of view. Also consider things like potions that temporarily boost sight.
+
+As suggested, we should loosen up on stopping keyboard events.  So far the game is playable with the mouse - we may not need the keyboard at all.
