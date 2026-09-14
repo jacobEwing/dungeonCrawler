@@ -115,7 +115,9 @@ class Game {
 			{'name' : 'longGrass', 'file' : 'longGrass.sprite'},
 			{'name' : 'caveEntrance' , 'file' : 'caveEntrance.sprite'},
 			{'name' : 'waterWaves' , 'file' : 'waterWaves.sprite'},
-			{'name' : 'rat', 'file' : 'rat.sprite'}
+			{'name' : 'rat', 'file' : 'rat.sprite'},
+			{ 'name' : 'treasures', 'file' : 'treasures.sprite' }
+
 		];
 
 		while(spriteList.length > 0){
@@ -465,23 +467,26 @@ class Game {
 
 	spawnCorpseFor(deadEntity){
 		var corpse = new Corpse(this, {
-			facing      : deadEntity.facing,
+			facing	  : deadEntity.facing,
 			possessions : deadEntity.possessions
 		});
 		corpse.spawnPoint = deadEntity.spawnPoint;
 
-		// Reuse the dead entity's sprite template (image + frame definitions),
-		// but as a fresh sprite instance so its animation state doesn't
-		// bleed over from the death frame.
-		corpse.sprite = new cSprite(deadEntity.sprite.template);
-		corpse.sprite.setScale(gameScale);
+		var treasureSprite = this.pickTreasureSprite(deadEntity.possessions);
+		if(treasureSprite){
+			corpse.sprite = new cSprite(this.spriteSets.treasures);
+			corpse.sprite.setScale(gameScale);
+			corpse.sprite.startSequence(treasureSprite, {
+				iterations : 0,
+				method	 : 'auto'
+			});
+		}else{
+			// fall back to the old visual for empty corpses
+			corpse.sprite = new cSprite(deadEntity.sprite.template);
+			corpse.sprite.setScale(gameScale);
+			corpse.sprite.setFrame(WALK_SEQUENCES[deadEntity.facing][1]);
+		}
 
-		// Show the idle frame in the direction the entity died facing.  A
-		// proper death sprite would be better; this is a placeholder that
-		// reads as "a knight, standing still, dead."
-		corpse.sprite.setFrame(WALK_SEQUENCES[deadEntity.facing][1]);
-
-		// Snap to the exact pixel where the entity fell, not the cell center.
 		corpse.position.x = deadEntity.position.x;
 		corpse.position.y = deadEntity.position.y;
 		corpse.mapPos.x = deadEntity.mapPos.x;
@@ -489,6 +494,21 @@ class Game {
 
 		this.characters.push(corpse);
 		return corpse;
+	}
+
+	pickTreasureSprite(possessions){
+		if(!possessions || possessions.length === 0) return null;
+
+		var hasGold  = false;
+		var hasOther = false;
+		for(var item of possessions){
+			if(item.name === 'gold') hasGold = true;
+			else hasOther = true;
+		}
+
+		if(hasOther) return 'chestSparkle';
+		if(hasGold)  return 'goldSparkle';
+		return null;
 	}
 
 	lootCorpse(corpse){
@@ -558,9 +578,9 @@ class Game {
 			};
 
 			switch(entrance.content){
-				case 'stairup':     linkTarget('stairdown'); break;
-				case 'stairdown':   linkTarget('stairup');   break;
-				case 'caveEntrance':linkTarget('stairup');   break;
+				case 'stairup':		linkTarget('stairdown'); break;
+				case 'stairdown':	linkTarget('stairup');   break;
+				case 'caveEntrance':	linkTarget('stairup');   break;
 			}
 		}
 
@@ -791,24 +811,24 @@ class Game {
 	}
 
 	async spawnNearPlayer(Class, spriteFile, count, options){
-	    options = options || {};
-	    var radiusMin = options.radiusMin != undefined ? options.radiusMin : 3;
-	    var radiusMax = options.radiusMax != undefined ? options.radiusMax : 6;
+		options = options || {};
+		var radiusMin = options.radiusMin != undefined ? options.radiusMin : 3;
+		var radiusMax = options.radiusMax != undefined ? options.radiusMax : 6;
 
-	    for(var n = 0; n < count; n++){
-		var theta  = Math.random() * 2 * Math.PI;
-		var radius = radiusMin + Math.floor(Math.random() * (radiusMax - radiusMin + 1));
-		var dx = Math.floor(Math.sin(theta) * radius);
-		var dy = Math.floor(Math.cos(theta) * radius);
+		for(var n = 0; n < count; n++){
+			var theta  = Math.random() * 2 * Math.PI;
+			var radius = radiusMin + Math.floor(Math.random() * (radiusMax - radiusMin + 1));
+			var dx = Math.floor(Math.sin(theta) * radius);
+			var dy = Math.floor(Math.cos(theta) * radius);
 
-		var opts = Object.assign({}, options);
-		opts.x = this.player.mapPos.x + dx;
-		opts.y = this.player.mapPos.y + dy;
-		delete opts.radiusMin;
-		delete opts.radiusMax;
+			var opts = Object.assign({}, options);
+			opts.x = this.player.mapPos.x + dx;
+			opts.y = this.player.mapPos.y + dy;
+			delete opts.radiusMin;
+			delete opts.radiusMax;
 
-		await this.spawnEntity(Class, spriteFile, opts);
-	    }
+			await this.spawnEntity(Class, spriteFile, opts);
+		}
 	}
 
 	// Turn a spawn descriptor (registry key string, or an object with a
@@ -816,7 +836,7 @@ class Game {
 	// {Class, spriteFile, options} shape that mapBuilder expects.
 	resolveSpawn(entry){
 		if(typeof entry === 'object' && entry.Class){
-			return entry;    // already resolved
+			return entry; // already resolved
 		}
 
 		var key = typeof entry === 'string' ? entry : entry.type;
