@@ -1,0 +1,21 @@
+{
+	"image" : "sprites/treasures.png",
+	"frameRate" : 200,
+	"frameWidth" : 5,
+	"frameHeight" : 5,
+	"frames" : {
+		"gold" : { x : 0, y : 1 },
+		"goldSparkle" : { x : 1, y : 0 },
+
+		"gems" : { x : 1, y : 1 },
+		"gemsSparkle" : { x : 2, y : 0 },
+
+		"chest" : { 2 : 0, y : 1 },
+		"chestSparkle" : { x : 0, y : 0 }
+	},
+	"sequences" : {
+		"goldSparkle" : ["gold", "gold", "gold", "goldSparkle"},
+		"gemsSparkle" : ["gemms", "gemms", "gemms", "gemsSparkle"},
+		"chestSparkle" : ["chest", "chest", "chest", "chestSparkle"},
+	}
+}
