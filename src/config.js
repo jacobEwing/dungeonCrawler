@@ -32,6 +32,7 @@ var OPAQUE_SPRITES = {
 // How dark to make terrain the player has seen but cannot currently see.
 // 0.0 = no dimming, 1.0 = fully black.
 var VISIBILITY_DIM_ALPHA = 0.25;
+var DIM_NEAR_FACTOR = 0.5;
 
 // ============================================================================
 // Gameplay tuning

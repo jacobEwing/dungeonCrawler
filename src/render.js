@@ -286,7 +286,6 @@ function createRenderView(game){
 		// Batched into a single path so it's a single fill call.
 		game.ctx.save();
 		game.ctx.beginPath();
-		game.ctx.fillStyle = 'rgba(0, 0, 0, ' + VISIBILITY_DIM_ALPHA + ')';
 
 		for(y = -1; y <= game.viewRange.height + 1; y++){
 			mapY = game.player.mapPos.y + y - middleY;
@@ -298,6 +297,7 @@ function createRenderView(game){
 
 				if(area.hideMap[mapX][mapY] === true) continue;
 				if(game.isCellCurrentlyVisible(mapX, mapY)) continue;
+				if(game.hasVisibleNeighbour(mapX, mapY)) continue;
 
 				gridX = x * cellSize - worldPosition.x;
 				gridY = y * cellSize - worldPosition.y;
@@ -310,7 +310,42 @@ function createRenderView(game){
 				);
 			}
 		}
+		game.ctx.fillStyle = 'rgba(0, 0, 0, ' + VISIBILITY_DIM_ALPHA + ')';
 		game.ctx.fill();
+
+
+
+		game.ctx.beginPath();
+
+		for(y = -1; y <= game.viewRange.height + 1; y++){
+			mapY = game.player.mapPos.y + y - middleY;
+			if(mapY < 0 || mapY > area.map[0].length - 1) continue;
+
+			for(x = -1; x <= game.viewRange.width + 1; x++){
+				mapX = game.player.mapPos.x + x - middleX;
+				if(mapX < 0 || mapX > area.map.length - 1) continue;
+
+				if(area.hideMap[mapX][mapY] === true) continue;
+				if(game.isCellCurrentlyVisible(mapX, mapY)) continue;
+				if(!game.hasVisibleNeighbour(mapX, mapY)) continue;
+
+				gridX = x * cellSize - worldPosition.x;
+				gridY = y * cellSize - worldPosition.y;
+
+				game.ctx.rect(
+					gridX * gameScale,
+					gridY * gameScale,
+					cellSize * gameScale,
+					cellSize * gameScale
+				);
+			}
+		}
+
+		game.ctx.fillStyle = 'rgba(0, 0, 0, ' + (VISIBILITY_DIM_ALPHA * DIM_NEAR_FACTOR) + ')';
+		game.ctx.fill();
+
+
+
 		game.ctx.restore();
 
 

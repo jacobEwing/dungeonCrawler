@@ -645,7 +645,7 @@ class Game {
 
 				// Outside the Euclidean radius — not visible, don't bother
 				// with an LOS check.
-				if(dx * dx + dy * dy > r2){
+				if(dx * dx + dy * dy >= r2){
 					col[my] = false;
 					continue;
 				}
@@ -671,6 +671,16 @@ class Game {
 		var col = map.visibilityMap[cx];
 		if(!col) return false;
 		return col[cy] === true;
+	}
+
+	hasVisibleNeighbour(cx, cy){
+		for(var dx = -1; dx <= 1; dx++){
+			for(var dy = -1; dy <= 1; dy++){
+				if(dx === 0 && dy === 0) continue;
+				if(this.isCellCurrentlyVisible(cx + dx, cy + dy)) return true;
+			}
+		}
+		return false;
 	}
 
 	// ------------------------------------------------------------------
