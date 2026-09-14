@@ -17,6 +17,22 @@ var walkSpeed = 44;
 // Water animation steps per second of wall-clock time.
 var waterCycleRate = 14;
 
+// --- spawn point tuning ---
+
+// The player must be within this many cells of a spawn point for it to
+// materialize an entity.  A bit larger than the vision radius so the enemy
+// is off-screen when it appears.
+var SPAWN_ACTIVATION_CELLS   = 8;
+
+// An active entity is recycled when the player is farther than this many
+// cells away.  Hysteresis between activation and deactivation prevents
+// repeated materialize/recycle churn at the boundary.
+var SPAWN_DEACTIVATION_CELLS = 12;
+
+// How long a spawn point waits after its entity is killed before it can
+// produce another.
+var SPAWN_RESPAWN_COOLDOWN   = 15;   // seconds
+
 // ============================================================================
 // Combat timing
 // ============================================================================

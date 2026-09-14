@@ -75,4 +75,17 @@ class Enemy extends Entity {
 			this.aiTimer = 0.5 + Math.random() * 2.0;
 		}
 	}
+
+	onDeath(){
+		super.onDeath();
+
+		if(this.spawnPoint){
+			this.spawnPoint.activeEntity = null;
+			this.spawnPoint.cooldownTimer = SPAWN_RESPAWN_COOLDOWN;
+
+			if(this.spawnPoint.mode === 'persistent'){
+				this.spawnPoint.exhausted = true;
+			}
+		}
+	}
 }

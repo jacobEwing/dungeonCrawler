@@ -293,6 +293,8 @@ function createRenderView(game){
 		}
 
 		for(o of game.characters){
+			if(!o.isVisible()) continue;
+
 			var offset = {
 				x : o.sprite.frameWidth >> 1,
 				y : o.sprite.frameHeight - 1

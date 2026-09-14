@@ -33,6 +33,25 @@ class Game {
 		this.waterCycleAccum = 0;
 
 		this.renderView = createRenderView(this);
+
+		// Registry of entity types that can be referenced by name from map JSON
+		// or from spawn tables.
+		this.spawnRegistry = {
+			knight : {
+				Class : Enemy,
+				spriteFile : 'sprites/knight.sprite',
+				options : { speed : 20, vision : 5 }
+			},
+			humanFemale : {
+				Class : Enemy,
+				spriteFile : 'sprites/humanFemale.sprite',
+				options : { speed : 18, vision : 5 }
+			}
+		};
+
+		// Dungeons pull spawns from this list of registry keys.
+		this.dungeonSpawnTable = ['knight', 'humanFemale'];
+
 	}
 
 	// Entities belong to the map they were spawned on.  Reading game.characters
@@ -56,6 +75,7 @@ class Game {
 			await this.loadSpriteSets();
 			await this.loadPlayerSprite();
 			await this.loadMap('maps/Map2.map');
+			/*
 			for(let n = 0; n < 3; n++){
 				let theta = Math.random() * 2 * Math.PI;
 				let radius = 3 + Math.floor(Math.random() * 3);
@@ -69,6 +89,7 @@ class Game {
 					vision: 4
 				});
 			}
+			*/
 
 
 			this.initializeEvents();
@@ -177,6 +198,7 @@ class Game {
 	async loadMap(mapFile){
 		const map = new mapBuilder();
 		await map.loadImageMap(mapFile);
+		this.populateRawSpawns(map);
 		this.maps.push(map);
 		this.activeMap = map;
 
@@ -271,8 +293,12 @@ class Game {
 
 		this.player.act(dt);
 		for(n = 0; n < this.characters.length; n++){
-			this.characters[n].act(dt);
+			var c = this.characters[n];
+			if(!c.isVisible()) continue;
+			c.act(dt);
 		}
+
+		this.updateSpawnPoints(dt);
 
 		// advance the water animation by wall-clock time
 		this.waterCycleAccum += dt * waterCycleRate;
@@ -385,6 +411,7 @@ class Game {
 		for(var n = 0; n < this.characters.length; n++){
 			var c = this.characters[n];
 			if(c === this.player) continue;
+			if(!c.isVisible()) continue;
 
 			if(this.pointInEntityBounds(c, worldX, worldY, padding)){
 				var dx = c.position.x - this.player.position.x;
@@ -447,6 +474,7 @@ class Game {
 			facing      : deadEntity.facing,
 			possessions : deadEntity.possessions
 		});
+		corpse.spawnPoint = deadEntity.spawnPoint;
 
 		// Reuse the dead entity's sprite template (image + frame definitions),
 		// but as a fresh sprite instance so its animation state doesn't
@@ -506,13 +534,20 @@ class Game {
 		if(entrance.target == undefined){
 			var mapIdx = this.maps.length;
 			this.maps[mapIdx] = new mapBuilder();
+
+			var resolvedSpawns = this.dungeonSpawnTable.map(
+				key => this.resolveSpawn(key)
+			);
+
 			this.maps[mapIdx].build({
 				category : 'dungeon',
 				width : 30,
-				height: 30,
-				roomscale: .8,
-				stairup: true,
-				stairdown: true
+				height : 30,
+				roomscale : .8,
+				stairup : true,
+				stairdown : true,
+				spawnMode : 'respawn',
+				spawnTable : resolvedSpawns
 			});
 			entrance.target = this.maps[mapIdx];
 
@@ -548,6 +583,12 @@ class Game {
 				setTimeout(fadeOut, 30);
 			}else{
 				this.activeMap = entrance.target;
+				// Reset spawn state on entry, if this map is in resetOnEnter mode.
+				if(this.activeMap.spawnMode === 'resetOnEnter'){
+					this.activeMap.resetSpawnPoints();
+				}
+
+				this.player.setMapPos(this.activeMap.playerPos.x, this.activeMap.playerPos.y);
 				this.player.setMapPos(this.activeMap.playerPos.x, this.activeMap.playerPos.y);
 				this.player.position.x += cellSize >> 1;
 				this.player.position.y += cellSize >> 1;
@@ -597,6 +638,72 @@ class Game {
 	// ------------------------------------------------------------------
 	// misc
 	// ------------------------------------------------------------------
+	updateSpawnPoints(dt){
+		if(!this.activeMap) return;
+		if(!this.activeMap.spawnPoints) return;
+
+		var player = this.player;
+		if(!player) return;
+
+		var activationSq   = (SPAWN_ACTIVATION_CELLS   * cellSize) * (SPAWN_ACTIVATION_CELLS   * cellSize);
+		var deactivationSq = (SPAWN_DEACTIVATION_CELLS * cellSize) * (SPAWN_DEACTIVATION_CELLS * cellSize);
+
+		for(var n = 0; n < this.activeMap.spawnPoints.length; n++){
+			var sp = this.activeMap.spawnPoints[n];
+
+			if(sp.exhausted) continue;
+
+			if(sp.cooldownTimer > 0){
+				sp.cooldownTimer -= dt;
+			}
+
+			// Distance from player to the spawn point, in pixels squared.
+			var px = sp.x * cellSize;
+			var py = sp.y * cellSize;
+			var dx = player.position.x - px;
+			var dy = player.position.y - py;
+			var distSq = dx * dx + dy * dy;
+
+			// Recycle an active, living entity that's too far away.
+			if(
+			  sp.activeEntity
+			  && sp.activeEntity.isAlive
+			  && distSq > deactivationSq
+			  && !sp.activeEntity.isOnScreen()
+			){
+				var idx = this.characters.indexOf(sp.activeEntity);
+				if(idx !== -1) this.characters.splice(idx, 1);
+				sp.activeEntity = null;
+				continue;
+			}
+
+			// Spawn a new entity if conditions are right.
+			if(
+				sp.activeEntity == null
+				&& !sp.spawning
+				&& sp.cooldownTimer <= 0
+				&& distSq < activationSq
+			){
+				this.materializeSpawnPoint(sp);
+			}
+		}
+	}
+
+	materializeSpawnPoint(sp){
+		if(sp.spawning) return;
+		sp.spawning = true;
+
+		var options = Object.assign({}, sp.options, { x : sp.x, y : sp.y });
+
+		this.spawnEntity(sp.Class, sp.spriteFile, options).then(entity => {
+			entity.spawnPoint = sp;
+			sp.activeEntity = entity;
+			sp.spawning = false;
+		}).catch(err => {
+			console.error("Failed to materialize spawn point", sp, err);
+			sp.spawning = false;
+		});
+	}
 
 	handleResize(){
 		if(this.canvas == undefined) return;
@@ -654,6 +761,48 @@ class Game {
 
 		await this.spawnEntity(Class, spriteFile, opts);
 	    }
+	}
+
+	// Turn a spawn descriptor (registry key string, or an object with a
+	// `type` field plus optional `options` overrides) into the full
+	// {Class, spriteFile, options} shape that mapBuilder expects.
+	resolveSpawn(entry){
+		if(typeof entry === 'object' && entry.Class){
+			return entry;    // already resolved
+		}
+
+		var key = typeof entry === 'string' ? entry : entry.type;
+		var proto = this.spawnRegistry[key];
+		if(!proto){
+			throw new Error("Unknown spawn type: " + key);
+		}
+
+		var options = Object.assign({}, proto.options);
+		if(typeof entry === 'object' && entry.options){
+			Object.assign(options, entry.options);
+		}
+
+		return {
+			Class : proto.Class,
+			spriteFile : proto.spriteFile,
+			options : options
+		};
+	}
+
+	// Resolve any hand-placed spawns that were declared in the map file.
+	populateRawSpawns(map){
+		if(!map.rawSpawns || map.rawSpawns.length === 0) return;
+
+		for(var entry of map.rawSpawns){
+			var resolved = this.resolveSpawn(entry);
+			map.addSpawnPoint({
+				x : entry.x,
+				y : entry.y,
+				Class : resolved.Class,
+				spriteFile : resolved.spriteFile,
+				options : resolved.options
+			});
+		}
 	}
 }
 

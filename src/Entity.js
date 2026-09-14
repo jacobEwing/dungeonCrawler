@@ -42,6 +42,7 @@ class Entity {
 		this.maxHealth    = options.health      != undefined ? options.health      : 10;
 		this.health       = this.maxHealth;
 		this.isAlive      = true;
+		this.mortal = options.mortal != undefined ? options.mortal : true;
 		this.attackPower  = options.attackPower != undefined ? options.attackPower : 5;
 		this.attackRange  = options.attackRange != undefined ? options.attackRange : 18;
 
@@ -180,6 +181,14 @@ class Entity {
 
 	takeDamage(amount){
 		if(!this.isAlive) return;
+
+		if(!this.mortal){
+			// Wound but never kill.  Clamp at 1 so the entity reads as
+			// "defeated but still standing."
+			this.health = Math.max(1, this.health - amount);
+			return;
+		}
+
 		this.health -= amount;
 		if(this.health <= 0){
 			this.health = 0;
@@ -194,6 +203,36 @@ class Entity {
 
 	idleFrame(){
 		return WALK_SEQUENCES[this.facing][1];
+	}
+
+	isVisible(){
+		var map = this.game.activeMap;
+		if(!map || !map.hideMap) return true;
+		var pos = this.mapPos;
+		if(pos.x < 0 || pos.y < 0
+				|| pos.x >= map.hideMap.length
+				|| pos.y >= map.hideMap[pos.x].length){
+			return false;
+		}
+		return map.hideMap[pos.x][pos.y] === false;
+	}
+
+	// True when the entity's cell is currently within the camera view (plus a
+	// small margin).  Unlike isVisible(), this does not depend on fog-of-war
+	// reveal and can go back to false when the player walks away.  Used by the
+	// spawn-point leashing logic so a chaser doesn't pop out of existence
+	// while the player is watching.
+	isOnScreen(){
+	    var game = this.game;
+	    if(!game.viewRange || !game.player) return false;
+
+	    var dx = this.mapPos.x - game.player.mapPos.x;
+	    var dy = this.mapPos.y - game.player.mapPos.y;
+
+	    var halfW = Math.ceil(game.viewRange.width  / 2) + 2;
+	    var halfH = Math.ceil(game.viewRange.height / 2) + 2;
+
+	    return Math.abs(dx) <= halfW && Math.abs(dy) <= halfH;
 	}
 
 	startAttack(){

@@ -47,6 +47,9 @@ var mapBuilder = function(){
 	this.mappedItems = [];
 	this.items = {};
 	this.entities = [];
+	this.spawnPoints = [];
+	this.rawSpawns = [];
+	this.spawnMode = 'respawn';
 	this.defaultParams = {
 		'category' : 'dungeon',
 		'width' : 60,
@@ -57,7 +60,9 @@ var mapBuilder = function(){
 		'gridscale' : 1 + Math.random() * .5,
 		'treeChance' : 10,
 		'waterChance' : 20,
-		'reedChance' : 80
+		'reedChance' : 80,
+		'spawnTable' : null,
+		'spawnMode' : 'respawn'
 	}
 	this.collidablesMapping = {' ' : 1, '#' : 1, 'W' : 1};
 };
@@ -69,6 +74,8 @@ mapBuilder.prototype.loadImageMap = function(mapFile){
 		me.mappedItems = [];
 		me.items = {};
 		me.entities = [];
+		me.spawnPoints = [];
+		me.rawSpawns = [];
 
 		var loc = window.location.pathname;
 		var dir = loc.substring(0, loc.lastIndexOf('/'));
@@ -107,6 +114,13 @@ mapBuilder.prototype.loadImageMap = function(mapFile){
 						};
 					}
 					me.spritemap = data.spritemap;
+
+					if(data.spawnMode){
+						me.spawnMode = data.spawnMode;
+					}
+					if(data.spawns){
+						me.rawSpawns = data.spawns;					
+					}
 
 					var canvas = document.createElement('canvas');
 					canvas.width = me.width;
@@ -156,6 +170,7 @@ mapBuilder.prototype.build = function(params){
 	switch(this.category){
 		case 'dungeon':
 			this.buildDungeon();
+			this.populateDungeonSpawns(this.spawnTable);
 			break;
 		case 'swamp':
 			this.buildSwamp();
@@ -176,6 +191,30 @@ mapBuilder.prototype.build = function(params){
 	this.resetHideMap();
 	this.buildCollisionMap();
 }
+
+mapBuilder.prototype.populateDungeonSpawns = function(spawnTable){
+	if(!spawnTable || spawnTable.length === 0) return;
+
+	for(var n = 0; n < this.rooms.length; n++){
+		// Give most rooms one enemy; occasionally two; occasionally none.
+		var r = Math.random();
+		var count = r < 0.6 ? 1 : (r < 0.85 ? 2 : 0);
+		for(var i = 0; i < count; i++){
+			var entry = spawnTable[Math.floor(Math.random() * spawnTable.length)];
+			// Small jitter within the room so two enemies don't stack on
+			// the same tile.
+			var jx = i === 0 ? 0 : (Math.random() < 0.5 ? -1 : 1);
+			var jy = i === 0 ? 0 : (Math.random() < 0.5 ? -1 : 1);
+			this.addSpawnPoint({
+				x : this.rooms[n].x + jx,
+				y : this.rooms[n].y + jy,
+				Class : entry.Class,
+				spriteFile : entry.spriteFile,
+				options : entry.options
+			});
+		}
+	}
+};
 
 // read a subset area of the collision map and return it as an array
 mapBuilder.prototype.readCollisionMap = function(x1, y1, x2, y2){
@@ -251,8 +290,6 @@ mapBuilder.prototype.readParams = function(){
 
 
 mapBuilder.prototype.buildDungeon = function(){
-
-
 
 	var area = this.width * this.height;
 
@@ -693,4 +730,37 @@ mapBuilder.prototype.makeEmptyMap = function (fillchar, width, height){
 		newmap[n] = Array.apply(null, Array(height)).fill(fillchar);
 	}
 	return newmap;
+};
+
+mapBuilder.prototype.addSpawnPoint = function(spec){
+	this.spawnPoints.push({
+		x : spec.x,
+		y : spec.y,
+		Class : spec.Class,
+		spriteFile : spec.spriteFile,
+		options : spec.options || {},
+		cooldownTimer : 0,
+		activeEntity : null,
+		spawning : false,
+		exhausted : false,
+		mode : spec.mode || this.spawnMode || 'respawn'
+	});
+};
+
+mapBuilder.prototype.resetSpawnPoints = function(){
+	for(var n = 0; n < this.spawnPoints.length; n++){
+		var sp = this.spawnPoints[n];
+		sp.cooldownTimer = 0;
+		sp.activeEntity = null;
+		sp.spawning = false;
+		sp.exhausted = false;
+	}
+
+	// Remove every entity that came from a spawn point.  Hand-placed
+	// entities (NPCs without a spawnPoint reference) are left alone.
+	for(var m = this.entities.length - 1; m >= 0; m--){
+		if(this.entities[m].spawnPoint){
+			this.entities.splice(m, 1);
+		}
+	}
 };
