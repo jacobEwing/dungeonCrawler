@@ -8,6 +8,7 @@ class KeyboardListener {
 		this.combos = [];
 		this.initialize();
 		this.pressHandlers = [];
+		this.disallowDefaults = false;
 	}
 
 	initialize(){
@@ -98,7 +99,7 @@ class KeyboardListener {
 		if(element == undefined) element = document;
 
 		var downfunction = function(e){
-			if(me.REV_KEYMAP[e.which] !== undefined){
+			if(me.disallowDefaults && me.REV_KEYMAP[e.which] !== undefined){
 				e.preventDefault();
 			}
 			var wasDown = me.keyState[e.which] === 1;

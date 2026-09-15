@@ -1,3 +1,5 @@
 Give player a "sight" skill, Perhaps a 0-1 value that can be multiplied by the player's sight skill to get their actual range of view. Also consider things like potions that temporarily boost sight.
 
 As suggested, we should loosen up on stopping keyboard events.  So far the game is playable with the mouse - we may not need the keyboard at all.
+
+Add some sort of highlight to player, NPM's treasures etc. when they are below trees.  As is the tree foliage hides them thoroughly
