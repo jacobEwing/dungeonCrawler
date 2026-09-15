@@ -13,6 +13,16 @@ class Game {
 		this.spriteSets = {};
 		this.sprites = {};
 		this.mousePointers = {};
+		// CSS cursor per action.  Uses url(...) with a fallback, so missing images
+		// silently fall through to the fallback cursor rather than breaking.
+		this.cursors = {
+			default : 'default',
+			attack  : 'url(images/cursor_attack.png) 0 0, crosshair',
+			loot    : 'url(images/cursor_loot.png)   7 0, pointer',
+			talk    : 'url(sprites/cursor_talk.png)   8 8, pointer'
+		};
+
+		this.currentCursor = 'default';
 		this.playerSpriteSet = new spriteSet();
 
 		this.maps = [];
@@ -221,7 +231,8 @@ class Game {
 		this.mouse.listen(this.overlay);
 		this.mouse.on('mousedown', (e) => this.handlePointerDown(e));
 		this.mouse.on('mousemove', (e) => {
-			if(this.mouse.isDown) this.handlePointer(e);
+			if(this.mouse.isDown && !this.mouse.consumedByInteraction) this.handlePointer(e);
+			this.updateCursor(e);
 		});
 		this.mouse.on('mouseup', (e) => {
 			this.mouse.lastTarget = null;
@@ -314,6 +325,8 @@ class Game {
 	handlePointer(e){
 		if(!(e.buttons & 1)) return;
 
+		this.player.clearPendingAction();
+
 		var delta = this.player.distanceToMouseEvent(e);
 
 		// The world-space point under the cursor.  This is the quantity that
@@ -352,16 +365,29 @@ class Game {
 		var worldY = this.player.position.y + delta.y;
 
 		var clickTarget = this.findClickTarget(worldX, worldY);
-		if(clickTarget && this.interactWith(clickTarget)){
-			this.mouse.consumedByInteraction = true;
-			this.mouse.lastTarget = { x : worldX, y : worldY };
-			return;
+		if(clickTarget){
+			var action = this.actionForTarget(clickTarget.target);
+			if(action){
+				this.player.setPendingAction(action, clickTarget.target);
+				this.mouse.consumedByInteraction = true;
+				this.mouse.lastTarget = { x : worldX, y : worldY };
+				return;
+			}
 		}
 
-		// No interactive target under the cursor — treat the press as the start
-		// of a normal walk.
+		// No interactive target — start a normal walk, and cancel any pending
+		// action the player was committed to.
+		this.player.clearPendingAction();
 		this.mouse.consumedByInteraction = false;
 		this.handlePointer(e);
+	}
+
+	// Which action (if any) does the player perform against this entity?
+	actionForTarget(target){
+		if(target.category === 'corpse') return 'loot';
+		if(target.category === 'enemy'  && target.isAlive) return 'attack';
+		// Future: if(target.category === 'npc') return 'talk';
+		return null;
 	}
 
 	handleActiveCellClick(){
@@ -428,41 +454,6 @@ class Game {
 			&& worldX <= cx + halfW + padding
 			&& worldY >= cy - height - padding
 			&& worldY <= cy + padding;
-	}
-
-	interactWith(clickTarget){
-		if(clickTarget.type !== 'entity') return false;
-
-		var target = clickTarget.target;
-		var player = this.player;
-
-		var dx = target.position.x - player.position.x;
-		var dy = target.position.y - player.position.y;
-		var distSq = dx * dx + dy * dy;
-		var rangeSq = player.attackRange * player.attackRange;
-
-		if(distSq > rangeSq) return false;
-
-		// Wall between player and target blocks interaction, regardless of
-		// range.
-		if(!this.activeMap.hasLineOfSight(
-			player.position.x, player.position.y,
-			target.position.x, target.position.y
-		)){
-			return false;
-		}
-
-		// Corpses are lootable, not attackable.
-		if(target.category === 'corpse'){
-			this.lootCorpse(target);
-			return true;
-		}
-
-		// Living entities are attacked.  Face them, then swing.
-		var oct = computeWalkOctant(dx, dy);
-		if(oct != null) player.facing = oct;
-
-		return player.startAttack();
 	}
 
 	spawnCorpseFor(deadEntity){
@@ -871,6 +862,34 @@ class Game {
 				options : resolved.options
 			});
 		}
+	}
+
+	updateCursor(e){
+		// While dragging to walk, show the walk cursor.  While a click action
+		// is in flight (consumedByInteraction), keep whatever was set on
+		// mousedown.
+		var action = 'default';
+
+		if(this.mouse.isDown && !this.mouse.consumedByInteraction){
+			action = 'default';
+		}else{
+			var delta = this.player.distanceToMouseEvent(e);
+			var worldX = this.player.position.x + delta.x;
+			var worldY = this.player.position.y + delta.y;
+
+			var clickTarget = this.findClickTarget(worldX, worldY);
+			if(clickTarget){
+				action = this.actionForTarget(clickTarget.target) || 'default';
+			}
+		}
+
+		this.setCursor(action);
+	}
+
+	setCursor(action){
+		if(this.currentCursor === action) return;
+		this.currentCursor = action;
+		this.overlay.style.cursor = this.cursors[action] || this.cursors.default;
 	}
 }
 

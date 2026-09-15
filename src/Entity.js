@@ -127,12 +127,14 @@ class Entity {
 				md.yTally += absdy;
 				if(md.yTally >= absdx){
 					md.yTally -= absdx;
-					if(this.canWalkOn(this.position.x, this.position.y + sgndy)){
-						this.position.y += sgndy;
+					var ny = this.position.y + sgndy;
+					if(this.canWalkOn(this.position.x, ny) && this.canOccupy(this.position.x, ny)){
+						this.position.y = ny;
 					}
 				}
-				if(this.canWalkOn(this.position.x + sgndx, this.position.y)){
-					this.position.x += sgndx;
+				var nx = this.position.x + sgndx;
+				if(this.canWalkOn(nx, this.position.y) && this.canOccupy(nx, this.position.y)){
+					this.position.x = nx;
 				}
 			}
 		}else{
@@ -140,12 +142,14 @@ class Entity {
 				md.xTally += absdx;
 				if(md.xTally >= absdy){
 					md.xTally -= absdy;
-					if(this.canWalkOn(this.position.x + sgndx, this.position.y)){
-						this.position.x += sgndx;
+					var nx2 = this.position.x + sgndx;
+					if(this.canWalkOn(nx2, this.position.y) && this.canOccupy(nx2, this.position.y)){
+						this.position.x = nx2;
 					}
 				}
-				if(this.canWalkOn(this.position.x, this.position.y + sgndy)){
-					this.position.y += sgndy;
+				var ny2 = this.position.y + sgndy;
+				if(this.canWalkOn(this.position.x, ny2) && this.canOccupy(this.position.x, ny2)){
+					this.position.y = ny2;
 				}
 			}
 		}
@@ -524,5 +528,34 @@ class Entity {
 			return true;
 		}
 		return false;
+	}
+
+	// Can this entity stand at (newX, newY) without overlapping another
+	// solid entity?  Corpses and dead entities are ignored.
+	canOccupy(newX, newY){
+		var game = this.game;
+
+		// The player is not in game.characters, so check them separately.
+		if(this !== game.player && game.player.sprite){
+			if(this._overlaps(game.player, newX, newY)) return false;
+		}
+
+		var chars = game.characters;
+		for(var n = 0; n < chars.length; n++){
+			var other = chars[n];
+			if(other === this) continue;
+			if(other.category === 'corpse') continue;
+			if(!other.isAlive) continue;
+			if(!other.sprite) continue;
+			if(this._overlaps(other, newX, newY)) return false;
+		}
+		return true;
+	}
+
+	_overlaps(other, newX, newY){
+		var dx = newX - other.position.x;
+		var dy = newY - other.position.y;
+		var minDist = (this.sprite.frameWidth + other.sprite.frameWidth) / 2;
+		return dx * dx + dy * dy < minDist * minDist;
 	}
 }
