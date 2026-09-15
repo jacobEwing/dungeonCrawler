@@ -17,10 +17,10 @@ class Game {
 		// CSS cursor per action.  Uses url(...) with a fallback, so missing images
 		// silently fall through to the fallback cursor rather than breaking.
 		this.cursors = {
-			default : 'default',
-			attack  : 'url(images/cursor_attack.png) 0 0, crosshair',
-			loot    : 'url(images/cursor_loot.png)   7 0, pointer',
-			talk    : 'url(sprites/cursor_talk.png)   8 8, pointer'
+			default	: 'default',
+			attack	: 'url(images/cursor_attack.png) 0 0, crosshair',
+			loot	: 'url(images/cursor_loot.png)   7 0, pointer',
+			talk	: 'url(sprites/cursor_talk.png)   8 8, pointer'
 		};
 
 		this.currentCursor = 'default';
@@ -42,6 +42,8 @@ class Game {
 
 		this.waterCycle = 0;
 		this.waterCycleAccum = 0;
+
+		this.activePanel = null;
 
 		this.renderView = createRenderView(this);
 
@@ -110,6 +112,8 @@ class Game {
 		this.ctx.webkitImageSmoothingEnabled = false;
 		this.ctx.mozImageSmoothingEnabled = false;
 		this.ctx.imageSmoothingEnabled = false;
+		document.documentElement.style.setProperty('--game-scale', gameScale + 'px');
+
 
 		window.addEventListener('resize', () => this.handleResize());
 	}
@@ -151,6 +155,7 @@ class Game {
 		this.player.sprite.setScale(gameScale);
 		this.player.sprite.setPosition(this.screenMiddle.x, this.screenMiddle.y, true);
 		this.player.sprite.setFrame('front_idle');
+		this.renderCharacterIcon();
 	}
 
 	// Load (and cache) a spriteSet by name.  If it's already loaded, returns the
@@ -228,12 +233,13 @@ class Game {
 		this.keyboard.onCombo(['CTRL', 'S'], () => this.handleSave());
 		this.keyboard.onCombo(['CTRL', 'L'], () => this.handleLoad());
 
-		this.overlay.addEventListener('contextmenu', (e) => e.preventDefault());
+		this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
 
 		this.mouse = new MouseHandler();
 		this.mouse.lastTarget = null;
 		this.mouse.consumedByInteraction = false;
-		this.mouse.listen(this.overlay);
+		this.mouse.listen(this.canvas);
 		this.mouse.on('mousedown', (e) => this.handlePointerDown(e));
 		this.mouse.on('mousemove', (e) => {
 			if(this.mouse.isDown && !this.mouse.consumedByInteraction) this.handlePointer(e);
@@ -243,6 +249,20 @@ class Game {
 			this.mouse.lastTarget = null;
 			this.mouse.consumedByInteraction = false;
 		});
+
+		document.getElementById('btn-inventory').addEventListener('click', () => this.togglePanel('inventory'));
+		document.getElementById('btn-character').addEventListener('click', () => this.togglePanel('character'));
+		document.getElementById('btn-save').addEventListener('click', () => this.handleSave());
+		document.getElementById('btn-load').addEventListener('click', () => this.handleLoad());
+
+		document.querySelectorAll('.panel-close').forEach(btn => {
+			btn.addEventListener('click', () => this.closePanel());
+		});
+		document.getElementById('ui-backdrop').addEventListener('click', () => this.closePanel());
+
+		this.keyboard.onPress('I', () => this.togglePanel('inventory'));
+		this.keyboard.onPress('C', () => this.togglePanel('character'));
+		this.keyboard.onPress('ESC', () => this.closePanel());
 	}
 
 	async loadMousePointers(){
@@ -280,7 +300,7 @@ class Game {
 
 		if(dt > 0.1) dt = 0.1;
 
-		if(!this.gamePaused && this.activeMap != null){
+		if(!this.gamePaused && this.activePanel == null && this.activeMap != null){
 			this.playGame(dt);
 		}
 
@@ -583,9 +603,9 @@ class Game {
 			};
 
 			switch(entrance.content){
-				case 'stairup':      linkTarget('stairdown'); break;
-				case 'stairdown':    linkTarget('stairup');   break;
-				case 'caveEntrance': linkTarget('stairup');   break;
+				case 'stairup':		linkTarget('stairdown'); break;
+				case 'stairdown':	linkTarget('stairup');   break;
+				case 'caveEntrance':	linkTarget('stairup');   break;
 			}
 		}
 
@@ -919,7 +939,7 @@ class Game {
 			var srcMapId2 = srcKey2.substring(0, lastColon2);
 			var srcMap2 = mapById[srcMapId2];
 			if(!srcMap2) continue;
-			if(srcMap2.playerPos) continue;    // already has one (static, or previously set)
+			if(srcMap2.playerPos) continue; // already has one (static, or previously set)
 
 			var coords2 = srcKey2.substring(lastColon2 + 1).split(',');
 			srcMap2.playerPos = {
@@ -969,6 +989,8 @@ class Game {
 		// Refresh visibility and redraw.
 		this.updateVisibility();
 		this.renderView(this.activeMap);
+
+		this.closePanel();
 	}
 
 	handleSave(){
@@ -1102,8 +1124,134 @@ class Game {
 		input.click();
 	}
 	
-
 	// ------------------------------------------------------------------
+	// UI panels
+	// ------------------------------------------------------------------
+
+	togglePanel(name){
+		if(this.activePanel === name) this.closePanel();
+		else this.openPanel(name);
+	}
+
+	openPanel(name){
+		this.closePanel();	// ensure only one is open
+
+		var el = document.getElementById('panel-' + name);
+		if(!el) return;
+
+		this.activePanel = name;
+		el.classList.add('visible');
+		document.getElementById('ui-backdrop').classList.add('visible');
+
+		if(name === 'inventory') this.refreshInventoryPanel();
+
+		// Cancel any walk/attack the player had going, since the mouse is
+		// about to interact with DOM elements instead of the canvas.
+		if(this.player){
+		this.player.target = null;
+		this.player.walkPath = [];
+		this.player.clearPendingAction();
+		}
+	}
+
+	closePanel(){
+		if(this.activePanel == null) return;
+
+		var el = document.getElementById('panel-' + this.activePanel);
+		if(el) el.classList.remove('visible');
+		document.getElementById('ui-backdrop').classList.remove('visible');
+		this.activePanel = null;
+	}
+
+	refreshInventoryPanel(){
+		var body = document.getElementById('panel-inventory-body');
+		if(!body) return;
+
+		var p = this.player;
+		var html = '';
+
+		html += '<div class="inventory-gold">Gold: ' + p.gold + '</div>';
+
+		if(!p.possessions || p.possessions.length === 0){
+		html += '<div class="inventory-empty">(no items)</div>';
+		}else{
+		for(var i = 0; i < p.possessions.length; i++){
+			var item = p.possessions[i];
+			var label = item.name || 'unknown';
+			var count = item.amount != undefined ? ' ×' + item.amount : '';
+			html += '<div class="inventory-row">'
+			 + '<span>' + this.escapeHtml(label) + '</span>'
+			 + '<span>' + this.escapeHtml(count) + '</span>'
+			 + '</div>';
+		}
+		}
+
+		body.innerHTML = html;
+	}
+
+	// Minimal HTML escape for user-visible strings that could come from data
+	// files.  Item names are currently authored by us, but habits are worth
+	// forming early.
+	escapeHtml(s){
+		return String(s)
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;');
+	}
+
+	// Render the player's front_idle frame into the character button as a
+	// canvas.  Re-run whenever the player's sprite set changes (e.g. character
+	// selection) to keep the icon in sync.
+	renderCharacterIcon(){
+		var button = document.getElementById('btn-character');
+		if(!button || !this.player || !this.player.sprite) return;
+
+		var sprite = this.player.sprite;
+		var size = 48;
+
+		var prevFrame = sprite.frameName;
+		sprite.setFrame('front_right_idle');
+		var frame = sprite.frame;
+
+		var scale = Math.floor(Math.min(size / frame.width, size / frame.height));
+		if(scale < 1) scale = 1;
+
+		var drawW = frame.width  * scale;
+		var drawH = frame.height * scale;
+		var drawX = Math.floor((size - drawW) / 2);
+		var drawY = Math.floor((size - drawH) / 2);
+
+		var canvas = document.createElement('canvas');
+		canvas.width  = size;
+		canvas.height = size;
+		canvas.className = 'sidebar-icon';
+
+		var ctx = canvas.getContext('2d');
+		ctx.imageSmoothingEnabled = false;
+		ctx.webkitImageSmoothingEnabled = false;
+		ctx.mozImageSmoothingEnabled = false;
+
+		ctx.drawImage(
+			sprite.image,
+			frame.x, frame.y,
+			frame.width, frame.height,
+			drawX, drawY,
+			drawW, drawH
+		);
+
+		if(prevFrame) sprite.setFrame(prevFrame);
+
+		// Replace only the icon, not the whole button — the caption span
+		// (and anything else) stays put.
+		var existingIcon = button.querySelector('.sidebar-icon');
+		if(existingIcon){
+			button.replaceChild(canvas, existingIcon);
+		}else{
+			button.insertBefore(canvas, button.firstChild);
+		}
+	}
+// ------------------------------------------------------------------
 	// misc
 	// ------------------------------------------------------------------
 	updateSpawnPoints(dt){
@@ -1115,10 +1263,10 @@ class Game {
 
 		var isFirstPopulation = !this.activeMap._initialPopulationDone;
 
-		var activationSq   = (SPAWN_ACTIVATION_CELLS   * cellSize) * (SPAWN_ACTIVATION_CELLS   * cellSize);
+		var activationSq = (SPAWN_ACTIVATION_CELLS   * cellSize) * (SPAWN_ACTIVATION_CELLS   * cellSize);
 		var deactivationSq = (SPAWN_DEACTIVATION_CELLS * cellSize) * (SPAWN_DEACTIVATION_CELLS * cellSize);
-		var minDistPx      = SPAWN_MIN_PLAYER_DISTANCE_CELLS * cellSize;
-		var minDistSq      = minDistPx * minDistPx;
+		var minDistPx = SPAWN_MIN_PLAYER_DISTANCE_CELLS * cellSize;
+		var minDistSq = minDistPx * minDistPx;
 
 		for(var n = 0; n < this.activeMap.spawnPoints.length; n++){
 			var sp = this.activeMap.spawnPoints[n];

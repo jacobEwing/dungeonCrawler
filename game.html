@@ -35,7 +35,46 @@
 	<script src="src/main.js"></script>
 </head>
 <body>
-	<canvas id="gameCanvas"></canvas>
-	<div id="overlay"></div>
+	<div id="overlay">
+		<canvas id="gameCanvas"></canvas>
+
+		<!-- Modal backdrop; only shown when a panel is open -->
+		<div id="ui-backdrop"></div>
+
+		<!-- Sidebar -->
+		<div id="sidebar">
+			<button class="sidebar-button" id="btn-inventory" title="Inventory (I)">
+				<img src="images/chest.png" alt="" class="sidebar-icon">
+				<span class="sidebar-caption">Inventory</span>
+			</button>
+
+			<button class="sidebar-button" id="btn-character" title="Character (C)">
+				<span class="sidebar-caption">Player</span>
+			</button>
+
+			<div class="sidebar-separator"></div>
+
+			<button class="sidebar-button" id="btn-save" title="Save">
+				<img src="images/save.png">
+				<span class="sidebar-caption">Save</span>
+			</button>
+
+			<button class="sidebar-button" id="btn-load" title="Load">
+				<img src="images/load.png">
+				<span class="sidebar-caption">Load</span>
+			</button>
+		</div>
+
+		<!-- Panels; only one visible at a time -->
+		<div id="panel-inventory" class="panel">
+			<div class="panel-inner">
+				<div class="panel-header">
+					<span>Inventory</span>
+					<button class="panel-close" aria-label="Close">×</button>
+				</div>
+				<div class="panel-body" id="panel-inventory-body"></div>
+			</div>
+		</div>
+	</div>
 </body>
 </html>
