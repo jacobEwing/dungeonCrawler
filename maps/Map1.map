@@ -2,8 +2,8 @@
 	"image" : "Map1.gif",
 	"spawnMode" : "persistent",
 	"spawns" : [
-		{ "x" : 24, "y" : 17, "type" : "knight" },
-		{ "x" : 30, "y" : 22, "type" : "humanFemale", "options" : { "speed" : 12 } }
+		{ "key" : "soeuthaeosiheru", "x" : 24, "y" : 17, "type" : "knight" },
+		{ "key" : "eurktmpuirxalrp", "x" : 30, "y" : 22, "type" : "humanFemale", "options" : { "speed" : 12 } }
 	],
 	"category" : "outdoors",
 	"colourmap" : {

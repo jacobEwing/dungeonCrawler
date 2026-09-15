@@ -2,8 +2,8 @@
 	"image" : "Map2.gif",
 	"spawnMode" : "persistent",
 	"spawns" : [
-		{ "x" : 50, "y" : 58, "type" : "knight" },
-		{ "x" : 55, "y" : 72, "type" : "humanFemale", "options" : { "speed" : 12 } }
+		{ "key" : "mjgTEUTetdueueoeus", "x" : 50, "y" : 58, "type" : "knight" },
+		{ "key" : "CcHdDGCidgdhHDHdtc", "x" : 55, "y" : 72, "type" : "humanFemale", "options" : { "speed" : 12 } }
 	],
 	"colourmap" : {
 		"006d06" : "T",

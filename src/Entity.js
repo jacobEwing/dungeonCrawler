@@ -556,6 +556,19 @@ class Entity {
 		var dx = newX - other.position.x;
 		var dy = newY - other.position.y;
 		var minDist = (this.sprite.frameWidth + other.sprite.frameWidth) / 2;
-		return dx * dx + dy * dy < minDist * minDist;
+		var minDistSq = minDist * minDist;
+
+		// If the proposed position doesn't overlap, we're clear.
+		if(dx * dx + dy * dy >= minDistSq) return false;
+
+		// Would overlap at the new position.  If we already overlap at the
+		// current position, allow the move — otherwise an entity that ends
+		// up overlapping (spawned on top of another, knocked into one) can
+		// never escape.
+		var curDx = this.position.x - other.position.x;
+		var curDy = this.position.y - other.position.y;
+		if(curDx * curDx + curDy * curDy < minDistSq) return false;   // already overlapping → allow
+
+		return true;
 	}
 }

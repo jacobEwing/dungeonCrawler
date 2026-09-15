@@ -60,6 +60,17 @@ var SPAWN_DEACTIVATION_CELLS = 12;
 // produce another.
 var SPAWN_RESPAWN_COOLDOWN   = 15;   // seconds
 
+// Minimum distance from the player, in cells, at which a spawn point is
+// allowed to fire.  Prevents enemies from materializing on top of the
+// player when they round a corner or land on a stair.
+var SPAWN_MIN_PLAYER_DISTANCE_CELLS = 2;
+
+// Extra cells of margin beyond the player's vision radius where spawns are
+// still suppressed.  Prevents enemies from materializing right at the edge
+// of the view, where a one-frame lag or a small position shift can make
+// them appear to pop into view.
+var SPAWN_VIEW_MARGIN_CELLS = 1;
+
 // ============================================================================
 // Combat timing
 // ============================================================================

@@ -50,19 +50,25 @@ var mapBuilder = function(){
 	this.spawnPoints = [];
 	this.rawSpawns = [];
 	this.spawnMode = SPAWN_MODE.RESPAWN;
+	this._initialPopulationDone = false;
+	this.seed = null;
+	this.rng = null;
+	this.file = null;
+	this.id = null;
 	this.defaultParams = {
 		'category' : 'dungeon',
 		'width' : 60,
 		'height' : 25,
 		'stairup' : false,
 		'stairdown' : false,
-		'roomscale' : .9 + Math.random() * .2,
-		'gridscale' : 1 + Math.random() * .5,
+		'roomscale' : null,
+		'gridscale' : null,
 		'treeChance' : 10,
 		'waterChance' : 20,
 		'reedChance' : 80,
 		'spawnTable' : null,
-		'spawnMode' : 'respawn'
+		'spawnMode' : 'respawn',
+		'seed' : null
 	}
 	this.collidablesMapping = {' ' : 1, '#' : 1, 'W' : 1};
 };
@@ -76,6 +82,7 @@ mapBuilder.prototype.loadImageMap = function(mapFile){
 		me.entities = [];
 		me.spawnPoints = [];
 		me.rawSpawns = [];
+		me._initialPopulationDone = false;
 
 		var loc = window.location.pathname;
 		var dir = loc.substring(0, loc.lastIndexOf('/'));
@@ -167,6 +174,17 @@ mapBuilder.prototype.loadImageMap = function(mapFile){
 
 mapBuilder.prototype.build = function(params){
 	this.readParams.apply(this, arguments);
+
+	if(this.seed != null){
+		this.rng = new SeededRandom(this.seed);
+	}
+
+	// Derive the shape parameters from the RNG if not explicitly set.
+	// Order matters: once seeded, this consumes the first two values of
+	// the stream, so two calls with the same seed produce the same shape.
+	if(this.roomscale == null) this.roomscale = .9 + this.rand() * .2;
+	if(this.gridscale == null) this.gridscale = 1 + this.rand() * .5;
+
 	switch(this.category){
 		case 'dungeon':
 			this.buildDungeon();
@@ -197,14 +215,14 @@ mapBuilder.prototype.populateDungeonSpawns = function(spawnTable){
 
 	for(var n = 0; n < this.rooms.length; n++){
 		// Give most rooms one enemy; occasionally two; occasionally none.
-		var r = Math.random();
+		var r = this.rand();
 		var count = r < 0.6 ? 1 : (r < 0.85 ? 2 : 0);
 		for(var i = 0; i < count; i++){
-			var entry = spawnTable[Math.floor(Math.random() * spawnTable.length)];
+			var entry = spawnTable[Math.floor(this.rand() * spawnTable.length)];
 			// Small jitter within the room so two enemies don't stack on
 			// the same tile.
-			var jx = i === 0 ? 0 : (Math.random() < 0.5 ? -1 : 1);
-			var jy = i === 0 ? 0 : (Math.random() < 0.5 ? -1 : 1);
+			var jx = i === 0 ? 0 : (this.rand() < 0.5 ? -1 : 1);
+			var jy = i === 0 ? 0 : (this.rand() < 0.5 ? -1 : 1);
 			this.addSpawnPoint({
 				x : this.rooms[n].x + jx,
 				y : this.rooms[n].y + jy,
@@ -309,8 +327,8 @@ mapBuilder.prototype.buildDungeon = function(){
 		for(x = 0; x < xGrid; x++){
 			for(y = 0; y < yGrid; y++){
 				// edit this zoom and the if condition to change the varying size of the rooms
-				zoom = this.roomscale * (Math.random() * 700 + 300) / 1000;
-				if(Math.random() * gridStep < gridStep * zoom){
+				zoom = this.roomscale * (this.rand() * 700 + 300) / 1000;
+				if(this.rand() * gridStep < gridStep * zoom){
 					room = new roomClass();
 					room.setArea(x, y, gridStep, zoom);
 					this.rooms[this.rooms.length] = room;
@@ -350,7 +368,7 @@ mapBuilder.prototype.placeinRandomRoom = function(content, emptyTarget, targetTe
 	}
 
 	// first see if we can find a middle-of-room that fits
-	offset = Math.floor(Math.random() * this.rooms.length);
+	offset = Math.floor(this.rand() * this.rooms.length);
 	for(uR = 0; uR < this.rooms.length; uR++){
 		upRoom = (uR + offset) % this.rooms.length;
 		goodSpot = 1;
@@ -401,7 +419,7 @@ mapBuilder.prototype.linkRooms = function(){
 	var n, m, x, y, dx, dy, ix, iy, link, numLinks, minDist, nearestIndex, dist, pick;
 
 	// start with one randomly chosen room
-	var first = Math.floor(Math.random() * this.rooms.length);
+	var first = Math.floor(this.rand() * this.rooms.length);
 	connected[first] = true;
 	connectedList.push(first);
 
@@ -411,7 +429,7 @@ mapBuilder.prototype.linkRooms = function(){
 		}
 
 		// this random numLinks, which links to multiple rooms, should be tweakable
-		numLinks = Math.floor(Math.random() * 2 + 1);
+		numLinks = Math.floor(this.rand() * 2 + 1);
 		for(link = 0; link < numLinks; link++){
 			if(link === 0){
 				// first link: connect to the nearest already-connected room
@@ -430,7 +448,7 @@ mapBuilder.prototype.linkRooms = function(){
 				}
 			}else{
 				// subsequent links: pick a random already-connected room
-				pick = Math.floor(Math.random() * connectedList.length);
+				pick = Math.floor(this.rand() * connectedList.length);
 				nearestIndex = connectedList[pick];
 			}
 
@@ -508,8 +526,8 @@ mapBuilder.prototype.placeRandomlyOnTexture = function(content, emptyTarget, tar
 	var itemDat;
 	console.log('picking a random spot');
 
-	var x = Math.floor(Math.random() * width);
-	var y = Math.floor(Math.random() * height);
+	var x = Math.floor(this.rand() * width);
+	var y = Math.floor(this.rand() * height);
 	for(var tally = 0; tally < width * height; tally++){
 		if(this.map[x][y] == targetTexture){
 			if(!emptyTarget){
@@ -542,8 +560,8 @@ mapBuilder.prototype.findTextureSpot = function(targetTexture){
 	var height = this.map[0].length;
 	var rval = null;
 
-	var x = Math.floor(Math.random() * width);
-	var y = Math.floor(Math.random() * height);
+	var x = Math.floor(this.rand() * width);
+	var y = Math.floor(this.rand() * height);
 	for(var tally = 0; tally < width * height; tally++){
 		if(this.map[x][y] == targetTexture) break;
 		x = (x + 1) % width;
@@ -589,7 +607,7 @@ mapBuilder.prototype.buildForest = function(){
 
 	for(x = 0; x < xGrid; x++){
 		for(y = 0; y < yGrid; y++){
-			if(!Math.floor(Math.random() * gridStep)){
+			if(!Math.floor(this.rand() * gridStep)){
 				for(dx = 0; dx < gridStep; dx++){
 					for(dy = 0; dy < gridStep; dy++){
 						this.map[x * gridStep + dx][y * gridStep + dy] = "T";
@@ -643,8 +661,8 @@ mapBuilder.prototype.buildSwamp = function(){
 
 	for(x = 0; x < xGrid; x++){
 		for(y = 0; y < yGrid; y++){
-			if(!Math.floor(Math.random() * gridStep / 2)){
-				chance = Math.floor(Math.random() * totalChance);
+			if(!Math.floor(this.rand() * gridStep / 2)){
+				chance = Math.floor(this.rand() * totalChance);
 				if(chance < this.treeChance){
 					drawchar = 'T';
 				}else if(chance < this.treeChance + this.waterChance){
@@ -703,7 +721,7 @@ mapBuilder.prototype.life = function(iterations, deadchar){
 					newMap[x][y] = bestTally;
 				}else{
 					if(typeof(deadchar) == 'object'){
-						newMap[x][y] = deadchar[Math.floor(Math.random() * deadchar.length)];
+						newMap[x][y] = deadchar[Math.floor(this.rand() * deadchar.length)];
 					}else{
 						newMap[x][y] = deadchar;
 					}
@@ -736,6 +754,7 @@ mapBuilder.prototype.addSpawnPoint = function(spec){
 	this.spawnPoints.push({
 		x : spec.x,
 		y : spec.y,
+		key : spec.key || null,
 		Class : spec.Class,
 		spriteFile : spec.spriteFile,
 		options : spec.options || {},
@@ -763,6 +782,8 @@ mapBuilder.prototype.resetSpawnPoints = function(){
 			this.entities.splice(m, 1);
 		}
 	}
+
+	this._initialPopulationDone = false;
 };
 
 // Is this cell opaque (blocks line of sight)?  Out-of-bounds cells are
@@ -806,4 +827,60 @@ mapBuilder.prototype.hasLineOfSight = function(px1, py1, px2, py2){
 
 		if(this.isOpaqueCell(x, y)) return false;
 	}
+};
+
+// Single point of randomness for map generation.  Uses the seeded RNG when
+// one is active, falls back to Math.random otherwise.  Every generation
+// call site should go through this — any direct Math.random() inside a
+// generator function breaks reproducibility.
+mapBuilder.prototype.rand = function(){
+    return this.rng ? this.rng.next() : Math.random();
+};
+
+// Return the set of exhausted spawn points in a form that survives
+// save/load.  Generated spawn points are keyed by index; hand-placed ones
+// by their stable key.
+mapBuilder.prototype.getSpawnState = function(){
+	var byIndex = [];
+	var byKey = {};
+	for(var n = 0; n < this.spawnPoints.length; n++){
+		var sp = this.spawnPoints[n];
+		if(!sp.exhausted) continue;
+		if(sp.key) byKey[sp.key] = true;
+		else byIndex.push(n);
+	}
+	return { byIndex : byIndex, byKey : byKey };
+};
+
+// Inverse: re-apply exhausted flags to a freshly-generated map.
+mapBuilder.prototype.applySpawnState = function(data){
+	if(!data) return;
+	for(var n = 0; n < (data.byIndex || []).length; n++){
+		var idx = data.byIndex[n];
+		if(idx >= 0 && idx < this.spawnPoints.length){
+			this.spawnPoints[idx].exhausted = true;
+		}
+	}
+	for(var k in (data.byKey || {})){
+		for(var m = 0; m < this.spawnPoints.length; m++){
+			if(this.spawnPoints[m].key === k){
+				this.spawnPoints[m].exhausted = true;
+				break;
+			}
+		}
+	}
+};
+
+// Assign a stable id to this map.  Static maps use their file path,
+// generated ones use their seed.  Safe to call multiple times; idempotent
+// for a given map instance.
+mapBuilder.prototype.assignId = function(){
+	if(this.seed != null){
+		this.id = 'gen:' + this.seed;
+	}else if(this.file != null){
+		this.id = 'static:' + this.file;
+	}else{
+		this.id = 'unknown:' + Math.floor(Math.random() * 1e12);
+	}
+	return this.id;
 };

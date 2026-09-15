@@ -9,6 +9,7 @@ class Game {
 		this.canvas = canvas;
 		this.overlay = overlay;
 		this.ctx = canvas.getContext('2d');
+		this.saveManager = new SaveManager();
 
 		this.spriteSets = {};
 		this.sprites = {};
@@ -194,6 +195,8 @@ class Game {
 	async loadMap(mapFile){
 		const map = new mapBuilder();
 		await map.loadImageMap(mapFile);
+		map.file = mapFile;
+		map.assignId();
 		this.populateRawSpawns(map);
 		this.maps.push(map);
 		this.activeMap = map;
@@ -222,6 +225,8 @@ class Game {
 		this.keyboard.onCombo(['CTRL', 'G'], () => {
 			this.showGameGrid = !this.showGameGrid;
 		});
+		this.keyboard.onCombo(['CTRL', 'S'], () => this.handleSave());
+		this.keyboard.onCombo(['CTRL', 'L'], () => this.handleLoad());
 
 		this.overlay.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -536,6 +541,10 @@ class Game {
 		if(this.isTransitioning) return;
 		this.isTransitioning = true;
 
+		// Capture the source map before we reassign activeMap, so we can find
+		// the return entrance in the target.
+		var sourceMap = this.activeMap;
+
 		if(entrance.target == undefined){
 			var mapIdx = this.maps.length;
 			this.maps[mapIdx] = new mapBuilder();
@@ -543,6 +552,8 @@ class Game {
 			var resolvedSpawns = this.dungeonSpawnTable.map(
 				key => this.resolveSpawn(key)
 			);
+
+			var seed = (Date.now() ^ Math.floor(Math.random() * 0x100000000)) >>> 0;
 
 			this.maps[mapIdx].build({
 				category : 'dungeon',
@@ -552,8 +563,11 @@ class Game {
 				stairup : true,
 				stairdown : true,
 				spawnMode : SPAWN_MODE.RESPAWN,
-				spawnTable : resolvedSpawns
+				spawnTable : resolvedSpawns,
+				seed : seed
 			});
+			this.maps[mapIdx].seed = seed;
+			this.maps[mapIdx].assignId();
 			entrance.target = this.maps[mapIdx];
 
 			var linkTarget = (oppositeKey) => {
@@ -564,18 +578,46 @@ class Game {
 					y : opposite[0].y
 				};
 				if(opposite[0].target == undefined){
-					opposite[0].target = this.activeMap;
+					opposite[0].target = sourceMap;
 				}
 			};
 
 			switch(entrance.content){
-				case 'stairup':		linkTarget('stairdown'); break;
-				case 'stairdown':	linkTarget('stairup');   break;
-				case 'caveEntrance':	linkTarget('stairup');   break;
+				case 'stairup':      linkTarget('stairdown'); break;
+				case 'stairdown':    linkTarget('stairup');   break;
+				case 'caveEntrance': linkTarget('stairup');   break;
 			}
 		}
 
+		// Determine where the player lands on the target map.  Look for an
+		// entrance in the target whose own .target is the map we're leaving —
+		// that's the "opposite" stair, and it's where the player should
+		// emerge.  Fall back to the map's default playerPos, then to the map
+		// centre, if no match is found.
+		var targetMap = entrance.target;
+		var landingPos = null;
+		for(var content in targetMap.items){
+			var list = targetMap.items[content];
+			for(var i = 0; i < list.length; i++){
+				if(list[i].target === sourceMap){
+					landingPos = { x : list[i].x, y : list[i].y };
+					break;
+				}
+			}
+			if(landingPos) break;
+		}
+		if(!landingPos){
+			landingPos = targetMap.playerPos;
+		}
+		if(!landingPos){
+			landingPos = {
+				x : Math.floor(targetMap.width  / 2),
+				y : Math.floor(targetMap.height / 2)
+			};
+		}
+
 		this.player.target = null;
+		this.player.clearPendingAction();
 		this.gamePaused = true;
 
 		var opacity = 1, faderate = .2;
@@ -587,16 +629,12 @@ class Game {
 			if(opacity > faderate){
 				setTimeout(fadeOut, 30);
 			}else{
-				this.activeMap = entrance.target;
-				// Reset spawn state on entry, if this map is in resetOnEnter mode.
+				this.activeMap = targetMap;
 				if(this.activeMap.spawnMode === SPAWN_MODE.RESET_ON_ENTER){
 					this.activeMap.resetSpawnPoints();
 				}
 
-				this.player.setMapPos(this.activeMap.playerPos.x, this.activeMap.playerPos.y);
-				this.player.setMapPos(this.activeMap.playerPos.x, this.activeMap.playerPos.y);
-				this.player.position.x += cellSize >> 1;
-				this.player.position.y += cellSize >> 1;
+				this.player.setMapPos(landingPos.x, landingPos.y);
 				this.updateVisibility();
 				this.renderView(this.activeMap);
 				this.gamePaused = false;
@@ -618,7 +656,6 @@ class Game {
 
 		fadeOut();
 	}
-
 	// Recompute which cells the player can currently see, and reveal any
 	// newly-seen cells in the permanent hideMap.  Cheap enough to call on
 	// every player movement; early-outs if the player's map cell hasn't
@@ -694,6 +731,378 @@ class Game {
 		return false;
 	}
 
+	// Fresh visibility check for a specific cell, using the player's current
+	// pixel position as the LOS origin — not the cached visibilityMap, which
+	// can lag the player by up to a cell's worth of movement.  Includes a
+	// margin of SPAWN_VIEW_MARGIN_CELLS cells beyond the vision radius, so a
+	// spawn never fires at the very edge of the view.
+	isCellVisibleForSpawning(cx, cy){
+		if(!this.activeMap || !this.player) return false;
+
+		var px = this.player.position.x;
+		var py = this.player.position.y;
+		var tx = cx * cellSize + cellSize / 2;
+		var ty = cy * cellSize + cellSize / 2;
+
+		var marginCells = this.player.skills.vision + SPAWN_VIEW_MARGIN_CELLS;
+		var radiusPx = marginCells * cellSize;
+		var dx = tx - px;
+		var dy = ty - py;
+		if(dx * dx + dy * dy >= radiusPx * radiusPx) return false;
+
+		return this.activeMap.hasLineOfSight(px, py, tx, ty);
+	}
+
+	// ------------------------------------------------------------------
+	// save / load
+	// ------------------------------------------------------------------
+
+	serialize(){
+		if(!this.player || !this.player.isAlive) return null;
+		if(this.isTransitioning) return null;
+		if(!this.activeMap) return null;
+
+		var data = {
+			version : 1,
+			player : this.serializePlayer(),
+			maps : {},
+			entrances : {}
+		};
+
+		for(var n = 0; n < this.maps.length; n++){
+			var map = this.maps[n];
+			data.maps[map.id] = this.serializeMap(map);
+		}
+
+		// Entrance links: walk every item on every map and record any with a
+		// target reference.
+		for(var m = 0; m < this.maps.length; m++){
+			var srcMap = this.maps[m];
+			for(var content in srcMap.items){
+				var list = srcMap.items[content];
+				for(var i = 0; i < list.length; i++){
+					var item = list[i];
+					if(item.target && item.target.id){
+						var srcKey = srcMap.id + ':' + item.x + ',' + item.y;
+						data.entrances[srcKey] = item.target.id;
+					}
+				}
+			}
+		}
+
+		return data;
+	}
+
+	serializePlayer(){
+		return {
+			mapId : this.activeMap.id,
+			position : { x : this.player.position.x, y : this.player.position.y },
+			mapPos : { x : this.player.mapPos.x, y : this.player.mapPos.y },
+			health : this.player.health,
+			maxHealth : this.player.maxHealth,
+			facing : this.player.facing,
+			gold : this.player.gold,
+			possessions : this.player.possessions.slice(),
+			skills : {
+				speed : this.player.skills.speed,
+				vision : this.player.skills.vision
+			}
+		};
+	}
+
+	serializeMap(map){
+		var out = {
+			hideMap : packBitfield(map.hideMap, map.width, map.height),
+			spawnState : map.getSpawnState()
+		};
+
+		if(map.seed != null){
+			out.type = 'generated';
+			out.seed = map.seed;
+			out.category = map.category;
+			out.params = {
+				width : map.width,
+				height : map.height,
+				roomscale : map.roomscale,
+				stairup : map.stairup,
+				stairdown : map.stairdown,
+				spawnMode : map.spawnMode
+			};
+		}else{
+			out.type = 'static';
+			out.file = map.file;
+		}
+		return out;
+	}
+
+	async deserialize(data){
+		if(!data || data.version !== 1){
+			throw new Error("Unsupported save version: " + (data && data.version));
+		}
+		if(!data.player || !data.maps){
+			throw new Error("Save data is missing required sections.");
+		}
+
+		// Rebuild every map from its descriptor.  We accumulate into a
+		// temporary array so a failed rebuild doesn't corrupt the live game.
+		var newMaps = [];
+		var mapById = {};
+
+		for(var id in data.maps){
+			var entry = data.maps[id];
+			var map = new mapBuilder();
+
+			if(entry.type === 'static'){
+				map.file = entry.file;
+				await map.loadImageMap(entry.file);
+				map.file = entry.file;
+				map.assignId();
+				this.populateRawSpawns(map);
+			}else if(entry.type === 'generated'){
+				var spawnTable = this.dungeonSpawnTable.map(k => this.resolveSpawn(k));
+				map.build({
+					category : entry.category,
+					width : entry.params.width,
+					height : entry.params.height,
+					roomscale : entry.params.roomscale,
+					stairup : entry.params.stairup,
+					stairdown : entry.params.stairdown,
+					spawnMode : entry.params.spawnMode,
+					spawnTable : spawnTable,
+					seed : entry.seed
+				});
+				map.seed = entry.seed;
+				map.assignId();
+			}else{
+				throw new Error("Unknown map type: " + entry.type);
+			}
+
+			map.hideMap = unpackBitfield(entry.hideMap, map.width, map.height);
+			map.applySpawnState(entry.spawnState);
+
+			newMaps.push(map);
+			mapById[id] = map;
+		}
+
+		// Re-link entrance targets.
+		for(var srcKey in data.entrances){
+			var targetId = data.entrances[srcKey];
+			var lastColon = srcKey.lastIndexOf(':');
+			var srcMapId = srcKey.substring(0, lastColon);
+			var coords = srcKey.substring(lastColon + 1).split(',');
+			var ix = parseInt(coords[0], 10);
+			var iy = parseInt(coords[1], 10);
+
+			var srcMap = mapById[srcMapId];
+			var targetMap = mapById[targetId];
+			if(!srcMap || !targetMap) continue;
+
+			var linked = false;
+			for(var content in srcMap.items){
+				var list = srcMap.items[content];
+				for(var i = 0; i < list.length; i++){
+					if(list[i].x === ix && list[i].y === iy){
+						list[i].target = targetMap;
+						linked = true;
+						break;
+					}
+				}
+				if(linked) break;
+			}
+		}
+		// Derive playerPos for generated maps.  Static maps get theirs from
+		// their .map file; generated ones derive it from whichever entrance
+		// leads back out, which is where linkTarget would have placed it
+		// during original generation.
+		for(var srcKey2 in data.entrances){
+			var lastColon2 = srcKey2.lastIndexOf(':');
+			var srcMapId2 = srcKey2.substring(0, lastColon2);
+			var srcMap2 = mapById[srcMapId2];
+			if(!srcMap2) continue;
+			if(srcMap2.playerPos) continue;    // already has one (static, or previously set)
+
+			var coords2 = srcKey2.substring(lastColon2 + 1).split(',');
+			srcMap2.playerPos = {
+				x : parseInt(coords2[0], 10),
+				y : parseInt(coords2[1], 10)
+			};
+		}
+		// Commit.  From here on, any exception would leave the game in a
+		// half-loaded state — but everything above is the risky part.
+		this.maps = newMaps;
+		this.activeMap = mapById[data.player.mapId];
+		if(!this.activeMap){
+			throw new Error("Save references unknown active map: " + data.player.mapId);
+		}
+
+		// Player state.
+		var pd = data.player;
+		var p = this.player;
+
+		p.position.x = pd.position.x;
+		p.position.y = pd.position.y;
+		p.mapPos.x = pd.mapPos.x;
+		p.mapPos.y = pd.mapPos.y;
+		p.health = pd.health;
+		p.maxHealth = pd.maxHealth;
+		p.facing = pd.facing;
+		p.gold = pd.gold;
+		p.possessions = pd.possessions.slice();
+		p.skills.speed = pd.skills.speed;
+		p.skills.vision = pd.skills.vision;
+
+		// Clear transient combat / action state.
+		p.target = null;
+		p.walkPath = [];
+		p.moveBudget = 0;
+		p.pendingAction = null;
+		p.attackTimer = 0;
+		p.attackCooldown = 0;
+		p.attackHitApplied = false;
+		p.damageFlash = 0;
+		p.currentSequence = null;
+		p.currentEndFrame = null;
+		p.isAlive = true;
+		p.sprite.stopSequence();
+		p.sprite.setFrame(p.idleFrame());
+
+		// Refresh visibility and redraw.
+		this.updateVisibility();
+		this.renderView(this.activeMap);
+	}
+
+	handleSave(){
+		if(this.isTransitioning){
+			console.log("Cannot save during a map transition.");
+			return;
+		}
+		if(!this.player || !this.player.isAlive){
+			console.log("Cannot save while dead.");
+			return;
+		}
+		var data = this.serialize();
+		if(!data){
+			console.log("Nothing to save yet.");
+			return;
+		}
+		if(this.saveManager.save(data)){
+			console.log("Game saved.");
+		}else{
+			console.log("Save failed — see console for details.");
+		}
+	}
+
+	async handleLoad(){
+		if(this.isTransitioning){
+			console.log("Cannot load during a map transition.");
+			return;
+		}
+		var data = this.saveManager.load();
+		if(!data){
+			console.log("No save found.");
+			return;
+		}
+
+		this.isTransitioning = true;
+		this.gamePaused = true;
+		try {
+			await this.deserialize(data);
+			console.log("Game loaded.");
+		} catch(e){
+			console.error("Load failed:", e);
+		}
+		this.gamePaused = false;
+		this.isTransitioning = false;
+	}
+
+	// Trigger a download of the current game state as a .json file.  Uses the
+	// same serialized shape as the localStorage save, so a file is
+	// interchangeable with a slot.
+	exportSave(){
+		if(this.isTransitioning){
+			console.log("Cannot export during a map transition.");
+			return;
+		}
+		if(!this.player || !this.player.isAlive){
+			console.log("Cannot export while dead.");
+			return;
+		}
+		var data = this.serialize();
+		if(!data){
+			console.log("Nothing to export yet.");
+			return;
+		}
+
+		var json = JSON.stringify(data, null, 2);
+		var blob = new Blob([json], { type: 'application/json' });
+		var url = URL.createObjectURL(blob);
+
+		var stamp = new Date().toISOString().replace(/[:.]/g, '-').replace(/T/, 'T').slice(0, 19);
+		var filename = 'dungeoncrawler-' + stamp + '.json';
+
+		var a = document.createElement('a');
+		a.href = url;
+		a.download = filename;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+
+		console.log("Exported: " + filename);
+	}
+
+	// Prompt the user to pick a .json save file, then load it.  Creates a
+	// transient file input so we don't need a permanent one in the DOM.
+	importSave(){
+		if(this.isTransitioning){
+			console.log("Cannot import during a map transition.");
+			return;
+		}
+
+		var me = this;
+		var input = document.createElement('input');
+		input.type = 'file';
+		input.accept = '.json,application/json';
+		input.style.display = 'none';
+
+		input.addEventListener('change', async function(){
+			var file = input.files && input.files[0];
+			document.body.removeChild(input);
+			if(!file) return;
+
+			var text;
+			try {
+				text = await file.text();
+			} catch(e){
+				console.error("Could not read file:", e);
+				return;
+			}
+
+			var data;
+			try {
+				data = JSON.parse(text);
+			} catch(e){
+				console.error("File is not valid JSON:", e);
+				return;
+			}
+
+			me.isTransitioning = true;
+			me.gamePaused = true;
+			try {
+				await me.deserialize(data);
+				console.log("Imported: " + file.name);
+			} catch(e){
+				console.error("Import failed:", e);
+			}
+			me.gamePaused = false;
+			me.isTransitioning = false;
+		});
+
+		document.body.appendChild(input);
+		input.click();
+	}
+	
+
 	// ------------------------------------------------------------------
 	// misc
 	// ------------------------------------------------------------------
@@ -704,8 +1113,12 @@ class Game {
 		var player = this.player;
 		if(!player) return;
 
+		var isFirstPopulation = !this.activeMap._initialPopulationDone;
+
 		var activationSq   = (SPAWN_ACTIVATION_CELLS   * cellSize) * (SPAWN_ACTIVATION_CELLS   * cellSize);
 		var deactivationSq = (SPAWN_DEACTIVATION_CELLS * cellSize) * (SPAWN_DEACTIVATION_CELLS * cellSize);
+		var minDistPx      = SPAWN_MIN_PLAYER_DISTANCE_CELLS * cellSize;
+		var minDistSq      = minDistPx * minDistPx;
 
 		for(var n = 0; n < this.activeMap.spawnPoints.length; n++){
 			var sp = this.activeMap.spawnPoints[n];
@@ -716,19 +1129,17 @@ class Game {
 				sp.cooldownTimer -= dt;
 			}
 
-			// Distance from player to the spawn point, in pixels squared.
 			var px = sp.x * cellSize;
 			var py = sp.y * cellSize;
 			var dx = player.position.x - px;
 			var dy = player.position.y - py;
 			var distSq = dx * dx + dy * dy;
 
-			// Recycle an active, living entity that's too far away.
 			if(
-			  sp.activeEntity
-			  && sp.activeEntity.isAlive
-			  && distSq > deactivationSq
-			  && !sp.activeEntity.isOnScreen()
+				sp.activeEntity
+				&& sp.activeEntity.isAlive
+				&& distSq > deactivationSq
+				&& !sp.activeEntity.isOnScreen()
 			){
 				var idx = this.characters.indexOf(sp.activeEntity);
 				if(idx !== -1) this.characters.splice(idx, 1);
@@ -736,18 +1147,23 @@ class Game {
 				continue;
 			}
 
-			// Spawn a new entity if conditions are right.
 			if(
 				sp.activeEntity == null
 				&& !sp.spawning
 				&& sp.cooldownTimer <= 0
 				&& distSq < activationSq
+				&& distSq > minDistSq
+				&& (isFirstPopulation || !this.isCellVisibleForSpawning(sp.x, sp.y))
+
 			){
 				this.materializeSpawnPoint(sp);
 			}
 		}
-	}
 
+		if(isFirstPopulation){
+			this.activeMap._initialPopulationDone = true;
+		}
+	}
 	materializeSpawnPoint(sp){
 		if(sp.spawning) return;
 		sp.spawning = true;
@@ -857,6 +1273,7 @@ class Game {
 			map.addSpawnPoint({
 				x : entry.x,
 				y : entry.y,
+				key : entry.key,
 				Class : resolved.Class,
 				spriteFile : resolved.spriteFile,
 				options : resolved.options
