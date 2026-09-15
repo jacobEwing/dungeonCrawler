@@ -1,5 +1,13 @@
 Give player a "sight" skill, Perhaps a 0-1 value that can be multiplied by the player's sight skill to get their actual range of view. Also consider things like potions that temporarily boost sight.
 
-As suggested, we should loosen up on stopping keyboard events.  So far the game is playable with the mouse - we may not need the keyboard at all.
-
 Add some sort of highlight to player, NPM's treasures etc. when they are below trees.  As is the tree foliage hides them thoroughly
+
+Add a brief pause - maybe half a second - before an antagonist attacks upon reaching the player.  So they see you, walk toward you, and have a "prepare to attack" pause.  This should be configurable by creature type.  The slow attack speed gives the player more time to swing at them.
+
+Add distinct behaviours for different types of characters.  We already have antagonists, could have fauna that tries to run away, passive characters, etc.  The current behaviour works well for aggressors though.
+
+Allow player to adjust game scale on the fly.
+
+Asset collection (tree cutting, mineral mining, etc.) - a new type of cave generation would be good for that, it could contain fixed map elements that can be mined
+
+Separate the sword from the player sprite.  Keep the frames, but erase the sword pixels, keeping only the player shape.  For each tool/weapon/etc. create a new sprite that is placed along with the player when using it.  One note is that the order they placed in will depend on the player's iteration.  If he's facing more upward then the tool would be placed first.  If downward then the tool is placed second. This will allow a switch between different tools without having to redraw multiple sprites.
