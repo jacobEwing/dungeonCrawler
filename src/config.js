@@ -54,6 +54,42 @@ var ITEM_CATEGORIES = [
 	{ id : 'misc',     label : 'Misc'    }
 ];
 
+// ============================================================================
+// Loot
+// ============================================================================
+
+// Per-enemy loot tables.  Each entry is rolled independently: the chance of
+// an entry dropping is its weight divided by the total weight of the table.
+// So the weights don't need to sum to 100 — they just need to be in the
+// right proportions.
+//
+// A `gold` entry adds to the corpse's gold count; an `item` entry pushes a
+// new item into its possessions.  Both can appear on the same corpse.
+
+/*
+@@@@@@@@@
+	If valuables aren't rendering properly, check to make sure you're using the key "valuable", not valuables.
+@@@@@@@@@
+*/
+var LOOT_TABLES = {
+	knight : [
+		{ weight : 60, gold : { min : 1, max : 8 } },
+		{ weight : 15, item : { name : 'ruby',         category : 'valuable' } },
+		{ weight : 10, item : { name : 'emerald',      category : 'valuable' } },
+		{ weight :  5, item : { name : 'ruby ring',    category : 'valuable' } },
+		{ weight :  5, item : { name : 'emerald ring', category : 'valuable' } },
+		{ weight :  5, item : { name : 'dark crystal', category : 'valuable' } }
+	],
+	humanFemale : [
+		{ weight : 50, gold : { min : 2, max : 12 } },
+		{ weight : 15, item : { name : 'sapphire',     category : 'valuable' } },
+		{ weight : 15, item : { name : 'emerald',      category : 'valuable' } },
+		{ weight : 10, item : { name : 'ruby',         category : 'valuable' } },
+		{ weight :  5, item : { name : 'ruby ring',    category : 'valuable' } },
+		{ weight :  5, item : { name : 'dark crystal', category : 'valuable' } }
+	]
+};
+
 // Inventory grid dimensions.  Rows grow as needed.
 var INVENTORY_COLS = 6;
 var INVENTORY_ICON_SIZE = 48;

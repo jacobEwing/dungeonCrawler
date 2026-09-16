@@ -59,12 +59,12 @@ class Game {
 			knight : {
 				Class : Enemy,
 				spriteFile : 'sprites/knight.sprite',
-				options : { speed : 20, vision : 5 }
+				options : { speed : 20, vision : 5, lootTableKey : 'knight' }
 			},
 			humanFemale : {
 				Class : Enemy,
 				spriteFile : 'sprites/humanFemale.sprite',
-				options : { speed : 18, vision : 5 }
+				options : { speed : 18, vision : 5, lootTableKey : 'humanFemale'  }
 			}
 		};
 
@@ -139,7 +139,8 @@ class Game {
 			{'name' : 'caveEntrance' , 'file' : 'caveEntrance.sprite'},
 			{'name' : 'waterWaves' , 'file' : 'waterWaves.sprite'},
 			{'name' : 'rat', 'file' : 'rat.sprite'},
-			{ 'name' : 'treasures', 'file' : 'treasures.sprite' }
+			{'name' : 'treasures', 'file' : 'treasures.sprite' },
+			{'name' : 'valuable', 'file' : 'valuables.sprite' } // valuable inventory items
 
 		];
 

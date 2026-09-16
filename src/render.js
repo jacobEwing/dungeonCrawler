@@ -42,6 +42,24 @@ function drawCoinIcon(ctx, x, y, w, h){
 	ctx.restore();
 }
 
+// Draw a sprite-set frame centered inside a targetSize square.  Uses an
+// integer scale so pixel art stays crisp.  Returns true if drawn.
+function drawSpriteIcon(ctx, set, frameName, x, y, targetSize){
+	if(!set || !set.image || !set.frames) return false;
+	var frame = set.frames[frameName];
+	if(!frame) return false;
+
+	var scale = Math.max(1, Math.floor(Math.min(targetSize / frame.width, targetSize / frame.height)));
+	var drawW = frame.width * scale;
+	var drawH = frame.height * scale;
+	var drawX = x + Math.floor((targetSize - drawW) / 2);
+	var drawY = y + Math.floor((targetSize - drawH) / 2);
+
+	ctx.drawImage(set.image, frame.x, frame.y, frame.width, frame.height,
+	              drawX, drawY, drawW, drawH);
+	return true;
+}
+
 function drawHUD(game){
 	var player = game.player;
 	if(!player) return;
@@ -87,7 +105,9 @@ function drawHUD(game){
 
 	// --- Gold ---
 	var goldX = barX + HUD.barWidth + HUD.groupGap;
-	drawCoinIcon(ctx, goldX, y, HUD.iconSize, HUD.iconSize);
+	if(!drawSpriteIcon(ctx, game.spriteSets.valuable, 'gold and silver', goldX, y, HUD.iconSize)){
+		drawCoinIcon(ctx, goldX, y, HUD.iconSize, HUD.iconSize);
+	}
 
 	var textX = goldX + HUD.iconSize + HUD.gap;
 	ctx.font = uiFont('normal');

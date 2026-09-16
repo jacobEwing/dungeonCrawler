@@ -10,7 +10,14 @@ class Enemy extends Entity {
 
 		this.wanderRadius = 3;
 
-		this.gold = 1 + Math.floor(Math.random() * 5);
+		// Loot table is resolved by key at construction, but rolled only on death.
+		this.lootTable = options.lootTableKey != undefined
+			? (LOOT_TABLES[options.lootTableKey] || null)
+			: null;
+
+		// Starting gold and possessions are zero for enemies; the loot roll
+		// populates them when the enemy dies.
+		this.gold = 0;
 	}
 
 	findTarget(dtSeconds){
@@ -80,17 +87,46 @@ class Enemy extends Entity {
 	onDeath(){
 		super.onDeath();
 
-		if(!this.spawnPoint) return;
+		if(!this._lootRolled){
+			this._lootRolled = true;
+			this.rollLoot();
+		}
 
-		this.spawnPoint.activeEntity = null;
+		if(this.spawnPoint){
+			this.spawnPoint.activeEntity = null;
 
-		if(this.spawnPoint.mode === SPAWN_MODE.PERSISTENT
-		   || this.spawnPoint.mode === SPAWN_MODE.RESET_ON_ENTER){
-			this.spawnPoint.exhausted = true;
-		}else{
-			// SPAWN_MODE.RESPAWN (and any future mode that recycles via
-			// cooldown rather than exhaustion).
-			this.spawnPoint.cooldownTimer = SPAWN_RESPAWN_COOLDOWN;
+			if(this.spawnPoint.mode === SPAWN_MODE.PERSISTENT
+					|| this.spawnPoint.mode === SPAWN_MODE.RESET_ON_ENTER){
+				this.spawnPoint.exhausted = true;
+			}else{
+				this.spawnPoint.cooldownTimer = SPAWN_RESPAWN_COOLDOWN;
+			}
+		}
+	}
+
+	// Roll each entry in the loot table independently.  Weight is relative to
+	// the sum of all weights in the table, so entries don't need to total 100.
+	rollLoot(){
+		if(!this.lootTable) return;
+
+		var totalWeight = 0;
+		for(var n = 0; n < this.lootTable.length; n++){
+			totalWeight += this.lootTable[n].weight;
+		}
+		if(totalWeight <= 0) return;
+
+		for(var m = 0; m < this.lootTable.length; m++){
+			var entry = this.lootTable[m];
+			if(Math.random() * totalWeight >= entry.weight) continue;
+
+			if(entry.gold){
+				var range = entry.gold.max - entry.gold.min + 1;
+				this.gold += entry.gold.min + Math.floor(Math.random() * range);
+			}
+			if(entry.item){
+				// Copy so the table's literal is never mutated.
+				this.possessions.push(Object.assign({}, entry.item));
+			}
 		}
 	}
 }
