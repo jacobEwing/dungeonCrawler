@@ -1,0 +1,13 @@
+{
+    "image" : "sprites/ui.png",
+    "frameWidth" : 12,
+    "frameHeight" : 12,
+    "frames" : {
+        "health"   : { "x" : 0, "y" : 0 },
+        "gold": { "x" : 1, "y" : 0 },
+        "inventory": { "x" : 2, "y" : 0 },
+        "save": { "x" : 3, "y" : 0 },
+        "load": { "x" : 4, "y" : 0 }
+    },
+    "sequences" : {}
+}

@@ -98,6 +98,8 @@ class Game {
 			this.initializeEvents();
 			await this.loadMousePointers();
 
+			this.setupSidebarIcons();
+
 			this.startGameLoop();
 		} catch(e){
 			console.error("Initialization failed:", e);
@@ -140,7 +142,8 @@ class Game {
 			{'name' : 'waterWaves' , 'file' : 'waterWaves.sprite'},
 			{'name' : 'rat', 'file' : 'rat.sprite'},
 			{'name' : 'treasures', 'file' : 'treasures.sprite' },
-			{'name' : 'valuable', 'file' : 'valuables.sprite' } // valuable inventory items
+			{'name' : 'valuable', 'file' : 'valuables.sprite' }, // valuable inventory items
+			{'name' : 'ui', 'file' : 'ui.sprite'} // ui components
 
 		];
 
@@ -1198,19 +1201,16 @@ class Game {
 		.replace(/"/g, '&quot;');
 	}
 
-	// Render the player's front_idle frame into the character button as a
-	// canvas.  Re-run whenever the player's sprite set changes (e.g. character
-	// selection) to keep the icon in sync.
-	renderCharacterIcon(){
-		var button = document.getElementById('btn-character');
-		if(!button || !this.player || !this.player.sprite) return;
+	// Render a frame from a sprite set into a button as a canvas, replacing
+	// any existing .sidebar-icon child (or inserting one before the caption).
+	// Integer-scales so pixel art stays crisp.
+	renderFrameIntoButton(buttonId, set, frameName, size){
+		var button = document.getElementById(buttonId);
+		if(!button) return;
+		if(!set || !set.image || !set.frames) return;
 
-		var sprite = this.player.sprite;
-		var size = 48;
-
-		var prevFrame = sprite.frameName;
-		sprite.setFrame('front_right_idle');
-		var frame = sprite.frame;
+		var frame = set.frames[frameName];
+		if(!frame) return;
 
 		var scale = Math.floor(Math.min(size / frame.width, size / frame.height));
 		if(scale < 1) scale = 1;
@@ -1230,25 +1230,36 @@ class Game {
 		ctx.webkitImageSmoothingEnabled = false;
 		ctx.mozImageSmoothingEnabled = false;
 
-		ctx.drawImage(
-			sprite.image,
-			frame.x, frame.y,
-			frame.width, frame.height,
-			drawX, drawY,
-			drawW, drawH
-		);
+		ctx.drawImage(set.image,
+				frame.x, frame.y, frame.width, frame.height,
+				drawX, drawY, drawW, drawH);
 
-		if(prevFrame) sprite.setFrame(prevFrame);
-
-		// Replace only the icon, not the whole button — the caption span
-		// (and anything else) stays put.
-		var existingIcon = button.querySelector('.sidebar-icon');
-		if(existingIcon){
-			button.replaceChild(canvas, existingIcon);
+		var existing = button.querySelector('.sidebar-icon');
+		if(existing){
+			button.replaceChild(canvas, existing);
 		}else{
 			button.insertBefore(canvas, button.firstChild);
 		}
 	}
+
+	// Convenience: same as above, but for the ui sprite set by frame name.
+	renderUiIcon(buttonId, frameName){
+		this.renderFrameIntoButton(buttonId, this.spriteSets.ui, frameName, SIDEBAR_ICON_SIZE);
+	}
+
+	// Player portrait: uses the player's own sprite set so the icon tracks
+	// whichever skin is loaded.
+	renderCharacterIcon(){
+		if(!this.player || !this.player.sprite) return;
+		var sprite = this.player.sprite;
+
+		// Preserve current frame so we can restore it after rendering.
+		var prevFrame = sprite.frameName;
+		var set = sprite.template;
+		this.renderFrameIntoButton('btn-character', set, 'front_right_idle', SIDEBAR_ICON_SIZE);
+		if(prevFrame) sprite.setFrame(prevFrame);
+	}
+
 	// ------------------------------------------------------------------
 	// misc
 	// ------------------------------------------------------------------
@@ -1310,6 +1321,7 @@ class Game {
 			this.activeMap._initialPopulationDone = true;
 		}
 	}
+
 	materializeSpawnPoint(sp){
 		if(sp.spawning) return;
 		sp.spawning = true;
@@ -1453,6 +1465,13 @@ class Game {
 		if(this.currentCursor === action) return;
 		this.currentCursor = action;
 		this.overlay.style.cursor = this.cursors[action] || this.cursors.default;
+	}
+
+	setupSidebarIcons(){
+		this.renderUiIcon('btn-inventory', 'inventory');
+		this.renderUiIcon('btn-save',      'save');
+		this.renderUiIcon('btn-load',      'load');
+		this.renderCharacterIcon();
 	}
 }
 

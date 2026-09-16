@@ -11,7 +11,7 @@
         "ruby ring": { "x" : 5, "y" : 0 },
         "gold": { "x" : 6, "y" : 0 },
         "silver": { "x" : 7, "y" : 0 },
-        "gold and silver": { "x" : 8, "y" : 0 }
+        "treasure": { "x" : 8, "y" : 0 }
     },
     "sequences" : {}
 }

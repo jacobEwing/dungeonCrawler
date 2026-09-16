@@ -65,57 +65,87 @@ function drawHUD(game){
 	if(!player) return;
 
 	var ctx = game.ctx;
-	var x = HUD.padding;
-	var y = HUD.padding;
+	var pixel = HUD.pixelSize;
+	var padding = HUD.padding;
+
+	// --- Vertical alignment: everything centers on the icon's midline ---
+	var iconTop = padding;
+	var iconMid = iconTop + HUD.iconSize / 2;
+
+	var barOuterH = HUD.barHeight + 2 * HUD.border;
+	var barOuterY = iconMid - barOuterH / 2;
+	var barOuterX = padding + HUD.iconSize + HUD.gap;
 
 	ctx.save();
 	ctx.textBaseline = 'middle';
 
-	// --- HP bar ---
-	drawHeartIcon(ctx, x, y, HUD.iconSize, HUD.iconSize);
-
-	var barX = x + HUD.iconSize + HUD.gap;
-
-	// Bar background
-	ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-	ctx.fillRect(barX, y, HUD.barWidth, HUD.barHeight);
-
-	// Fill — gradient across the full bar width, clipped by the fill rect.
-	var frac = Math.max(0, Math.min(1, player.health / player.maxHealth));
-	var grad = ctx.createLinearGradient(barX, 0, barX + HUD.barWidth, 0);
-	grad.addColorStop(0,    '#c02020');
-	grad.addColorStop(0.5,  '#d0a020');
-	grad.addColorStop(1,    '#20a040');
-	ctx.fillStyle = grad;
-	ctx.fillRect(barX, y, HUD.barWidth * frac, HUD.barHeight);
-
-	// Border
-	ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
-	ctx.lineWidth = 1;
-	ctx.strokeRect(barX + 0.5, y + 0.5, HUD.barWidth - 1, HUD.barHeight - 1);
-
-	// Bar text, centered on the bar
-	var hpText = player.health + ' / ' + player.maxHealth;
-	ctx.font = uiFont('small');
-	ctx.textAlign = 'center';
-	ctx.fillStyle = '#000';
-	ctx.fillText(hpText, barX + HUD.barWidth / 2 + 1, y + HUD.barHeight / 2 + 1);
-	ctx.fillStyle = '#fff';
-	ctx.fillText(hpText, barX + HUD.barWidth / 2,     y + HUD.barHeight / 2);
-
-	// --- Gold ---
-	var goldX = barX + HUD.barWidth + HUD.groupGap;
-	if(!drawSpriteIcon(ctx, game.spriteSets.valuable, 'gold and silver', goldX, y, HUD.iconSize)){
-		drawCoinIcon(ctx, goldX, y, HUD.iconSize, HUD.iconSize);
+	// --- Heart icon ---
+	if(!drawSpriteIcon(ctx, game.spriteSets.ui, 'health', padding, iconTop, HUD.iconSize)){
+		drawHeartIcon(ctx, padding, iconTop, HUD.iconSize, HUD.iconSize);
 	}
 
-	var textX = goldX + HUD.iconSize + HUD.gap;
-	ctx.font = uiFont('normal');
-	ctx.textAlign = 'left';
+	// --- HP bar (pixel-block style) ---
+	// Outer border: solid dark frame, 1 game-pixel thick.
+	ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+	ctx.fillRect(barOuterX, barOuterY, HUD.barWidth + 2 * HUD.border, barOuterH);
+
+	// Inner background: dim, so empty segments still read as part of the bar.
+	var innerX = barOuterX + HUD.border;
+	var innerY = barOuterY + HUD.border;
+	ctx.fillStyle = 'rgba(40, 20, 20, 0.85)';
+	ctx.fillRect(innerX, innerY, HUD.barWidth, HUD.barHeight);
+
+	// Filled segments.  One segment per game-pixel of width.  Filled count
+	// is rounded so it always displays as a whole number of blocks.
+	var frac = Math.max(0, Math.min(1, player.health / player.maxHealth));
+	var filledSegments = Math.round(HUD.barSegments * frac);
+
+	if(filledSegments > 0){
+		var grad = ctx.createLinearGradient(innerX, 0, innerX + HUD.barWidth, 0);
+		grad.addColorStop(0,    '#c02020');
+		grad.addColorStop(0.5,  '#d0a020');
+		grad.addColorStop(1,    '#20a040');
+		ctx.fillStyle = grad;
+
+		// Draw each segment as a game-pixel-wide block.  Because the
+		// gradient is stretched across the full bar and clipped segment
+		// by segment, the fill still reads as a gradient but is composed
+		// of crisp pixel blocks.
+		for(var s = 0; s < filledSegments; s++){
+			ctx.fillRect(innerX + s * pixel, innerY, pixel, HUD.barHeight);
+		}
+	}
+
+	// HP text, centered on the bar.  Drawn with a 1px shadow for legibility.
+	var hpText = player.health + ' / ' + player.maxHealth;
+	ctx.font = uiFontPx(HUD.fontPx);
+	ctx.textAlign = 'center';
+
+	var hpTextX = innerX + HUD.barWidth / 2;
+	var hpTextY = innerY + HUD.barHeight / 2;
+
 	ctx.fillStyle = '#000';
-	ctx.fillText(player.gold, textX + 1, y + HUD.iconSize / 2 + 1);
+	ctx.fillText(hpText, hpTextX + 1, hpTextY + 1);
+	ctx.fillStyle = '#fff';
+	ctx.fillText(hpText, hpTextX, hpTextY);
+
+	// --- Gold icon + count ---
+	var goldX = barOuterX + HUD.barWidth + 2 * HUD.border + HUD.bigGap;
+
+	if(!drawSpriteIcon(ctx, game.spriteSets.ui, 'gold', goldX, iconTop, HUD.iconSize)){
+		drawCoinIcon(ctx, goldX, iconTop, HUD.iconSize, HUD.iconSize);
+	}
+
+	var goldTextX = goldX + HUD.iconSize + HUD.gap;
+	ctx.font = uiFontPx(HUD.fontPx);
+	ctx.textAlign = 'left';
+
+	var goldTextY = iconMid;
+
+	ctx.fillStyle = '#000';
+	ctx.fillText(player.gold, goldTextX + 1, goldTextY + 1);
 	ctx.fillStyle = '#ffd700';
-	ctx.fillText(player.gold, textX,     y + HUD.iconSize / 2);
+	ctx.fillText(player.gold, goldTextX, goldTextY);
 
 	ctx.restore();
 }

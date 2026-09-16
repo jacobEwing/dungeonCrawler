@@ -1,4 +1,11 @@
 'use strict';
+// ============================================================================
+// Rendering
+// ============================================================================
+
+var gameScale = 5;
+var cellSize = 12;
+
 
 // ============================================================================
 // UI typography
@@ -11,7 +18,7 @@
 // If you change it here, change the CSS too — or, alternatively, set the
 // --ui-font CSS variable from JS (see Game.setupCanvas) so there's only one
 // source of truth.
-var UI_FONT_FAMILY = "GermaniaOne, sans-serif";
+var UI_FONT_FAMILY = "VT323, sans-serif";
 
 // Pixel sizes used across the UI.  Individual draw sites pick a key.
 var UI_FONT_SIZE = {
@@ -23,6 +30,10 @@ var UI_FONT_SIZE = {
 // Convenience — builds a value suitable for `ctx.font`.
 function uiFont(sizeKey){
 	var px = UI_FONT_SIZE[sizeKey] || UI_FONT_SIZE.normal;
+	return px + 'px ' + UI_FONT_FAMILY;
+}
+
+function uiFontPx(px){
 	return px + 'px ' + UI_FONT_FAMILY;
 }
 
@@ -93,26 +104,39 @@ var LOOT_TABLES = {
 // Inventory grid dimensions.  Rows grow as needed.
 var INVENTORY_COLS = 6;
 var INVENTORY_ICON_SIZE = 48;
-
+var SIDEBAR_ICON_SIZE = 48;
 // ============================================================================
 // HUD layout (canvas, top-left corner of the play area)
 // ============================================================================
 
 var HUD = {
-	padding    : 10,     // screen pixels from the top-left corner
-	iconSize   : 16,     // heart / coin size
-	barWidth   : 150,    // HP bar width
-	barHeight  : 16,
-	gap        : 6,      // gap between icon and its text/bar
-	groupGap   : 24      // gap between HP group and gold group
+    padding    : 10,
+
+    // Icon size.  Also acts as the reference size for font and layout.
+    iconSize   : cellSize * gameScale,         // 60px at default scale
+
+    // HP bar.  Measured in game-pixels; converted to screen pixels below.
+    barSegments : 30,                          // number of pixel-blocks wide
+    barRows     : 4,                           // number of pixel-blocks tall
+    borderRows  : 1,                           // border thickness, in game-pixels
+
+    // Gaps, also in game-pixels.
+    iconGap     : 1,                           // icon → bar
+    groupGap    : 3,                           // bar → gold icon
+
+    // Font size as a fraction of iconSize.  0.28 → ~17px at iconSize=60,
+    // which fits comfortably inside a 4-game-pixel-tall bar.
+    fontScale   : .4,
+
+    // Derived (convenience, so draw code reads cleanly).
+    get pixelSize () { return gameScale; },
+    get barWidth  () { return this.barSegments * gameScale; },
+    get barHeight () { return this.barRows * gameScale; },
+    get border    () { return this.borderRows * gameScale; },
+    get gap       () { return this.iconGap * gameScale; },
+    get bigGap    () { return this.groupGap * gameScale; },
+    get fontPx    () { return Math.round(this.iconSize * this.fontScale); }
 };
-
-// ============================================================================
-// Rendering
-// ============================================================================
-
-var gameScale = 5;
-var cellSize = 12;
 
 // ============================================================================
 // Assorted constants
