@@ -60,7 +60,8 @@ class InventoryPanel extends Panel {
 	findEquipped(slotId){
 		var p = this.game.player;
 		for(var n = 0; n < p.possessions.length; n++){
-			if(p.possessions[n].slot === slotId) return p.possessions[n];
+			var it = p.possessions[n];
+			if(it.equipped && it.slot === slotId) return it;
 		}
 		return null;
 	}
@@ -70,7 +71,7 @@ class InventoryPanel extends Panel {
 		var out = [];
 		for(var n = 0; n < p.possessions.length; n++){
 			var it = p.possessions[n];
-			if(it.slot) continue;                        // equipped items don't show in the grid
+			if(it.equipped) continue;
 			if(this.filter !== 'all' && it.category !== this.filter) continue;
 			out.push(it);
 		}
@@ -87,13 +88,23 @@ class InventoryPanel extends Panel {
 			return '<div class="slot"' + attr + '></div>';
 		}
 
+		// Only items that can actually be clicked get the interactive class —
+		// equippables in the grid, and equipped items in the equipment row.
+		var interactive = item.equipped || item.isEquippable();
+		var classes = 'slot filled' + (interactive ? ' interactive' : '');
+
+		// The index into player.possessions is what handleSlotClick needs to
+		// resolve the click back to the item instance.
+		var idx = this.game.player.possessions.indexOf(item);
+		var posAttr = idx >= 0 ? ' data-pos-index="' + idx + '"' : '';
+
 		var qty = item.quantity != undefined ? item.quantity : 1;
 		var qtyHtml = qty > 1 ? '<span class="slot-quantity">' + qty + '</span>' : '';
 
-		return '<div class="slot filled"' + attr + '>'
-		     + this.renderIcon(item)
-		     + qtyHtml
-		     + '</div>';
+		return '<div class="' + classes + '"' + attr + posAttr + '>'
+			+ this.renderIcon(item)
+			+ qtyHtml
+			+ '</div>';
 	}
 
 	itemLabel(item){
@@ -145,17 +156,45 @@ class InventoryPanel extends Panel {
 	}
 
 	// --- filter persistence ---------------------------------------------
-
 	refresh(){
 		super.refresh();
 		var me = this;
+
 		var sel = document.getElementById('inventory-filter');
 		if(sel){
 			sel.value = this.filter;
 			sel.addEventListener('change', function(e){
-				me.filter = e.target.value;
-				me.refresh();
-			});
+					me.filter = e.target.value;
+					me.refresh();
+					});
 		}
+
+		// Delegated click handler.  Re-bound on every refresh because
+		// super.refresh() replaces the body's innerHTML; the listener is
+		// attached to the body element itself, which survives the rebuild.
+		if(this.bodyEl && !this._clickBound){
+			this.bodyEl.addEventListener('click', function(e){ me.handleSlotClick(e); });
+			this._clickBound = true;
+		}
+	}
+
+	handleSlotClick(e){
+		var slotEl = e.target.closest('.slot');
+		if(!slotEl) return;
+
+		var posIdx = slotEl.dataset.posIndex;
+		if(posIdx == undefined) return;   // empty slot
+
+		var item = this.game.player.possessions[parseInt(posIdx, 10)];
+		if(!item) return;
+
+		if(item.equipped){
+			this.game.player.unequipItem(item);
+			this.refresh();
+		}else if(item.isEquippable()){
+			this.game.player.equipItem(item);
+			this.refresh();
+		}
+		// Non-equippable, non-equipped items: no action for now.
 	}
 }

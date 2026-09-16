@@ -545,11 +545,14 @@ class Game {
 			lootedAny = true;
 		}
 
-		for(var item of corpse.possessions){
+		for(var itemData of corpse.possessions){
+			// Corpse possessions may be Item instances (from a fresh loot roll) or
+			// plain objects (from an older save).  Normalize to Item either way.
+			var item = itemData instanceof Item ? itemData : new Item(itemData);
 			this.player.possessions.push(item);
-			var count = item.quantity != undefined ? item.quantity : 1;
-			var suffix = count > 1 ? ' ×' + count : '';
-			console.log('Picked up: ' + (item.name || 'item') + suffix);
+
+			var suffix = item.quantity > 1 ? ' ×' + item.quantity : '';
+			console.log('Picked up: ' + item.name + suffix);
 			lootedAny = true;
 		}
 
@@ -980,7 +983,9 @@ class Game {
 		p.maxHealth = pd.maxHealth;
 		p.facing = pd.facing;
 		p.gold = pd.gold;
-		p.possessions = pd.possessions.slice();
+		p.possessions = (pd.possessions || []).map(function(d){
+			return d instanceof Item ? d : new Item(d);
+		});
 		p.skills.speed = pd.skills.speed;
 		p.skills.vision = pd.skills.vision;
 

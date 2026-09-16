@@ -241,6 +241,14 @@ body, html{
 	background: rgba(255, 255, 255, 0.04);
 }
 
+.slot.interactive {
+	cursor: pointer;
+}
+
+.slot.interactive:hover {
+	background: rgba(255, 255, 255, 0.08);
+}
+
 .inventory-empty {
 	color: #888;
 	font-style: italic;

@@ -150,4 +150,29 @@ class Player extends Entity {
 		if(this.damageFlash > 0) this.damageFlash -= dtSeconds;
 		super.act(dtSeconds);
 	}
+
+	// Place an item into its designated equipment slot.  If the slot is already
+	// occupied, the current occupant is unequipped back to inventory.
+	// Returns true on success, false if the item can't be equipped or already is.
+	equipItem(item){
+		if(!item || !item.isEquippable()) return false;
+		if(item.equipped) return false;
+
+		for(var n = 0; n < this.possessions.length; n++){
+			var other = this.possessions[n];
+			if(other !== item && other.equipped && other.slot === item.slot){
+				other.equipped = false;
+			}
+		}
+
+		item.equipped = true;
+		return true;
+	}
+
+	// Move an equipped item back to the inventory grid.
+	unequipItem(item){
+		if(!item || !item.equipped) return false;
+		item.equipped = false;
+		return true;
+	}
 }

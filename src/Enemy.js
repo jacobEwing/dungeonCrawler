@@ -18,6 +18,7 @@ class Enemy extends Entity {
 		// Starting gold and possessions are zero for enemies; the loot roll
 		// populates them when the enemy dies.
 		this.gold = 0;
+		this.possessions = [];
 	}
 
 	findTarget(dtSeconds){
@@ -125,7 +126,7 @@ class Enemy extends Entity {
 			}
 			if(entry.item){
 				// Copy so the table's literal is never mutated.
-				this.possessions.push(Object.assign({}, entry.item));
+				this.possessions.push(Object.assign({}, new Item(entry.item)));
 			}
 		}
 	}
