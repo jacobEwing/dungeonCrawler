@@ -1,13 +1,41 @@
-Give player a "sight" skill, Perhaps a 0-1 value that can be multiplied by the player's sight skill to get their actual range of view. Also consider things like potions that temporarily boost sight.
+Give player a "sight" skill, Perhaps a 0-1 value that can be multiplied by the
+player's sight skill to get their actual range of view. Also consider things
+like potions that temporarily boost sight.
 
-Add some sort of highlight to player, NPM's treasures etc. when they are below trees.  As is the tree foliage hides them thoroughly
+Add some sort of highlight to player, NPM's treasures etc. when they are below
+trees.  As is the tree foliage hides them thoroughly
 
-Add a brief pause - maybe half a second - before an antagonist attacks upon reaching the player.  So they see you, walk toward you, and have a "prepare to attack" pause.  This should be configurable by creature type.  The slow attack speed gives the player more time to swing at them.
+Add a brief pause - maybe half a second - before an antagonist attacks upon
+reaching the player.  So they see you, walk toward you, and have a "prepare to
+attack" pause.  This should be configurable by creature type.  The slow attack
+speed gives the player more time to swing at them.
 
-Add distinct behaviours for different types of characters.  We already have antagonists, could have fauna that tries to run away, passive characters, etc.  The current behaviour works well for aggressors though.
+Add distinct behaviours for different types of characters.  We already have
+antagonists, could have fauna that tries to run away, passive characters, etc.
+The current behaviour works well for aggressors though.
 
 Allow player to adjust game scale on the fly.
 
-Asset collection (tree cutting, mineral mining, etc.) - a new type of cave generation would be good for that, it could contain fixed map elements that can be mined
+Asset collection (tree cutting, mineral mining, etc.) - a new type of cave
+generation would be good for that, it could contain fixed map elements that can
+be mined
 
-Separate the sword from the player sprite.  Keep the frames, but erase the sword pixels, keeping only the player shape.  For each tool/weapon/etc. create a new sprite that is placed along with the player when using it.  One note is that the order they placed in will depend on the player's iteration.  If he's facing more upward then the tool would be placed first.  If downward then the tool is placed second. This will allow a switch between different tools without having to redraw multiple sprites.
+I recently realised how best to handle different weapons' appearances with the
+player sprite.  Instead of drawing frames for a him with a sword, a mace, a
+wand, etc. etc., I'm going to update the sprite, removing the sword from the
+fighting frames, but keeping the player in them.  Then for each weapon, I can
+give it a sprite of its own, which has frames matching the attack frame names
+of the player sprite.  Then when rendering the player doing an attack, we can
+draw their player and weapon sprites on top of each other.  If the player is
+facing upward (i.e. moving mostly "north"), then the weapon would be drawn
+first, and the character on top.  If the player is facing downward, then the
+character is drawn first, then the weapon on that.  This is all a whole
+separate work stream.
+
+There should be a specific order of operations when the player clicks on a
+given location and there are two actions possible.  For example, if there is
+coinage under an aggressor, and I click where either action could be triggered,
+attacking the aggressor should take priority.  I think the order should be
+aggressors -> other creatures -> dropped goods -> interactive static items
+(e.g. entrances, non-moving NPCs).  There might be more subsets to cut up
+there.

@@ -31,6 +31,9 @@
 	<script src="src/Corpse.js"></script>
 	<script src="src/render.js"></script>
 	<script src="src/SaveManager.js"></script>
+	<script src="src/Panel.js"></script>
+	<script src="src/InventoryPanel.js"></script>
+	<script src="src/CharacterPanel.js"></script>
 	<script src="src/Game.js"></script>
 	<script src="src/main.js"></script>
 </head>
@@ -45,7 +48,7 @@
 		<div id="sidebar">
 			<button class="sidebar-button" id="btn-inventory" title="Inventory (I)">
 				<img src="images/chest.png" alt="" class="sidebar-icon">
-				<span class="sidebar-caption">Inventory</span>
+				<span class="sidebar-caption">012345</span>
 			</button>
 
 			<button class="sidebar-button" id="btn-character" title="Character (C)">
@@ -74,6 +77,14 @@
 				</div>
 				<div class="panel-body" id="panel-inventory-body"></div>
 			</div>
+		</div>
+
+		<div id="panel-character" class="panel">
+			<div class="panel-header">
+				<span>Character</span>
+				<button class="panel-close" aria-label="Close">×</button>
+			</div>
+			<div class="panel-body"></div>
 		</div>
 	</div>
 </body>

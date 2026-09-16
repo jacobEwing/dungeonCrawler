@@ -10,13 +10,7 @@ class Enemy extends Entity {
 
 		this.wanderRadius = 3;
 
-		// Seed some loot for the corpse to drop.
-		if(this.possessions.length === 0){
-			this.possessions.push({
-				name   : 'gold',
-				amount : 1 + Math.floor(Math.random() * 5)
-			});
-		}
+		this.gold = 1 + Math.floor(Math.random() * 5);
 	}
 
 	findTarget(dtSeconds){

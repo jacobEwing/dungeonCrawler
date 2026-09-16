@@ -1,0 +1,17 @@
+{
+    "image" : "sprites/valuables.png",
+    "frameWidth" : 12,
+    "frameHeight" : 12,
+    "frames" : {
+        "dark crystal"   : { "x" : 0, "y" : 0 },
+        "sapphire": { "x" : 1, "y" : 0 },
+        "emerald": { "x" : 2, "y" : 0 },
+        "ruby": { "x" : 3, "y" : 0 },
+        "emerald ring": { "x" : 4, "y" : 0 },
+        "ruby ring": { "x" : 5, "y" : 0 },
+        "gold": { "x" : 6, "y" : 0 },
+        "silver": { "x" : 7, "y" : 0 },
+        "gold and silver": { "x" : 8, "y" : 0 }
+    },
+    "sequences" : {}
+}

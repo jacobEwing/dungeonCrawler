@@ -1,5 +1,105 @@
 'use strict';
 
+// --- HUD helpers -----------------------------------------------------------
+
+function drawHeartIcon(ctx, x, y, w, h){
+	var cx = x + w / 2;
+	var topY = y + h * 0.35;
+	var r = w * 0.28;
+
+	ctx.save();
+	ctx.fillStyle = '#e03040';
+	ctx.beginPath();
+	ctx.arc(cx - r, topY, r, Math.PI, 0);
+	ctx.arc(cx + r, topY, r, Math.PI, 0);
+	ctx.lineTo(cx, y + h);
+	ctx.closePath();
+	ctx.fill();
+	ctx.restore();
+}
+
+function drawCoinIcon(ctx, x, y, w, h){
+	var cx = x + w / 2;
+	var cy = y + h / 2;
+	var r = w / 2;
+
+	ctx.save();
+	ctx.fillStyle = '#ffd700';
+	ctx.beginPath();
+	ctx.arc(cx, cy, r, 0, Math.PI * 2);
+	ctx.fill();
+
+	ctx.strokeStyle = '#a08020';
+	ctx.lineWidth = 1;
+	ctx.beginPath();
+	ctx.arc(cx, cy, r - 0.5, 0, Math.PI * 2);
+	ctx.stroke();
+
+	ctx.beginPath();
+	ctx.arc(cx, cy, r * 0.5, 0, Math.PI * 2);
+	ctx.stroke();
+
+	ctx.restore();
+}
+
+function drawHUD(game){
+	var player = game.player;
+	if(!player) return;
+
+	var ctx = game.ctx;
+	var x = HUD.padding;
+	var y = HUD.padding;
+
+	ctx.save();
+	ctx.textBaseline = 'middle';
+
+	// --- HP bar ---
+	drawHeartIcon(ctx, x, y, HUD.iconSize, HUD.iconSize);
+
+	var barX = x + HUD.iconSize + HUD.gap;
+
+	// Bar background
+	ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+	ctx.fillRect(barX, y, HUD.barWidth, HUD.barHeight);
+
+	// Fill — gradient across the full bar width, clipped by the fill rect.
+	var frac = Math.max(0, Math.min(1, player.health / player.maxHealth));
+	var grad = ctx.createLinearGradient(barX, 0, barX + HUD.barWidth, 0);
+	grad.addColorStop(0,    '#c02020');
+	grad.addColorStop(0.5,  '#d0a020');
+	grad.addColorStop(1,    '#20a040');
+	ctx.fillStyle = grad;
+	ctx.fillRect(barX, y, HUD.barWidth * frac, HUD.barHeight);
+
+	// Border
+	ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+	ctx.lineWidth = 1;
+	ctx.strokeRect(barX + 0.5, y + 0.5, HUD.barWidth - 1, HUD.barHeight - 1);
+
+	// Bar text, centered on the bar
+	var hpText = player.health + ' / ' + player.maxHealth;
+	ctx.font = uiFont('small');
+	ctx.textAlign = 'center';
+	ctx.fillStyle = '#000';
+	ctx.fillText(hpText, barX + HUD.barWidth / 2 + 1, y + HUD.barHeight / 2 + 1);
+	ctx.fillStyle = '#fff';
+	ctx.fillText(hpText, barX + HUD.barWidth / 2,     y + HUD.barHeight / 2);
+
+	// --- Gold ---
+	var goldX = barX + HUD.barWidth + HUD.groupGap;
+	drawCoinIcon(ctx, goldX, y, HUD.iconSize, HUD.iconSize);
+
+	var textX = goldX + HUD.iconSize + HUD.gap;
+	ctx.font = uiFont('normal');
+	ctx.textAlign = 'left';
+	ctx.fillStyle = '#000';
+	ctx.fillText(player.gold, textX + 1, y + HUD.iconSize / 2 + 1);
+	ctx.fillStyle = '#ffd700';
+	ctx.fillText(player.gold, textX,     y + HUD.iconSize / 2);
+
+	ctx.restore();
+}
+
 // ============================================================================
 // renderView — factory, closed over per-frame state
 // ============================================================================
@@ -393,28 +493,8 @@ function createRenderView(game){
 			game.ctx.restore();
 		}
 
-		// --- HP readout ---
-		if(game.player && game.player.isAlive){
-			var hpText = 'HP ' + game.player.health + '/' + game.player.maxHealth;
-			game.ctx.save();
-			game.ctx.font = '14px monospace';
-			game.ctx.fillStyle = '#000';
-			game.ctx.fillText(hpText, 11, 21);
-			game.ctx.fillStyle = '#FFF';
-			game.ctx.fillText(hpText, 10, 20);
-			game.ctx.restore();
-		}
+		// --- HUD (drawn after the vignette so it stays legible) ---
+		drawHUD(game);
 
-		// --- Gold readout ---
-		if(game.player){
-			var goldText = 'Gold ' + game.player.gold;
-			game.ctx.save();
-			game.ctx.font = '14px monospace';
-			game.ctx.fillStyle = '#000';
-			game.ctx.fillText(goldText, 11, 41);
-			game.ctx.fillStyle = '#FFD700';
-			game.ctx.fillText(goldText, 10, 40);
-			game.ctx.restore();
-		}
 	};
 }

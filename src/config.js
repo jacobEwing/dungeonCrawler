@@ -1,6 +1,77 @@
 'use strict';
 
 // ============================================================================
+// UI typography
+// ============================================================================
+
+// The font family used for all canvas-drawn text (HUD, panel overlays if we
+// ever move them onto the canvas, floating damage numbers, etc.).
+//
+// Must match the @font-face family in game.css for on-screen consistency.
+// If you change it here, change the CSS too — or, alternatively, set the
+// --ui-font CSS variable from JS (see Game.setupCanvas) so there's only one
+// source of truth.
+var UI_FONT_FAMILY = "GermaniaOne, sans-serif";
+
+// Pixel sizes used across the UI.  Individual draw sites pick a key.
+var UI_FONT_SIZE = {
+	small  : 12,
+	normal : 14,
+	large  : 18
+};
+
+// Convenience — builds a value suitable for `ctx.font`.
+function uiFont(sizeKey){
+	var px = UI_FONT_SIZE[sizeKey] || UI_FONT_SIZE.normal;
+	return px + 'px ' + UI_FONT_FAMILY;
+}
+
+// ============================================================================
+// Items
+// ============================================================================
+
+// Equipment slot definitions, in display order.  Each slot's `id` is what
+// item.slot is set to when equipped.  Adding or reordering slots here changes
+// the equipment row automatically.
+var EQUIPMENT_SLOTS = [
+	{ id : 'head', label : 'Head'  },
+	{ id : 'body', label : 'Body'  },
+	{ id : 'hand', label : 'Hand'  },
+	{ id : 'legs', label : 'Legs'  },
+	{ id : 'feet', label : 'Feet'  },
+	{ id : 'ring', label : 'Ring'  }
+];
+
+// Item categories.  The `id` matches the sprite set name (so a weapon's
+// frame lives in spriteSets['weapon']), and is what item.category is set to.
+// The first entry is the "show everything" pseudo-category.
+var ITEM_CATEGORIES = [
+	{ id : 'all',      label : 'All'     },
+	{ id : 'weapon',   label : 'Weapons' },
+	{ id : 'armour',   label : 'Armour'  },
+	{ id : 'potion',   label : 'Potions' },
+	{ id : 'valuable', label : 'Valuables'  },
+	{ id : 'misc',     label : 'Misc'    }
+];
+
+// Inventory grid dimensions.  Rows grow as needed.
+var INVENTORY_COLS = 6;
+var INVENTORY_ICON_SIZE = 48;
+
+// ============================================================================
+// HUD layout (canvas, top-left corner of the play area)
+// ============================================================================
+
+var HUD = {
+	padding    : 10,     // screen pixels from the top-left corner
+	iconSize   : 16,     // heart / coin size
+	barWidth   : 150,    // HP bar width
+	barHeight  : 16,
+	gap        : 6,      // gap between icon and its text/bar
+	groupGap   : 24      // gap between HP group and gold group
+};
+
+// ============================================================================
 // Rendering
 // ============================================================================
 

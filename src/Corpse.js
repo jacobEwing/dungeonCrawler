@@ -6,5 +6,6 @@ class Corpse extends Entity {
 		this.category = 'corpse';
 		this.isAlive = false;
 		this.facing = options.facing != undefined ? options.facing : 4;
+		this.gold = options.gold != undefined ? options.gold : 0;
 	}
 }

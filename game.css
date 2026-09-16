@@ -146,22 +146,104 @@ body, html{
 	line-height: 1.5;
 	flex-grow: 1;
 }
-.inventory-row {
+
+.panel-row {
 	display: flex;
 	justify-content: space-between;
 	padding: 4px 0;
 	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.inventory-gold {
-	color: #ffd700;
-	margin-bottom: 8px;
-	padding-bottom: 8px;
-	border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+.panel-section {
+	margin-bottom: 16px;
+}
+
+.panel-section-heading {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	font-size: 0.85rem;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	opacity: 0.75;
+	margin-bottom: 6px;
+	padding-bottom: 4px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.inventory-filter {
+	font-family: inherit;
+	font-size: 0.75rem;
+	background: rgba(0, 0, 0, 0.4);
+	color: #eee;
+	border: 1px solid rgba(255, 255, 255, 0.25);
+	padding: 2px 4px;
+	cursor: pointer;
+}
+
+.inventory-grid,
+.equipment-row {
+	display: grid;
+	grid-template-columns: repeat(6, 48px);
+	gap: 4px;
+}
+
+.slot {
+	width: 48px;
+	height: 48px;
+	position: relative;
+	background: rgba(0, 0, 0, 0.35);
+
+	/* Concave bevel: dark on top-left, light on bottom-right. */
+	box-shadow:
+		inset  1px  1px 0 rgba(0, 0, 0, 0.6),
+		inset -1px -1px 0 rgba(255, 255, 255, 0.08);
+
+	border-radius: 3px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+}
+
+.slot-icon {
+	width: 100%;
+	height: 100%;
+	image-rendering: pixelated;
+	image-rendering: crisp-edges;
+	pointer-events: none;
+}
+
+.slot-letter {
+	font-family: monospace;
+	font-size: 22px;
+	color: rgba(255, 255, 255, 0.5);
+	pointer-events: none;
+	user-select: none;
+}
+
+.slot-quantity {
+	position: absolute;
+	right: 2px;
+	bottom: 0px;
+	font-family: monospace;
+	font-size: 12px;
+	color: #fff;
+	text-shadow: 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000;
+	pointer-events: none;
+	user-select: none;
+}
+
+/* Filled slots read as convex — invert the bevel. */
+.slot.filled {
+	box-shadow:
+		inset -1px -1px 0 rgba(0, 0, 0, 0.5),
+		inset  1px  1px 0 rgba(255, 255, 255, 0.1);
+	background: rgba(255, 255, 255, 0.04);
 }
 
 .inventory-empty {
 	color: #888;
 	font-style: italic;
+	padding: 4px 0;
 }
-

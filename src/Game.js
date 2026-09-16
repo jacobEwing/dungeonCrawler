@@ -19,7 +19,7 @@ class Game {
 		this.cursors = {
 			default	: 'default',
 			attack	: 'url(images/cursor_attack.png) 0 0, crosshair',
-			loot	: 'url(images/cursor_loot.png)   7 0, pointer',
+			loot	: 'url(images/cursor_loot.png)   0 0, pointer',
 			talk	: 'url(sprites/cursor_talk.png)   8 8, pointer'
 		};
 
@@ -43,8 +43,14 @@ class Game {
 		this.waterCycle = 0;
 		this.waterCycleAccum = 0;
 
-		this.activePanel = null;
+		this.activePanel = null;   // name string of the open panel, or null
 
+		// Panel instances.  Populated here because the DOM shells already exist
+		// by the time the Game is constructed.
+		this.panels = {
+			inventory : new InventoryPanel(this),
+			character : new CharacterPanel(this)
+		};
 		this.renderView = createRenderView(this);
 
 		// Registry of entity types that can be referenced by name from map JSON
@@ -82,7 +88,7 @@ class Game {
 
 	async init(){
 		this.setupCanvas();
-		//this.writeText(5, 5, "DungeonCrawler v.0.0");
+		await this.waitForFonts();
 
 		try {
 			await this.loadSpriteSets();
@@ -112,7 +118,9 @@ class Game {
 		this.ctx.webkitImageSmoothingEnabled = false;
 		this.ctx.mozImageSmoothingEnabled = false;
 		this.ctx.imageSmoothingEnabled = false;
-		document.documentElement.style.setProperty('--game-scale', gameScale + 'px');
+
+		//document.documentElement.style.setProperty('--game-scale', gameScale + 'px');
+		document.documentElement.style.setProperty('--ui-font', UI_FONT_FAMILY);
 
 
 		window.addEventListener('resize', () => this.handleResize());
@@ -484,11 +492,13 @@ class Game {
 	spawnCorpseFor(deadEntity){
 		var corpse = new Corpse(this, {
 			facing	  : deadEntity.facing,
-			possessions : deadEntity.possessions
+			possessions : deadEntity.possessions,
+			gold        : deadEntity.gold || 0
 		});
+
 		corpse.spawnPoint = deadEntity.spawnPoint;
 
-		var treasureSprite = this.pickTreasureSprite(deadEntity.possessions);
+		var treasureSprite = this.pickTreasureSprite(corpse);
 		if(treasureSprite){
 			corpse.sprite = new cSprite(this.spriteSets.treasures);
 			corpse.sprite.setScale(gameScale);
@@ -512,17 +522,11 @@ class Game {
 		return corpse;
 	}
 
-	pickTreasureSprite(possessions){
-		if(!possessions || possessions.length === 0) return null;
+	pickTreasureSprite(corpse){
+		var hasGold  = corpse.gold > 0;
+		var hasItems = corpse.possessions && corpse.possessions.length > 0;
 
-		var hasGold  = false;
-		var hasOther = false;
-		for(var item of possessions){
-			if(item.name === 'gold') hasGold = true;
-			else hasOther = true;
-		}
-
-		if(hasOther) return 'chestSparkle';
+		if(hasItems) return 'chestSparkle';
 		if(hasGold)  return 'goldSparkle';
 		return null;
 	}
@@ -530,16 +534,19 @@ class Game {
 	lootCorpse(corpse){
 		var lootedAny = false;
 
+		if(corpse.gold > 0){
+			this.player.gold += corpse.gold;
+			console.log('Picked up ' + corpse.gold + ' gold.');
+			corpse.gold = 0;
+			lootedAny = true;
+		}
+
 		for(var item of corpse.possessions){
-			if(item.name === 'gold'){
-				this.player.gold += item.amount;
-				console.log('Picked up ' + item.amount + ' gold.');
-				lootedAny = true;
-			}else{
-				this.player.possessions.push(item);
-				console.log('Picked up: ' + (item.name || 'item'));
-				lootedAny = true;
-			}
+			this.player.possessions.push(item);
+			var count = item.quantity != undefined ? item.quantity : 1;
+			var suffix = count > 1 ? ' ×' + count : '';
+			console.log('Picked up: ' + (item.name || 'item') + suffix);
+			lootedAny = true;
 		}
 
 		if(!lootedAny){
@@ -547,10 +554,12 @@ class Game {
 		}
 		corpse.possessions = [];
 
-		// Remove the corpse from the world after looting, whether or not
-		// anything was actually in it.
 		var idx = this.characters.indexOf(corpse);
 		if(idx !== -1) this.characters.splice(idx, 1);
+
+		if(this.activePanel === 'inventory'){
+			this.panels.inventory.refresh();
+		}
 	}
 
 	// ------------------------------------------------------------------
@@ -993,6 +1002,21 @@ class Game {
 		this.closePanel();
 	}
 
+	// Canvas doesn't trigger font loading the way DOM text does, so a custom
+	// font can silently fall back to the system default on the first frame.
+	// This explicitly asks the browser to load the family at the sizes we use,
+	// and swallows any failure (a system fallback is fine).
+	async waitForFonts(){
+		if(!document.fonts || !document.fonts.load) return;
+		try {
+			await document.fonts.load(uiFont('small'));
+			await document.fonts.load(uiFont('normal'));
+			await document.fonts.load(uiFont('large'));
+		} catch(e) {
+			console.warn("Font loading failed; canvas text may use a fallback:", e);
+		}
+	}
+
 	handleSave(){
 		if(this.isTransitioning){
 			console.log("Cannot save during a map transition.");
@@ -1127,67 +1151,40 @@ class Game {
 	// ------------------------------------------------------------------
 	// UI panels
 	// ------------------------------------------------------------------
-
 	togglePanel(name){
 		if(this.activePanel === name) this.closePanel();
 		else this.openPanel(name);
 	}
 
 	openPanel(name){
-		this.closePanel();	// ensure only one is open
+		var panel = this.panels[name];
+		if(!panel) return;
 
-		var el = document.getElementById('panel-' + name);
-		if(!el) return;
+		// Ensure only one is open at a time.
+		this.closePanel();
 
 		this.activePanel = name;
-		el.classList.add('visible');
+		panel.open();
 		document.getElementById('ui-backdrop').classList.add('visible');
-
-		if(name === 'inventory') this.refreshInventoryPanel();
 
 		// Cancel any walk/attack the player had going, since the mouse is
 		// about to interact with DOM elements instead of the canvas.
 		if(this.player){
-		this.player.target = null;
-		this.player.walkPath = [];
-		this.player.clearPendingAction();
+			this.player.target = null;
+			this.player.walkPath = [];
+			this.player.clearPendingAction();
 		}
 	}
 
 	closePanel(){
 		if(this.activePanel == null) return;
 
-		var el = document.getElementById('panel-' + this.activePanel);
-		if(el) el.classList.remove('visible');
+		var panel = this.panels[this.activePanel];
+		if(panel) panel.close();
 		document.getElementById('ui-backdrop').classList.remove('visible');
 		this.activePanel = null;
 	}
 
-	refreshInventoryPanel(){
-		var body = document.getElementById('panel-inventory-body');
-		if(!body) return;
-
-		var p = this.player;
-		var html = '';
-
-		html += '<div class="inventory-gold">Gold: ' + p.gold + '</div>';
-
-		if(!p.possessions || p.possessions.length === 0){
-		html += '<div class="inventory-empty">(no items)</div>';
-		}else{
-		for(var i = 0; i < p.possessions.length; i++){
-			var item = p.possessions[i];
-			var label = item.name || 'unknown';
-			var count = item.amount != undefined ? ' ×' + item.amount : '';
-			html += '<div class="inventory-row">'
-			 + '<span>' + this.escapeHtml(label) + '</span>'
-			 + '<span>' + this.escapeHtml(count) + '</span>'
-			 + '</div>';
-		}
-		}
-
-		body.innerHTML = html;
-	}
 
 	// Minimal HTML escape for user-visible strings that could come from data
 	// files.  Item names are currently authored by us, but habits are worth
@@ -1251,7 +1248,7 @@ class Game {
 			button.insertBefore(canvas, button.firstChild);
 		}
 	}
-// ------------------------------------------------------------------
+	// ------------------------------------------------------------------
 	// misc
 	// ------------------------------------------------------------------
 	updateSpawnPoints(dt){
