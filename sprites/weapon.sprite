@@ -1,0 +1,12 @@
+{
+    "image" : "sprites/weapon.png",
+    "frameWidth" : 12,
+    "frameHeight" : 12,
+    "frames" : {
+        "sword" : { "x" : 0, "y" : 0 },
+        "axe" : { "x" : 1, "y" : 0 },
+        "polearm" : { "x" : 2, "y" : 0 },
+        "mace" : { "x" : 3, "y" : 0 }
+    },
+    "sequences" : {}
+}

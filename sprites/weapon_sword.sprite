@@ -1,5 +1,5 @@
 {
-    "image" : "sprites/player.png",
+    "image" : "sprites/weapon_sword.png",
     "frameRate" : 100,
     "frameWidth" : 24,
     "frameHeight" : 24,

@@ -42,6 +42,36 @@ function drawCoinIcon(ctx, x, y, w, h){
 	ctx.restore();
 }
 
+function drawCollisionShapes(game, middleX, middleY){
+	var ctx = game.ctx;
+	var baseX = cellSize * middleX - game.player.position.x;
+	var baseY = cellSize * middleY - game.player.position.y;
+
+	ctx.save();
+	ctx.strokeStyle = '#00ff00';
+	ctx.lineWidth = 1;
+
+	var all = [game.player].concat(game.characters);
+	for(var n = 0; n < all.length; n++){
+		var e = all[n];
+		if(!e.sprite) continue;
+
+		var circles = e.getCollisionCircles();
+		for(var m = 0; m < circles.length; m++){
+			var c = circles[m];
+			var sx = (baseX + c.x) * gameScale;
+			var sy = (baseY + c.y) * gameScale;
+			var sr = c.r * gameScale;
+
+			ctx.beginPath();
+			ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+			ctx.stroke();
+		}
+	}
+
+	ctx.restore();
+}
+
 // Draw a sprite-set frame centered inside a targetSize square.  Uses an
 // integer scale so pixel art stays crisp.  Returns true if drawn.
 function drawSpriteIcon(ctx, set, frameName, x, y, targetSize){
@@ -522,16 +552,48 @@ function createRenderView(game){
 			});
 		}
 
-		game.player.sprite.setPosition(
-			cellSize * middleX - (game.player.sprite.frameWidth >> 1),
-			cellSize * middleY - game.player.sprite.frameHeight + 1,
-			1
+		// --- draw the player, with the weapon layered over or under it ---
+		var playerSprite = game.player.sprite;
+		playerSprite.setPosition(
+		    cellSize * middleX - (playerSprite.frameWidth >> 1),
+		    cellSize * middleY - playerSprite.frameHeight + 1,
+		    1
 		);
-		game.player.sprite.draw(game.ctx);
 
+		var weapon = game.player.weaponSprite;
+		var drawWeapon = false;
+
+		if(weapon != null){
+		    weapon.setPosition(
+			cellSize * middleX - (weapon.frameWidth >> 1),
+			cellSize * middleY - weapon.frameHeight + 1,
+			1
+		    );
+
+		    var weaponFrameName = playerSprite.frameName;
+		    if(weaponFrameName && weapon.template.frames[weaponFrameName]){
+			weapon.setFrame(weaponFrameName);
+			drawWeapon = true;
+		    }
+		}
+
+		// Facings 0 (up), 1 (upright), 7 (upleft) put the character's back to the
+		// camera, so the weapon draws behind the body.  All other facings draw
+		// the weapon in front.
+		var weaponBehind = game.player.facing === 0
+				|| game.player.facing === 1
+				|| game.player.facing === 7;
+
+		if(drawWeapon && weaponBehind) weapon.draw(game.ctx);
+		playerSprite.draw(game.ctx);
+		if(drawWeapon && !weaponBehind) weapon.draw(game.ctx);
 		for(o of topLayer){
 			o.sprite.setFrame(o.frame);
 			o.sprite.draw(game.ctx, { x : o.x, y : o.y });
+		}
+
+		if(game.showCollisionShapes){
+			drawCollisionShapes(game, middleX, middleY);
 		}
 
 		// --- damage vignette ---

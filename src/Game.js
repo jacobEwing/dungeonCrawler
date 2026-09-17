@@ -142,8 +142,10 @@ class Game {
 			{'name' : 'waterWaves' , 'file' : 'waterWaves.sprite'},
 			{'name' : 'rat', 'file' : 'rat.sprite'},
 			{'name' : 'treasures', 'file' : 'treasures.sprite' },
-			{'name' : 'valuable', 'file' : 'valuables.sprite' }, // valuable inventory items
-			{'name' : 'ui', 'file' : 'ui.sprite'} // ui components
+			{'name' : 'valuable', 'file' : 'valuables.sprite' }, // valuable inventory icons
+			{'name' : 'weapon', 'file' : 'weapon.sprite' }, // weapon inventory icons
+			{'name' : 'ui', 'file' : 'ui.sprite'}, // ui components
+			{'name' : 'weapon_sword', 'file' : 'weapon_sword.sprite'}
 
 		];
 
@@ -239,6 +241,12 @@ class Game {
 	initializeEvents(){
 		this.keyboard = new KeyboardListener();
 		this.keyboard.listen();
+
+		this.showCollisionShapes = false;
+		this.keyboard.onCombo(['ALT', 'B'], () => {
+			this.showCollisionShapes = !this.showCollisionShapes;
+		});
+
 		this.keyboard.onCombo(['CTRL', 'G'], () => {
 			this.showGameGrid = !this.showGameGrid;
 		});
@@ -986,6 +994,7 @@ class Game {
 		p.possessions = (pd.possessions || []).map(function(d){
 			return d instanceof Item ? d : new Item(d);
 		});
+		p.refreshWeaponSprite();
 		p.skills.speed = pd.skills.speed;
 		p.skills.vision = pd.skills.vision;
 

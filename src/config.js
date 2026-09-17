@@ -84,12 +84,13 @@ var ITEM_CATEGORIES = [
 */
 var LOOT_TABLES = {
 	knight : [
-		{ weight : 60, gold : { min : 1, max : 8 } },
-		{ weight : 15, item : { name : 'ruby',         category : 'valuable' } },
-		{ weight : 10, item : { name : 'emerald',      category : 'valuable' } },
-		{ weight :  5, item : { name : 'ruby ring',    category : 'valuable' } },
-		{ weight :  5, item : { name : 'emerald ring', category : 'valuable' } },
-		{ weight :  5, item : { name : 'dark crystal', category : 'valuable' } }
+		{ weight : 60, item : { name : 'sword', category : 'weapon', slot : 'hand', weaponSprite : 'weapon_sword' } },
+		{ weight : 20, gold : { min : 1, max : 8 } },
+		{ weight :  6, item : { name : 'ruby ring',    category : 'valuable' } },
+		{ weight :  6, item : { name : 'emerald ring', category : 'valuable' } },
+		{ weight :  4, item : { name : 'ruby',         category : 'valuable' } },
+		{ weight :  3, item : { name : 'emerald',      category : 'valuable' } },
+		{ weight :  1, item : { name : 'dark crystal', category : 'valuable' } }
 	],
 	humanFemale : [
 		{ weight : 50, gold : { min : 2, max : 12 } },

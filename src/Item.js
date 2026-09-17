@@ -11,6 +11,7 @@ class Item {
 		this.quantity = data.quantity != undefined ? data.quantity : 1;
 		this.slot     = data.slot != undefined ? data.slot : null;
 		this.equipped = data.equipped === true;
+		this.weaponSprite = data.weaponSprite || null;   // sprite-set name, or null
 	}
 
 	// True if this item can be placed in an equipment slot.  Non-equippable

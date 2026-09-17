@@ -490,6 +490,10 @@ spriteSet.prototype.loadJSON = function(data){
 						me.load_sequences(val);
 						next();
 						break;
+					case 'collision':
+						me.collision = me.parseCollision(val);
+						next();
+						break;
 					default:
 						next();
 				}
@@ -500,6 +504,40 @@ spriteSet.prototype.loadJSON = function(data){
 		step();
 	});
 };
+
+/**** custom functions unique to dungeonCrawler ****/
+spriteSet.prototype.parseCollision = function(val){
+	if(!val || typeof val !== 'object') return null;
+
+	// Single-circle shorthand: { radius, offsetX, offsetY }
+	if(val.radius != undefined){
+		return {
+			circles : [{
+				offsetX : val.offsetX != undefined ? val.offsetX : 0,
+				offsetY : val.offsetY != undefined ? val.offsetY : 0,
+				radius  : val.radius
+			}]
+		};
+	}
+
+	// Multi-circle form: { circles: [{ radius, offsetX, offsetY }, ...] }
+	if(Array.isArray(val.circles)){
+		var circles = [];
+		for(var n = 0; n < val.circles.length; n++){
+			var c = val.circles[n];
+			if(!c || c.radius == undefined) continue;
+			circles.push({
+				offsetX : c.offsetX != undefined ? c.offsetX : 0,
+				offsetY : c.offsetY != undefined ? c.offsetY : 0,
+				radius  : c.radius
+			});
+		}
+		return circles.length > 0 ? { circles : circles } : null;
+	}
+
+	return null;
+};
+/******** end custom functions for dungeonCrawler ***********/
 
 spriteSet.prototype.setFrameSize = function(w, h){
 	this.frameWidth = w;

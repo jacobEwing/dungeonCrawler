@@ -168,6 +168,38 @@ class Entity {
 	findTarget(dtSeconds){
 	}
 
+	// Returns an array of { x, y, r } circles in world coordinates describing
+	// this entity's collision footprint at the given proposed position (or the
+	// current position if none is supplied).  Falls back to a single circle
+	// matching the historical frame-width heuristic when the sprite has no
+	// collision block.
+	getCollisionCircles(px, py){
+		if(px == undefined) px = this.position.x;
+		if(py == undefined) py = this.position.y;
+
+		var block = this.sprite && this.sprite.template
+			? this.sprite.template.collision
+			: null;
+
+		if(block && block.circles){
+			var out = [];
+			for(var n = 0; n < block.circles.length; n++){
+				var c = block.circles[n];
+				out.push({
+					x : px + c.offsetX,
+					y : py + c.offsetY,
+					r : c.radius
+				});
+			}
+			return out;
+		}
+
+		// Fallback: current behavior.  Circle centered at the anchor with
+		// radius frameWidth/2.
+		var fw = this.sprite ? this.sprite.frameWidth : 0;
+		return [{ x : px, y : py, r : fw / 2 }];
+	}
+
 	updateWalkOctant(){
 		if(this.target == null){
 			this.walkOctant = null;
@@ -553,22 +585,30 @@ class Entity {
 	}
 
 	_overlaps(other, newX, newY){
-		var dx = newX - other.position.x;
-		var dy = newY - other.position.y;
-		var minDist = (this.sprite.frameWidth + other.sprite.frameWidth) / 2;
-		var minDistSq = minDist * minDist;
+		var otherCircles = other.getCollisionCircles();
 
-		// If the proposed position doesn't overlap, we're clear.
-		if(dx * dx + dy * dy >= minDistSq) return false;
+		// Escape hatch: if we already overlap at the current position, allow
+		// the move.  Otherwise an entity spawned on top of another could never
+		// step out.
+		var nowCircles = this.getCollisionCircles();
+		if(this._circlesOverlap(nowCircles, otherCircles)) return false;
 
-		// Would overlap at the new position.  If we already overlap at the
-		// current position, allow the move — otherwise an entity that ends
-		// up overlapping (spawned on top of another, knocked into one) can
-		// never escape.
-		var curDx = this.position.x - other.position.x;
-		var curDy = this.position.y - other.position.y;
-		if(curDx * curDx + curDy * curDy < minDistSq) return false;   // already overlapping → allow
+		// Would we overlap at the proposed position?
+		var newCircles = this.getCollisionCircles(newX, newY);
+		return this._circlesOverlap(newCircles, otherCircles);
+	}
 
-		return true;
+	_circlesOverlap(listA, listB){
+		for(var i = 0; i < listA.length; i++){
+			var A = listA[i];
+			for(var j = 0; j < listB.length; j++){
+				var B = listB[j];
+				var dx = A.x - B.x;
+				var dy = A.y - B.y;
+				var rr = A.r + B.r;
+				if(dx * dx + dy * dy < rr * rr) return true;
+			}
+		}
+		return false;
 	}
 }

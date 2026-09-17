@@ -166,6 +166,7 @@ class Player extends Entity {
 		}
 
 		item.equipped = true;
+		this.refreshWeaponSprite();
 		return true;
 	}
 
@@ -173,6 +174,32 @@ class Player extends Entity {
 	unequipItem(item){
 		if(!item || !item.equipped) return false;
 		item.equipped = false;
+		this.refreshWeaponSprite();
 		return true;
+	}
+
+	// Look at the currently-equipped items and (re)build the weapon sprite
+	// reference that the renderer will layer over the player.  Called whenever
+	// equipment changes, and after load.
+	refreshWeaponSprite(){
+		var equipped = null;
+		for(var n = 0; n < this.possessions.length; n++){
+			var it = this.possessions[n];
+			if(it.equipped && it.weaponSprite){
+				equipped = it;
+				break;
+			}
+		}
+
+		if(equipped){
+			var set = this.game.spriteSets[equipped.weaponSprite];
+			if(set){
+				this.weaponSprite = new cSprite(set);
+				this.weaponSprite.setScale(gameScale);
+				return;
+			}
+		}
+
+		this.weaponSprite = null;
 	}
 }
