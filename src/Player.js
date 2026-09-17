@@ -8,17 +8,68 @@ class Player extends Entity {
 			attackPower : 15,
 			attackRange : 20
 		});
+
+		// Base stats are the values before equipment.  Effective values are
+		// written onto the fields directly (this.attackPower, this.defense,
+		// this.maxHealth, this.skills.speed/vision) by recomputeStats().
+		this.baseStats = {
+			attackPower : 15,
+			defense     : 0,
+			maxHealth   : 100,
+			vision      : 5,
+			speed       : walkSpeed
+		};
+
 		this.damageFlash = 0;
 		this.gold = 0;
-
-		// When set, the player is committed to an action against a specific
-		// entity: walking to it, then interacting with it on arrival.
-		// Overrides ordinary click-to-walk until it completes or is cleared.
-		//
-		// { type : 'attack' | 'loot' | 'talk',
-		//   target : Entity,
-		//   lastCellX : number, lastCellY : number }
 		this.pendingAction = null;
+
+		this.recomputeStats();
+	}
+
+	// Recompute effective stats from baseStats plus whatever is currently
+	// equipped.  Called from the constructor, from equip/unequip, and after
+	// load.  Idempotent.
+	recomputeStats(){
+		var ap = this.baseStats.attackPower;
+		var df = this.baseStats.defense;
+		var mh = this.baseStats.maxHealth;
+		var vs = this.baseStats.vision;
+		var sp = this.baseStats.speed;
+
+		for(var n = 0; n < this.possessions.length; n++){
+			var it = this.possessions[n];
+			if(!it.equipped || !it.stats) continue;
+			var s = it.stats;
+
+			if(s.attackPower != undefined) ap += s.attackPower;
+			if(s.defense     != undefined) df += s.defense;
+			if(s.maxHealth   != undefined) mh += s.maxHealth;
+			if(s.vision      != undefined) vs += s.vision;
+			if(s.speed       != undefined) sp += s.speed;
+		}
+
+		// Floor some values so that curses can't make them nonsensical.
+		if(mh < 1) mh = 1;
+		if(vs < 0) vs = 0;
+		if(sp < 1) sp = 1;
+
+		this.attackPower = ap;
+		this.defense     = df;
+		this.skills.vision = vs;
+		this.skills.speed  = sp;
+
+		// If max health drops below current health, clamp current health down.
+		// Note we deliberately do NOT heal on max-health increase — only clamp
+		// on decrease, so equipping a +20 HP item at 80/100 leaves you at
+		// 80/120, not 100/120.
+		this.maxHealth = mh;
+		if(this.health > this.maxHealth) this.health = this.maxHealth;
+
+		// If the vision radius changed, rebuild the visible field.
+		if(this.game && this.game.updateVisibility){
+			this.game.updateVisibility();
+		}
 	}
 
 	// ------------------------------------------------------------------
@@ -151,9 +202,6 @@ class Player extends Entity {
 		super.act(dtSeconds);
 	}
 
-	// Place an item into its designated equipment slot.  If the slot is already
-	// occupied, the current occupant is unequipped back to inventory.
-	// Returns true on success, false if the item can't be equipped or already is.
 	equipItem(item){
 		if(!item || !item.isEquippable()) return false;
 		if(item.equipped) return false;
@@ -167,14 +215,15 @@ class Player extends Entity {
 
 		item.equipped = true;
 		this.refreshWeaponSprite();
+		this.recomputeStats();
 		return true;
 	}
 
-	// Move an equipped item back to the inventory grid.
 	unequipItem(item){
 		if(!item || !item.equipped) return false;
 		item.equipped = false;
 		this.refreshWeaponSprite();
+		this.recomputeStats();
 		return true;
 	}
 

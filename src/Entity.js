@@ -51,6 +51,7 @@ class Entity {
 		this.attackTimer      = 0;
 		this.attackCooldown   = 0;
 		this.attackHitApplied = false;
+		this.defense = options.defense != undefined ? options.defense : 0;
 	}
 
 	setMapPos(x, y){
@@ -218,21 +219,22 @@ class Entity {
 	takeDamage(amount){
 		if(!this.isAlive) return;
 
+		// Defense reduces incoming damage, with a floor of 1 so that a
+		// highly-armoured entity can't become completely immune.
+		var reduced = Math.max(1, amount - this.defense);
+
 		if(!this.mortal){
-			// Wound but never kill.  Clamp at 1 so the entity reads as
-			// "defeated but still standing."
-			this.health = Math.max(1, this.health - amount);
+			this.health = Math.max(1, this.health - reduced);
 			return;
 		}
 
-		this.health -= amount;
+		this.health -= reduced;
 		if(this.health <= 0){
 			this.health = 0;
 			this.isAlive = false;
 			this.onDeath();
 		}
 	}
-
 	onDeath(){
 		if(this.sprite) this.sprite.stopSequence();
 	}

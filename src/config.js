@@ -181,27 +181,22 @@ var waterCycleRate = 14;
 // The player must be within this many cells of a spawn point for it to
 // materialize an entity.  A bit larger than the vision radius so the enemy
 // is off-screen when it appears.
-var SPAWN_ACTIVATION_CELLS   = 8;
+var SPAWN_ACTIVATION_CELLS   = 12;
 
 // An active entity is recycled when the player is farther than this many
 // cells away.  Hysteresis between activation and deactivation prevents
 // repeated materialize/recycle churn at the boundary.
-var SPAWN_DEACTIVATION_CELLS = 12;
-
-// How long a spawn point waits after its entity is killed before it can
-// produce another.
-var SPAWN_RESPAWN_COOLDOWN   = 15;   // seconds
+var SPAWN_DEACTIVATION_CELLS = 18;
 
 // Minimum distance from the player, in cells, at which a spawn point is
 // allowed to fire.  Prevents enemies from materializing on top of the
 // player when they round a corner or land on a stair.
 var SPAWN_MIN_PLAYER_DISTANCE_CELLS = 2;
 
-// Extra cells of margin beyond the player's vision radius where spawns are
-// still suppressed.  Prevents enemies from materializing right at the edge
-// of the view, where a one-frame lag or a small position shift can make
-// them appear to pop into view.
-var SPAWN_VIEW_MARGIN_CELLS = 1;
+// How long a spawn point waits after its entity is killed before it can
+// produce another.
+var SPAWN_RESPAWN_COOLDOWN   = 15;   // seconds
+
 
 // ============================================================================
 // Combat timing

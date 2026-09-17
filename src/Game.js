@@ -226,7 +226,6 @@ class Game {
 			x : this.activeMap.playerPos.x,
 			y : this.activeMap.playerPos.y
 		};
-		this.player.skills.vision = 5;
 
 		for(let x = 0; x < this.activeMap.width; x++){
 			for(let y = 0; y < this.activeMap.height; y++){
@@ -710,12 +709,17 @@ class Game {
 		var map = this.activeMap;
 		var cx = this.player.mapPos.x;
 		var cy = this.player.mapPos.y;
+		var radius = this.player.skills.vision;
 
-		if(map._lastVisX === cx && map._lastVisY === cy && map.visibilityMap){
+		if(map._lastVisX === cx
+				&& map._lastVisY === cy
+				&& map._lastVisRadius === radius
+				&& map.visibilityMap){
 			return;
 		}
 		map._lastVisX = cx;
 		map._lastVisY = cy;
+		map._lastVisRadius = radius;
 
 		var radius = this.player.skills.vision;
 		var r2 = radius * radius;
@@ -775,12 +779,11 @@ class Game {
 		return false;
 	}
 
-	// Fresh visibility check for a specific cell, using the player's current
-	// pixel position as the LOS origin — not the cached visibilityMap, which
-	// can lag the player by up to a cell's worth of movement.  Includes a
-	// margin of SPAWN_VIEW_MARGIN_CELLS cells beyond the vision radius, so a
-	// spawn never fires at the very edge of the view.
-	isCellVisibleForSpawning(cx, cy){
+	// Is this cell currently within the player's vision and line of sight?
+	// Used to prevent spawns from firing in view.  Note this is the same
+	// question as "can the player see the cell right now", not a radius
+	// around the player — the two are unrelated.
+	isCellVisibleToPlayer(cx, cy){
 		if(!this.activeMap || !this.player) return false;
 
 		var px = this.player.position.x;
@@ -788,8 +791,7 @@ class Game {
 		var tx = cx * cellSize + cellSize / 2;
 		var ty = cy * cellSize + cellSize / 2;
 
-		var marginCells = this.player.skills.vision + SPAWN_VIEW_MARGIN_CELLS;
-		var radiusPx = marginCells * cellSize;
+		var radiusPx = this.player.skills.vision * cellSize;
 		var dx = tx - px;
 		var dy = ty - py;
 		if(dx * dx + dy * dy >= radiusPx * radiusPx) return false;
@@ -991,10 +993,13 @@ class Game {
 		p.maxHealth = pd.maxHealth;
 		p.facing = pd.facing;
 		p.gold = pd.gold;
+
 		p.possessions = (pd.possessions || []).map(function(d){
 			return d instanceof Item ? d : new Item(d);
 		});
+		p.recomputeStats(); 
 		p.refreshWeaponSprite();
+
 		p.skills.speed = pd.skills.speed;
 		p.skills.vision = pd.skills.vision;
 
@@ -1286,10 +1291,10 @@ class Game {
 
 		var isFirstPopulation = !this.activeMap._initialPopulationDone;
 
-		var activationSq = (SPAWN_ACTIVATION_CELLS   * cellSize) * (SPAWN_ACTIVATION_CELLS   * cellSize);
+		var activationSq   = (SPAWN_ACTIVATION_CELLS   * cellSize) * (SPAWN_ACTIVATION_CELLS   * cellSize);
 		var deactivationSq = (SPAWN_DEACTIVATION_CELLS * cellSize) * (SPAWN_DEACTIVATION_CELLS * cellSize);
-		var minDistPx = SPAWN_MIN_PLAYER_DISTANCE_CELLS * cellSize;
-		var minDistSq = minDistPx * minDistPx;
+		var minDistPx      = SPAWN_MIN_PLAYER_DISTANCE_CELLS * cellSize;
+		var minDistSq      = minDistPx * minDistPx;
 
 		for(var n = 0; n < this.activeMap.spawnPoints.length; n++){
 			var sp = this.activeMap.spawnPoints[n];
@@ -1324,7 +1329,7 @@ class Game {
 				&& sp.cooldownTimer <= 0
 				&& distSq < activationSq
 				&& distSq > minDistSq
-				&& (isFirstPopulation || !this.isCellVisibleForSpawning(sp.x, sp.y))
+				&& (isFirstPopulation || !this.isCellVisibleToPlayer(sp.x, sp.y))
 
 			){
 				this.materializeSpawnPoint(sp);

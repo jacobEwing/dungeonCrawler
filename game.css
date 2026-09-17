@@ -254,3 +254,10 @@ body, html{
 	font-style: italic;
 	padding: 4px 0;
 }
+
+.stat-bonus {
+    font-size: 0.85em;
+    margin-left: 4px;
+}
+.stat-bonus.positive { color: #6f6; }
+.stat-bonus.negative { color: #f66; }
