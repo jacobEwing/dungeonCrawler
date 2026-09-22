@@ -28,3 +28,9 @@ there.
 Add spawn points on fixed maps.  Same as those in generated maps.
 
 create a map editor that builds upon the game interface.
+
+BUG:
+the baddies spawn in the new radius which is great.  Something interesting but
+not necessarily bad, is that they don't move until they're trigged by the
+player. Then they continue to wander freely, but until they first see the
+player, they stay in a static position continuously.
