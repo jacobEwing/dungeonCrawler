@@ -243,7 +243,8 @@ class Player extends Entity {
 		if(equipped){
 			var set = this.game.spriteSets[equipped.weaponSprite];
 			if(set){
-				this.weaponSprite = new cSprite(set);
+				// [migrated] new Sprite(set) → set.newSprite()
+				this.weaponSprite = set.newSprite();
 				this.weaponSprite.setScale(gameScale);
 				return;
 			}

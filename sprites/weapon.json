@@ -1,0 +1,24 @@
+{
+	"image": "weapon.png",
+	"frameWidth": 12,
+	"frameHeight": 12,
+	"frames": {
+		"sword": {
+			"col": 0,
+			"row": 0
+		},
+		"axe": {
+			"col": 1,
+			"row": 0
+		},
+		"polearm": {
+			"col": 2,
+			"row": 0
+		},
+		"mace": {
+			"col": 3,
+			"row": 0
+		}
+	},
+	"sequences": {}
+}

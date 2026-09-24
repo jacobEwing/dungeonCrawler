@@ -1,0 +1,81 @@
+{
+	"image": "sandTiles.png",
+	"frameWidth": 12,
+	"frameHeight": 12,
+	"centerx": 0,
+	"centery": 0,
+	"frames": {
+		"1": {
+			"col": 1,
+			"row": 0
+		},
+		"2": {
+			"col": 1,
+			"row": 0
+		},
+		"3": {
+			"col": 0,
+			"row": 0
+		},
+		"4": {
+			"col": 1,
+			"row": 0
+		},
+		"5": {
+			"col": 0,
+			"row": 0
+		},
+		"6": {
+			"col": 1,
+			"row": 1
+		},
+		"7": {
+			"col": 0,
+			"row": 1
+		},
+		"8": {
+			"col": 1,
+			"row": 0
+		},
+		"9": {
+			"col": 1,
+			"row": 1
+		},
+		"10": {
+			"col": 0,
+			"row": 0
+		},
+		"11": {
+			"col": 0,
+			"row": 1
+		},
+		"12": {
+			"col": 0,
+			"row": 0
+		},
+		"13": {
+			"col": 0,
+			"row": 1
+		},
+		"14": {
+			"col": 0,
+			"row": 1
+		},
+		"corner": {
+			"col": 0,
+			"row": 0
+		},
+		"tip": {
+			"col": 1,
+			"row": 0
+		},
+		"edge": {
+			"col": 0,
+			"row": 1
+		},
+		"wall": {
+			"col": 1,
+			"row": 1
+		}
+	}
+}

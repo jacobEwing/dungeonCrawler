@@ -1,0 +1,373 @@
+{
+	"image": "player.png",
+	"frameRate": 10,
+	"frameWidth": 24,
+	"frameHeight": 24,
+	"collision": {
+		"radius": 2,
+		"offsetX": 0,
+		"offsetY": -1
+	},
+	"frames": {
+		"left_idle": {
+			"col": 0,
+			"row": 0
+		},
+		"left_step_1": {
+			"col": 1,
+			"row": 0
+		},
+		"left_step_2": {
+			"col": 2,
+			"row": 0
+		},
+		"left_step_3": {
+			"col": 3,
+			"row": 0
+		},
+		"right_idle": {
+			"col": 4,
+			"row": 0
+		},
+		"right_step_1": {
+			"col": 5,
+			"row": 0
+		},
+		"right_step_2": {
+			"col": 6,
+			"row": 0
+		},
+		"right_step_3": {
+			"col": 7,
+			"row": 0
+		},
+		"back_left_idle": {
+			"col": 0,
+			"row": 1
+		},
+		"back_left_step_1": {
+			"col": 1,
+			"row": 1
+		},
+		"back_left_step_2": {
+			"col": 2,
+			"row": 1
+		},
+		"back_left_step_3": {
+			"col": 3,
+			"row": 1
+		},
+		"back_right_idle": {
+			"col": 4,
+			"row": 1
+		},
+		"back_right_step_1": {
+			"col": 5,
+			"row": 1
+		},
+		"back_right_step_2": {
+			"col": 6,
+			"row": 1
+		},
+		"back_right_step_3": {
+			"col": 7,
+			"row": 1
+		},
+		"front_left_idle": {
+			"col": 0,
+			"row": 2
+		},
+		"front_left_step_1": {
+			"col": 1,
+			"row": 2
+		},
+		"front_left_step_2": {
+			"col": 2,
+			"row": 2
+		},
+		"front_left_step_3": {
+			"col": 3,
+			"row": 2
+		},
+		"front_right_idle": {
+			"col": 4,
+			"row": 2
+		},
+		"front_right_step_1": {
+			"col": 5,
+			"row": 2
+		},
+		"front_right_step_2": {
+			"col": 6,
+			"row": 2
+		},
+		"front_right_step_3": {
+			"col": 7,
+			"row": 2
+		},
+		"front_idle": {
+			"col": 0,
+			"row": 3
+		},
+		"front_step_1": {
+			"col": 1,
+			"row": 3
+		},
+		"front_step_2": {
+			"col": 2,
+			"row": 3
+		},
+		"back_idle": {
+			"col": 3,
+			"row": 3
+		},
+		"back_step_1": {
+			"col": 4,
+			"row": 3
+		},
+		"back_step_2": {
+			"col": 5,
+			"row": 3
+		},
+		"back_climbing_1": {
+			"col": 6,
+			"row": 3
+		},
+		"back_climbing_2": {
+			"col": 7,
+			"row": 3
+		},
+		"left_sword_1": {
+			"col": 0,
+			"row": 4
+		},
+		"left_sword_2": {
+			"col": 1,
+			"row": 4
+		},
+		"left_sword_3": {
+			"col": 2,
+			"row": 4
+		},
+		"right_sword_1": {
+			"col": 3,
+			"row": 4
+		},
+		"right_sword_2": {
+			"col": 4,
+			"row": 4
+		},
+		"right_sword_3": {
+			"col": 5,
+			"row": 4
+		},
+		"front_sword_1": {
+			"col": 0,
+			"row": 5
+		},
+		"front_sword_2": {
+			"col": 1,
+			"row": 5
+		},
+		"front_sword_3": {
+			"col": 2,
+			"row": 5
+		},
+		"back_sword_1": {
+			"col": 3,
+			"row": 5
+		},
+		"back_sword_2": {
+			"col": 4,
+			"row": 5
+		},
+		"back_sword_3": {
+			"col": 5,
+			"row": 5
+		},
+		"back_left_sword_1": {
+			"col": 0,
+			"row": 6
+		},
+		"back_left_sword_2": {
+			"col": 1,
+			"row": 6
+		},
+		"back_left_sword_3": {
+			"col": 2,
+			"row": 6
+		},
+		"back_right_sword_1": {
+			"col": 3,
+			"row": 6
+		},
+		"back_right_sword_2": {
+			"col": 4,
+			"row": 6
+		},
+		"back_right_sword_3": {
+			"col": 5,
+			"row": 6
+		},
+		"front_left_sword_1": {
+			"col": 0,
+			"row": 7
+		},
+		"front_left_sword_2": {
+			"col": 1,
+			"row": 7
+		},
+		"front_left_sword_3": {
+			"col": 2,
+			"row": 7
+		},
+		"front_right_sword_1": {
+			"col": 3,
+			"row": 7
+		},
+		"front_right_sword_2": {
+			"col": 4,
+			"row": 7
+		},
+		"front_right_sword_3": {
+			"col": 5,
+			"row": 7
+		}
+	},
+	"sequences": {
+		"walkdownright": {
+			"frames": [
+				"front_right_step_1",
+				"front_right_step_3",
+				"front_right_step_2"
+			]
+		},
+		"walkdownleft": {
+			"frames": [
+				"front_left_step_1",
+				"front_left_step_3",
+				"front_left_step_2"
+			]
+		},
+		"walkupright": {
+			"frames": [
+				"back_right_step_1",
+				"back_right_step_3",
+				"back_right_step_2"
+			]
+		},
+		"walkupleft": {
+			"frames": [
+				"back_left_step_1",
+				"back_left_step_3",
+				"back_left_step_2"
+			]
+		},
+		"walkleft": {
+			"frames": [
+				"left_step_1",
+				"left_step_2",
+				"left_step_3"
+			]
+		},
+		"walkright": {
+			"frames": [
+				"right_step_1",
+				"right_step_2",
+				"right_step_3"
+			]
+		},
+		"walkdown": {
+			"frames": [
+				"front_step_1",
+				"front_idle",
+				"front_step_2"
+			]
+		},
+		"walkup": {
+			"frames": [
+				"back_step_1",
+				"back_idle",
+				"back_step_2"
+			]
+		},
+		"climb": {
+			"frames": [
+				"back_climbing_1",
+				"back_climbing_2"
+			]
+		},
+		"attackdown": {
+			"frames": [
+				"front_sword_3",
+				"front_sword_1",
+				"front_sword_2",
+				"front_sword_1"
+			],
+			"iterations": 1
+		},
+		"attackup": {
+			"frames": [
+				"back_sword_3",
+				"back_sword_1",
+				"back_sword_2",
+				"back_sword_1"
+			],
+			"iterations": 1
+		},
+		"attackleft": {
+			"frames": [
+				"left_sword_2",
+				"left_sword_1",
+				"left_sword_3",
+				"left_sword_1"
+			],
+			"iterations": 1
+		},
+		"attackright": {
+			"frames": [
+				"right_sword_2",
+				"right_sword_1",
+				"right_sword_3",
+				"right_sword_1"
+			],
+			"iterations": 1
+		},
+		"attackupleft": {
+			"frames": [
+				"back_left_sword_1",
+				"back_left_sword_2",
+				"back_left_sword_3",
+				"back_left_sword_2"
+			],
+			"iterations": 1
+		},
+		"attackupright": {
+			"frames": [
+				"back_right_sword_1",
+				"back_right_sword_2",
+				"back_right_sword_3",
+				"back_right_sword_2"
+			],
+			"iterations": 1
+		},
+		"attackdownleft": {
+			"frames": [
+				"front_left_sword_1",
+				"front_left_sword_2",
+				"front_left_sword_3",
+				"front_left_sword_2"
+			],
+			"iterations": 1
+		},
+		"attackdownright": {
+			"frames": [
+				"front_right_sword_1",
+				"front_right_sword_2",
+				"front_right_sword_3",
+				"front_right_sword_2"
+			],
+			"iterations": 1
+		}
+	}
+}

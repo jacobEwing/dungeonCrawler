@@ -1,0 +1,129 @@
+{
+	"image": "stonetiles.png",
+	"frameWidth": 6,
+	"frameHeight": 6,
+	"centerx": 0,
+	"centery": 0,
+	"frames": {
+		"0": {
+			"width": 12,
+			"height": 12,
+			"col": 0,
+			"row": 0
+		},
+		"1": {
+			"width": 12,
+			"height": 12,
+			"col": 1,
+			"row": 0
+		},
+		"2": {
+			"width": 12,
+			"height": 12,
+			"col": 2,
+			"row": 0
+		},
+		"3": {
+			"width": 12,
+			"height": 12,
+			"col": 3,
+			"row": 0
+		},
+		"4": {
+			"width": 12,
+			"height": 12,
+			"col": 4,
+			"row": 0
+		},
+		"5": {
+			"width": 12,
+			"height": 12,
+			"col": 0,
+			"row": 1
+		},
+		"6": {
+			"width": 12,
+			"height": 12,
+			"col": 1,
+			"row": 1
+		},
+		"7": {
+			"width": 12,
+			"height": 12,
+			"col": 2,
+			"row": 1
+		},
+		"8": {
+			"width": 12,
+			"height": 12,
+			"col": 3,
+			"row": 1
+		},
+		"9": {
+			"width": 12,
+			"height": 12,
+			"col": 4,
+			"row": 1
+		},
+		"10": {
+			"width": 12,
+			"height": 12,
+			"col": 0,
+			"row": 2
+		},
+		"11": {
+			"width": 12,
+			"height": 12,
+			"col": 1,
+			"row": 2
+		},
+		"12": {
+			"width": 12,
+			"height": 12,
+			"col": 2,
+			"row": 2
+		},
+		"13": {
+			"width": 12,
+			"height": 12,
+			"col": 3,
+			"row": 2
+		},
+		"14": {
+			"width": 12,
+			"height": 12,
+			"col": 4,
+			"row": 2
+		},
+		"15": {
+			"width": 12,
+			"height": 12,
+			"col": 0,
+			"row": 4
+		},
+		"16": {
+			"width": 12,
+			"height": 12,
+			"col": 1,
+			"row": 4
+		},
+		"17": {
+			"width": 12,
+			"height": 12,
+			"col": 2,
+			"row": 4
+		},
+		"18": {
+			"width": 12,
+			"height": 12,
+			"col": 3,
+			"row": 4
+		},
+		"19": {
+			"width": 12,
+			"height": 12,
+			"col": 4,
+			"row": 4
+		}
+	}
+}

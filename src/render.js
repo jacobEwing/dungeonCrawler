@@ -215,7 +215,7 @@ function createRenderView(game){
 				}else{
 					game.sprites.waterWaves.setFrame(5);
 				}
-				game.sprites.waterWaves.setPosition(gridX, gridY, false);
+				game.sprites.waterWaves.setPosition(gridX, gridY);
 				game.sprites.waterWaves.draw(game.ctx);
 				break;
 			case 'sand':
@@ -240,85 +240,85 @@ function createRenderView(game){
 					case 3:
 						game.sprites.sandTiles.setFrame('corner');
 						game.sprites.sandTiles.rotation = Math.PI;
-						game.sprites.sandTiles.setPosition(gridX + cellSize, gridY + cellSize, false);
+						game.sprites.sandTiles.setPosition(gridX + cellSize, gridY + cellSize);
 						game.sprites.sandTiles.draw(game.ctx);
 						break;
 					case 5:
 						game.sprites.sandTiles.setFrame('corner');
 						game.sprites.sandTiles.rotation = 3 * Math.PI / 2;
-						game.sprites.sandTiles.setPosition(gridX, gridY + cellSize, false);
+						game.sprites.sandTiles.setPosition(gridX, gridY + cellSize);
 						game.sprites.sandTiles.draw(game.ctx);
 						break;
 					case 10:
 						game.sprites.sandTiles.setFrame('corner');
 						game.sprites.sandTiles.rotation = Math.PI / 2;
-						game.sprites.sandTiles.setPosition(gridX + cellSize, gridY, false);
+						game.sprites.sandTiles.setPosition(gridX + cellSize, gridY);
 						game.sprites.sandTiles.draw(game.ctx);
 						break;
 					case 12:
 						game.sprites.sandTiles.setFrame('corner');
 						game.sprites.sandTiles.rotation = 0;
-						game.sprites.sandTiles.setPosition(gridX, gridY, false);
+						game.sprites.sandTiles.setPosition(gridX, gridY);
 						game.sprites.sandTiles.draw(game.ctx);
 						break;
 					case 7:
 						game.sprites.sandTiles.setFrame('edge');
 						game.sprites.sandTiles.rotation = 3 * Math.PI / 2;
-						game.sprites.sandTiles.setPosition(gridX, gridY + cellSize, false);
+						game.sprites.sandTiles.setPosition(gridX, gridY + cellSize);
 						game.sprites.sandTiles.draw(game.ctx);
 						break;
 					case 13:
 						game.sprites.sandTiles.setFrame('edge');
 						game.sprites.sandTiles.rotation = 0;
-						game.sprites.sandTiles.setPosition(gridX, gridY, false);
+						game.sprites.sandTiles.setPosition(gridX, gridY);
 						game.sprites.sandTiles.draw(game.ctx);
 						break;
 					case 14:
 						game.sprites.sandTiles.setFrame('edge');
 						game.sprites.sandTiles.rotation = Math.PI / 2;
-						game.sprites.sandTiles.setPosition(gridX + cellSize, gridY, false);
+						game.sprites.sandTiles.setPosition(gridX + cellSize, gridY);
 						game.sprites.sandTiles.draw(game.ctx);
 						break;
 					case 11:
 						game.sprites.sandTiles.setFrame('edge');
 						game.sprites.sandTiles.rotation = Math.PI;
-						game.sprites.sandTiles.setPosition(gridX + cellSize, gridY + cellSize, false);
+						game.sprites.sandTiles.setPosition(gridX + cellSize, gridY + cellSize);
 						game.sprites.sandTiles.draw(game.ctx);
 						break;
 					case 1:
 						game.sprites.sandTiles.setFrame('tip');
 						game.sprites.sandTiles.rotation = Math.PI;
-						game.sprites.sandTiles.setPosition(gridX + cellSize, gridY + cellSize, false);
+						game.sprites.sandTiles.setPosition(gridX + cellSize, gridY + cellSize);
 						game.sprites.sandTiles.draw(game.ctx);
 						break;
 					case 2:
 						game.sprites.sandTiles.setFrame('tip');
 						game.sprites.sandTiles.rotation = Math.PI / 2;
-						game.sprites.sandTiles.setPosition(gridX + cellSize, gridY, false);
+						game.sprites.sandTiles.setPosition(gridX + cellSize, gridY);
 						game.sprites.sandTiles.draw(game.ctx);
 						break;
 					case 4:
 						game.sprites.sandTiles.setFrame('tip');
 						game.sprites.sandTiles.rotation = 3 * Math.PI / 2;
-						game.sprites.sandTiles.setPosition(gridX, gridY + cellSize, false);
+						game.sprites.sandTiles.setPosition(gridX, gridY + cellSize);
 						game.sprites.sandTiles.draw(game.ctx);
 						break;
 					case 8:
 						game.sprites.sandTiles.setFrame('tip');
 						game.sprites.sandTiles.rotation = 0;
-						game.sprites.sandTiles.setPosition(gridX, gridY, false);
+						game.sprites.sandTiles.setPosition(gridX, gridY);
 						game.sprites.sandTiles.draw(game.ctx);
 						break;
 					case 9:
 						game.sprites.sandTiles.setFrame('wall');
 						game.sprites.sandTiles.rotation = 0;
-						game.sprites.sandTiles.setPosition(gridX, gridY, false);
+						game.sprites.sandTiles.setPosition(gridX, gridY);
 						game.sprites.sandTiles.draw(game.ctx);
 						break;
 					case 6:
 						game.sprites.sandTiles.setFrame('wall');
 						game.sprites.sandTiles.rotation = Math.PI / 2;
-						game.sprites.sandTiles.setPosition(gridX + cellSize, gridY, false);
+						game.sprites.sandTiles.setPosition(gridX + cellSize, gridY);
 						game.sprites.sandTiles.draw(game.ctx);
 						break;
 					case 15:
@@ -555,26 +555,23 @@ function createRenderView(game){
 		// --- draw the player, with the weapon layered over or under it ---
 		var playerSprite = game.player.sprite;
 		playerSprite.setPosition(
-		    cellSize * middleX - (playerSprite.frameWidth >> 1),
-		    cellSize * middleY - playerSprite.frameHeight + 1,
-		    1
+			cellSize * middleX - (playerSprite.frameWidth >> 1),
+			cellSize * middleY - playerSprite.frameHeight + 1
 		);
 
 		var weapon = game.player.weaponSprite;
 		var drawWeapon = false;
 
 		if(weapon != null){
-		    weapon.setPosition(
-			cellSize * middleX - (weapon.frameWidth >> 1),
-			cellSize * middleY - weapon.frameHeight + 1,
-			1
-		    );
-
-		    var weaponFrameName = playerSprite.frameName;
-		    if(weaponFrameName && weapon.template.frames[weaponFrameName]){
-			weapon.setFrame(weaponFrameName);
-			drawWeapon = true;
-		    }
+			weapon.setPosition(
+				cellSize * middleX - (weapon.frameWidth >> 1),
+				cellSize * middleY - weapon.frameHeight + 1
+			);
+		    	var weaponFrameName = playerSprite.frameName;
+			if(weaponFrameName && weapon.sheet.frames[weaponFrameName]){
+				weapon.setFrame(weaponFrameName);
+				drawWeapon = true;
+			}
 		}
 
 		// Facings 0 (up), 1 (upright), 7 (upleft) put the character's back to the

@@ -1,0 +1,22 @@
+{
+	"image": "dungeonElements.png",
+	"frameWidth": 12,
+	"frameHeight": 12,
+	"centerx": 0,
+	"centery": 0,
+	"frames": {
+		"stairsDown": {
+			"col": 0,
+			"row": 0
+		},
+		"stairsUp": {
+			"height": 22,
+			"drawOffset": {
+				"x": 0,
+				"y": -10
+			},
+			"col": 1,
+			"row": 0
+		}
+	}
+}

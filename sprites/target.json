@@ -1,0 +1,35 @@
+{
+	"image": "target2.png",
+	"frameWidth": 17,
+	"frameHeight": 12,
+	"centerx": 8,
+	"centery": 6,
+	"frames": {
+		"1": {
+			"col": 0,
+			"row": 0
+		},
+		"2": {
+			"col": 1,
+			"row": 0
+		},
+		"3": {
+			"col": 2,
+			"row": 0
+		},
+		"4": {
+			"col": 3,
+			"row": 0
+		}
+	},
+	"sequences": {
+		"spin": {
+			"frames": [
+				"1",
+				"2",
+				"3",
+				"4"
+			]
+		}
+	}
+}

@@ -1,0 +1,15 @@
+{
+	"image": "grass1.png",
+	"frameWidth": 6,
+	"frameHeight": 6,
+	"centerx": 6,
+	"centery": 6,
+	"frames": {
+		"all": {
+			"width": 38,
+			"height": 38,
+			"col": 0,
+			"row": 0
+		}
+	}
+}

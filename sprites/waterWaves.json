@@ -1,0 +1,46 @@
+{
+	"image": "waterwaves.png",
+	"frameWidth": 12,
+	"frameHeight": 12,
+	"centerx": 0,
+	"centery": 0,
+	"frames": {
+		"0": {
+			"col": 0,
+			"row": 0
+		},
+		"1": {
+			"col": 1,
+			"row": 0
+		},
+		"2": {
+			"col": 2,
+			"row": 0
+		},
+		"3": {
+			"col": 0,
+			"row": 1
+		},
+		"4": {
+			"col": 1,
+			"row": 1
+		},
+		"5": {
+			"col": 2,
+			"row": 1
+		}
+	},
+	"sequences": {
+		"wave": {
+			"frames": [
+				"0",
+				"1",
+				"2",
+				"3",
+				"4",
+				"5"
+			],
+			"framerate": 60
+		}
+	}
+}

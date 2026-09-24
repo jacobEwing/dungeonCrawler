@@ -1,0 +1,17 @@
+{
+	"image": "caveEntrance.png",
+	"frameWidth": 24,
+	"frameHeight": 24,
+	"centerx": 18,
+	"centery": 12,
+	"frames": {
+		"caveEntrance": {
+			"drawOffset": {
+				"x": 6,
+				"y": -5
+			},
+			"col": 0,
+			"row": 0
+		}
+	}
+}

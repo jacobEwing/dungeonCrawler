@@ -1,0 +1,28 @@
+{
+	"image": "ui.png",
+	"frameWidth": 12,
+	"frameHeight": 12,
+	"frames": {
+		"health": {
+			"col": 0,
+			"row": 0
+		},
+		"gold": {
+			"col": 1,
+			"row": 0
+		},
+		"inventory": {
+			"col": 2,
+			"row": 0
+		},
+		"save": {
+			"col": 3,
+			"row": 0
+		},
+		"load": {
+			"col": 4,
+			"row": 0
+		}
+	},
+	"sequences": {}
+}

@@ -16,7 +16,7 @@ class Entity {
 		this.mapPos = {x : 0, y : 0};
 		this.sprite = null;
 
-		this.currentSequence = null;
+		this.sequence = null;
 		this.currentEndFrame = null;
 
 		this.skills = {
@@ -178,8 +178,9 @@ class Entity {
 		if(px == undefined) px = this.position.x;
 		if(py == undefined) py = this.position.y;
 
-		var block = this.sprite && this.sprite.template
-			? this.sprite.template.collision
+		// [migrated] sprite.template → sprite.sheet
+		var block = this.sprite && this.sprite.sheet
+			? this.sprite.sheet.collision
 			: null;
 
 		if(block && block.circles){
@@ -236,7 +237,7 @@ class Entity {
 		}
 	}
 	onDeath(){
-		if(this.sprite) this.sprite.stopSequence();
+		if(this.sprite) this.sprite.stop();
 	}
 
 	idleFrame(){
@@ -281,8 +282,8 @@ class Entity {
 		this.attackHitApplied = false;
 
 		var seq = ATTACK_SEQUENCES[this.facing];
-		this.sprite.startSequence(seq);
-		this.currentSequence = seq;
+		this.sprite.play(seq);
+		this.sequence = seq;
 
 		return true;
 	}
@@ -327,9 +328,20 @@ class Entity {
 		}
 	}
 
+	// [migrated] The sprite runtime no longer self-drives via setTimeout —
+	// animation only advances when update(dtMs) is called.  We do the actual
+	// per-frame logic in _act(), then unconditionally advance the sprite clock
+	// in act() so every exit path from _act() (including the two early
+	// returns) still ticks the animation.
 	act(dtSeconds){
 		if(!this.isAlive) return;
 
+		this._act(dtSeconds);
+
+		if(this.sprite) this.sprite.update(dtSeconds * 1000);
+	}
+
+	_act(dtSeconds){
 		var self = this;
 
 		if(this.attackCooldown > 0) this.attackCooldown -= dtSeconds;
@@ -346,10 +358,9 @@ class Entity {
 			if(this.attackTimer <= 0){
 				this.attackTimer = 0;
 				this.attackCooldown = ATTACK_COOLDOWN;
-				this.sprite.stopSequence();
+				this.sprite.stop();
 				this.sprite.setFrame(this.idleFrame());
-				this.currentSequence = null;
-				this.sprite.currentSequence = null;
+				this.sequence = null;
 			}
 
 			return;
@@ -360,7 +371,7 @@ class Entity {
 		// findTarget may have just started an attack (mouse click on an
 		// enemy, or an enemy entering melee range).  If so, the attack
 		// sequence owns the sprite — do not fall through to the walk
-		// animation logic, which would stopSequence() the attack we just
+		// animation logic, which would play() over the attack we just
 		// started.
 		if(this.attackTimer > 0) return;
 
@@ -403,19 +414,19 @@ class Entity {
 		}
 
 		if(sequence == null){
-			if(this.currentSequence != null){
-				this.sprite.stopSequence();
+			if(this.sequence != null){
+				this.sprite.stop();
 				this.sprite.setFrame(this.currentEndFrame);
-				this.currentSequence = null;
-				this.sprite.currentSequence = null;
+				this.sequence = null;
 			}
-		}else if(sequence != this.currentSequence){
+		}else if(sequence != this.sequence){
 			this.currentEndFrame = endFrame;
-			this.currentSequence = sequence;
-			this.sprite.startSequence(sequence, function(){
-				self.currentSequence = null;
+			this.sequence = sequence;
+			// [migrated] play(name, fn) → play(name, { onComplete: fn })
+			this.sprite.play(sequence, { onComplete: function(){
+				self.sequence = null;
 				self.sprite.setFrame(endFrame);
-			});
+			} });
 		}
 	}
 

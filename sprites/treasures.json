@@ -1,0 +1,58 @@
+{
+	"image": "treasures.png",
+	"frameRate": 5,
+	"frameWidth": 5,
+	"frameHeight": 5,
+	"frames": {
+		"gold": {
+			"col": 0,
+			"row": 1
+		},
+		"goldSparkle": {
+			"col": 0,
+			"row": 0
+		},
+		"gems": {
+			"col": 1,
+			"row": 1
+		},
+		"gemsSparkle": {
+			"col": 1,
+			"row": 0
+		},
+		"chest": {
+			"col": 2,
+			"row": 1
+		},
+		"chestSparkle": {
+			"col": 2,
+			"row": 0
+		}
+	},
+	"sequences": {
+		"goldSparkle": {
+			"frames": [
+				"gold",
+				"gold",
+				"gold",
+				"goldSparkle"
+			]
+		},
+		"gemsSparkle": {
+			"frames": [
+				"gems",
+				"gems",
+				"gems",
+				"gemsSparkle"
+			]
+		},
+		"chestSparkle": {
+			"frames": [
+				"chest",
+				"chest",
+				"chest",
+				"chestSparkle"
+			]
+		}
+	}
+}

@@ -24,7 +24,8 @@ class Game {
 		};
 
 		this.currentCursor = 'default';
-		this.playerSpriteSet = new spriteSet();
+		// Placeholder; replaced by loadPlayerSprite() during init().
+		this.playerSpriteSet = null;
 
 		this.maps = [];
 		this.activeMap = null;
@@ -58,12 +59,12 @@ class Game {
 		this.spawnRegistry = {
 			knight : {
 				Class : Enemy,
-				spriteFile : 'sprites/knight.sprite',
+				spriteFile : 'sprites/knight.json',
 				options : { speed : 20, vision : 5, lootTableKey : 'knight' }
 			},
 			humanFemale : {
 				Class : Enemy,
-				spriteFile : 'sprites/humanFemale.sprite',
+				spriteFile : 'sprites/humanFemale.json',
 				options : { speed : 18, vision : 5, lootTableKey : 'humanFemale'  }
 			}
 		};
@@ -130,60 +131,62 @@ class Game {
 
 	async loadSpriteSets(){
 		var spriteList = [
-			{'name' : 'grass', 'file' : 'grass.sprite'},
-			{'name' : 'tree', 'file' : 'tree.sprite'},
-			{'name' : 'stone', 'file': 'stone.sprite'},
-			{'name' : 'ground', 'file' : 'ground.sprite'},
-			{'name' : 'sand', 'file' : 'sand.sprite'},
-			{'name' : 'sandTiles', 'file' : 'sandTiles.sprite'},
-			{'name' : 'dungeonElements', 'file' : 'dungeonElements.sprite'},
-			{'name' : 'longGrass', 'file' : 'longGrass.sprite'},
-			{'name' : 'caveEntrance' , 'file' : 'caveEntrance.sprite'},
-			{'name' : 'waterWaves' , 'file' : 'waterWaves.sprite'},
-			{'name' : 'rat', 'file' : 'rat.sprite'},
-			{'name' : 'treasures', 'file' : 'treasures.sprite' },
-			{'name' : 'valuable', 'file' : 'valuables.sprite' }, // valuable inventory icons
-			{'name' : 'weapon', 'file' : 'weapon.sprite' }, // weapon inventory icons
-			{'name' : 'ui', 'file' : 'ui.sprite'}, // ui components
-			{'name' : 'weapon_sword', 'file' : 'weapon_sword.sprite'}
+			{'name' : 'grass', 'file' : 'grass.json'},
+			{'name' : 'tree', 'file' : 'tree.json'},
+			{'name' : 'stone', 'file': 'stone.json'},
+			{'name' : 'ground', 'file' : 'ground.json'},
+			{'name' : 'sand', 'file' : 'sand.json'},
+			{'name' : 'sandTiles', 'file' : 'sandTiles.json'},
+			{'name' : 'dungeonElements', 'file' : 'dungeonElements.json'},
+			{'name' : 'longGrass', 'file' : 'longGrass.json'},
+			{'name' : 'caveEntrance' , 'file' : 'caveEntrance.json'},
+			{'name' : 'waterWaves' , 'file' : 'waterWaves.json'},
+			{'name' : 'rat', 'file' : 'rat.json'},
+			{'name' : 'treasures', 'file' : 'treasures.json' },
+			{'name' : 'valuable', 'file' : 'valuables.json' }, // valuable inventory icons
+			{'name' : 'weapon', 'file' : 'weapon.json' }, // weapon inventory icons
+			{'name' : 'ui', 'file' : 'ui.json'}, // ui components
+			{'name' : 'weapon_sword', 'file' : 'weapon_sword.json'}
 
 		];
 
-		while(spriteList.length > 0){
-			const dat = spriteList.pop();
-			const set = new spriteSet();
-			await set.load('sprites/' + dat.file);
-			this.spriteSets[dat.name] = set;
-			this.sprites[dat.name] = new cSprite(set);
-			this.sprites[dat.name].setScale(gameScale);
-		}
+		const loaded = await Promise.all(spriteList.map(async (dat) => {
+			const sheet = await SpriteSheet.load('sprites/' + dat.file);
+			return [dat.name, sheet];
+		}));
 
+		for (const [name, sheet] of loaded) {
+			this.spriteSets[name] = sheet;
+
+			const sprite = sheet.newSprite();
+			sprite.setScale(gameScale);
+			this.sprites[name] = sprite;
+		}
 		this.sprites.waterWaves.setFrame('0');
 	}
 
 	async loadPlayerSprite(){
 		this.player = new Player(this);
+		this.playerSpriteSet = await SpriteSheet.load('sprites/player.json');
 
-		await this.playerSpriteSet.load("sprites/player.sprite");
-		this.player.sprite = new cSprite(this.playerSpriteSet);
+		this.player.sprite = this.playerSpriteSet.newSprite();
 		this.player.sprite.setScale(gameScale);
 		this.player.sprite.setPosition(this.screenMiddle.x, this.screenMiddle.y, true);
 		this.player.sprite.setFrame('front_idle');
 		this.renderCharacterIcon();
 	}
 
-	// Load (and cache) a spriteSet by name.  If it's already loaded, returns the
+	// Load (and cache) a SpriteSheet by name.  If it's already loaded, returns the
 	// cached instance.
 	async loadSpriteSet(name, file){
 		if(this.spriteSets[name] != undefined) return this.spriteSets[name];
-		const set = new spriteSet();
-		await set.load(file);
+		const set = await SpriteSheet.load(file);
 		this.spriteSets[name] = set;
 		return set;
 	}
 
 	// Spawn an Entity subclass into the world.  Class must be a subclass of
-	// Entity.  spriteFile is a path like 'sprites/rat.sprite'.  options are
+	// Entity.  spriteFile is a path like 'sprites/rat.json'.  options are
 	// passed through to the entity's constructor and can also include x, y,
 	// initialFrame, and spriteName.
 	async spawnEntity(Class, spriteFile, options){
@@ -194,12 +197,12 @@ class Game {
 
 		var setName = options.spriteName != undefined
 			? options.spriteName
-			: spriteFile.replace(/^.*\//, '').replace(/\.sprite$/, '');
+			: spriteFile.replace(/^.*\//, '').replace(/\.json$/, '');
 
 		var set = await this.loadSpriteSet(setName, spriteFile);
 
 		var entity = new Class(this, options);
-		entity.sprite = new cSprite(set);
+		entity.sprite = set.newSprite();
 		entity.sprite.setScale(gameScale);
 		entity.sprite.setFrame(options.initialFrame || 'front_idle');
 
@@ -285,22 +288,22 @@ class Game {
 	}
 
 	async loadMousePointers(){
-		var pointerList = [
-			{'name' : 'target', 'file' : 'target.sprite'}
+		const pointerList = [
+			{ name: 'target', file: 'target.json' }
 		];
 
-		while(pointerList.length > 0){
-			const dat = pointerList.pop();
-			const set = new spriteSet();
-			await set.load('sprites/' + dat.file);
-			this.mousePointers[dat.name] = new cSprite(set);
-			this.mousePointers[dat.name].setScale(gameScale);
+		const loaded = await Promise.all(pointerList.map(async (dat) => {
+			const sheet = await SpriteSheet.load('sprites/' + dat.file);
+			return [dat.name, sheet];
+		}));
+
+		for (const [name, sheet] of loaded) {
+			const sprite = sheet.newSprite();
+			sprite.setScale(gameScale);
+			this.mousePointers[name] = sprite;
 		}
 
-		this.mousePointers['target'].startSequence('spin', {
-			iterations: 0,
-			method : 'manual'
-		});
+		this.mousePointers.target.play('spin');
 	}
 
 	// ------------------------------------------------------------------
@@ -347,6 +350,10 @@ class Game {
 		while(this.waterCycleAccum >= 1){
 			this.waterCycleAccum -= 1;
 			this.waterCycle++;
+		}
+
+		if(this.mousePointers.target){
+			this.mousePointers.target.update(dt * 1000);
 		}
 
 		// Convert dead enemies into corpses; keep corpses in the world.
@@ -511,15 +518,13 @@ class Game {
 
 		var treasureSprite = this.pickTreasureSprite(corpse);
 		if(treasureSprite){
-			corpse.sprite = new cSprite(this.spriteSets.treasures);
+			corpse.sprite = this.spriteSets.treasures.newSprite();
+
 			corpse.sprite.setScale(gameScale);
-			corpse.sprite.startSequence(treasureSprite, {
-				iterations : 0,
-				method	 : 'auto'
-			});
+			corpse.sprite.play(treasureSprite);
 		}else{
 			// fall back to the old visual for empty corpses
-			corpse.sprite = new cSprite(deadEntity.sprite.template);
+			corpse.sprite = deadEntity.sprite.sheet.newSprite();
 			corpse.sprite.setScale(gameScale);
 			corpse.sprite.setFrame(WALK_SEQUENCES[deadEntity.facing][1]);
 		}
@@ -1012,10 +1017,10 @@ class Game {
 		p.attackCooldown = 0;
 		p.attackHitApplied = false;
 		p.damageFlash = 0;
-		p.currentSequence = null;
+		p.sequence = null;
 		p.currentEndFrame = null;
 		p.isAlive = true;
-		p.sprite.stopSequence();
+		p.sprite.stop();
 		p.sprite.setFrame(p.idleFrame());
 
 		// Refresh visibility and redraw.
@@ -1274,7 +1279,7 @@ class Game {
 
 		// Preserve current frame so we can restore it after rendering.
 		var prevFrame = sprite.frameName;
-		var set = sprite.template;
+		var set = sprite.sheet;
 		this.renderFrameIntoButton('btn-character', set, 'front_right_idle', SIDEBAR_ICON_SIZE);
 		if(prevFrame) sprite.setFrame(prevFrame);
 	}
@@ -1493,5 +1498,3 @@ class Game {
 		this.renderCharacterIcon();
 	}
 }
-
-
