@@ -20,7 +20,7 @@ class Game {
 			default	: 'default',
 			attack	: 'url(images/cursor_attack.png) 0 0, crosshair',
 			loot	: 'url(images/cursor_loot.png)   0 0, pointer',
-			talk	: 'url(sprites/cursor_talk.png)   8 8, pointer'
+			talk	: 'url(images/cursor_talk.png)   8 8, pointer'
 		};
 
 		this.currentCursor = 'default';

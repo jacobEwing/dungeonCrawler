@@ -334,13 +334,11 @@ class Entity {
 	// in act() so every exit path from _act() (including the two early
 	// returns) still ticks the animation.
 	act(dtSeconds){
-		if(!this.isAlive) return;
-
-		this._act(dtSeconds);
-
+		if(this.isAlive){
+			this._act(dtSeconds);
+		}
 		if(this.sprite) this.sprite.update(dtSeconds * 1000);
 	}
-
 	_act(dtSeconds){
 		var self = this;
 
