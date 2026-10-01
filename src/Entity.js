@@ -179,9 +179,7 @@ class Entity {
 		if(py == undefined) py = this.position.y;
 
 		// [migrated] sprite.template → sprite.sheet
-		var block = this.sprite && this.sprite.sheet
-			? this.sprite.sheet.collision
-			: null;
+		var block = this.sprite ? this.sprite.collision : null;
 
 		if(block && block.circles){
 			var out = [];

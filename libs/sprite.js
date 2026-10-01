@@ -1,7 +1,7 @@
 'use strict';
 
 /* =============================================================================
- * sprite.js — dependency-free sprite sheet + sprite runtime for <canvas>.
+ * sprite.js - dependency-free sprite sheet + sprite runtime for <canvas>.
  *
  *   const sheet  = await SpriteSheet.load('hero.json');
  *   const hero   = sheet.newSprite();
@@ -38,16 +38,50 @@
  * @property {number} height
  * @property {number} centerx
  * @property {number} centery
- * @property {Vec2}  [drawOffset]
+ * @property {CollisionShape} [collision] Per-frame override for the sheet's
+ *   collision shape. Absent means "inherit the sheet"; `{ circles: [] }`
+ *   means "no collision for this frame".
+ * @property {Object} [transform] Rendering-time transform for this frame.
+ *   Applied in the sprite's local space, on top of the sprite's own
+ *   rotation and scale, and does not affect collision.
+ * @property {number} [transform.translateX] Pixels, default 0.
+ * @property {number} [transform.translateY] Pixels, default 0.
+ * @property {number} [transform.rotation]   Degrees, default 0.
+ * @property {number} [transform.scaleX]     Default 1.
+ * @property {number} [transform.scaleY]     Default 1.
+ * @property {number} [transform.pivotX]     Frame-local pivot X. Default: frame's centerx.
+ * @property {number} [transform.pivotY]     Frame-local pivot Y. Default: frame's centery.
+ */
+
+/**
+ * A single slot in a sequence. `frame` names a frame in the sheet.
+ * `transform`, when present, is a rendering-time adjustment applied only
+ * when this slot is the current one — so the same frame can appear in a
+ * sequence several times with different transforms, animating without
+ * duplicating artwork.
+ *
+ * @typedef {Object} SequenceSlot
+ * @property {string} frame
+ * @property {Object|null} [transform]
+ * @property {number} [transform.translateX] Pixels, default 0.
+ * @property {number} [transform.translateY] Pixels, default 0.
+ * @property {number} [transform.rotation]   Degrees, default 0.
+ * @property {number} [transform.scaleX]     Default 1.
+ * @property {number} [transform.scaleY]     Default 1.
  */
 
 /**
  * @typedef {Object} Sequence
  * @property {string}   name
- * @property {string[]} frames       Frame names, in play order.
+ * @property {Array<string|SequenceSlot>} frames
+ *   Slot entries in play order. Bare strings are shorthand for a slot
+ *   with no transform. Stored in memory as normalised SequenceSlot
+ *   objects; serialised back to bare strings when no transform is set.
  * @property {number}   frameRate    Frames per second.
  * @property {number}   [iterations] 0/undefined = loop forever, n = play n times.
- * @property {'auto'|'manual'} [method]
+ * @property {'auto'|'manual'} [method] Legacy flag, preserved for
+ *   round-tripping old sheets. The runtime is passive, so this no longer
+ *   changes behaviour.
  * @property {number[]} [frameTimes] Per-frame durations in ms; overrides frameRate.
  * @property {Function} [callback]   Invoked when a finite sequence completes.
  */
@@ -110,6 +144,7 @@ function loadImage(src) {
  *   col, row               – grid index, multiplied by the sheet's tile size
  *   centerx/cx, centery/cy – origin
  *   drawOffset             – { x, y } render-time nudge
+ *   collision              – per-frame collision shape, or null to clear
  */
 function applyFrameParams(frame, params, tileW, tileH) {
 	for (const rawKey of Object.keys(params)) {
@@ -128,11 +163,14 @@ function applyFrameParams(frame, params, tileW, tileH) {
 
 			case 'centerx': case 'cx': frame.centerx = Number(value); break;
 			case 'centery': case 'cy': frame.centery = Number(value); break;
-
-			case 'drawoffset':
-				if (value && typeof value === 'object') {
-					frame.drawOffset = { x: Number(value.x) || 0, y: Number(value.y) || 0 };
-				}
+			case 'collision':
+				// Route through parseCollision so the single-circle
+				// shorthand is normalised to the internal { circles } form.
+				frame.collision = parseCollision(value);
+				break;
+			case 'transform':
+				frame.transform = parseTransform(value);
+				if (!frame.transform) delete frame.transform;
 				break;
 		}
 	}
@@ -170,13 +208,109 @@ function parseCollision(value) {
 	return null;
 }
 
+/**
+ * Normalise a sequence slot from JSON input. Accepts a bare frame name
+ * (shorthand for "no transform") or an object `{frame, transform}`.
+ * Returns a uniform `{frame, transform}` shape, or null if the input is
+ * malformed.
+ */
+function normaliseSequenceSlot(entry) {
+	if (typeof entry === 'string') return { frame: entry, transform: null };
+	if (entry && typeof entry === 'object' && typeof entry.frame === 'string') {
+		return { frame: entry.frame, transform: parseTransform(entry.transform) };
+	}
+	return null;
+}
+
+function parseTransform(raw) {
+	if (!raw || typeof raw !== 'object') return null;
+	const t = {
+		translateX: Number(raw.translateX) || 0,
+		translateY: Number(raw.translateY) || 0,
+		rotation:   Number(raw.rotation)   || 0,
+		scaleX:     raw.scaleX !== undefined ? Number(raw.scaleX) : 1,
+		scaleY:     raw.scaleY !== undefined ? Number(raw.scaleY) : 1,
+	};
+	if (raw.pivotX !== undefined) t.pivotX = Number(raw.pivotX);
+	if (raw.pivotY !== undefined) t.pivotY = Number(raw.pivotY);
+
+	// Identity test: T/R/S at defaults means no visible effect, regardless
+	// of pivot. A pivot-only transform has no visual consequence, so
+	// dropping it as null is safe — and matches what the editor produces
+	// anyway, since it also treats a default pivot as identity.
+	if (t.translateX === 0 && t.translateY === 0 && t.rotation === 0
+	    && t.scaleX === 1 && t.scaleY === 1) {
+		return null;
+	}
+	return t;
+}
+
+/**
+ * Serialise a collision shape for JSON output. Single circles collapse to
+ * the shorthand form so hand-authored sheets stay readable; multi-circle
+ * shapes keep the explicit `{ circles: [...] }` structure. Empty or null
+ * shapes produce null, meaning "no collision" and omitted from the output.
+ */
+function formatCollisionForJSON(shape) {
+	if (!shape || !shape.circles || shape.circles.length === 0) return null;
+
+	if (shape.circles.length === 1) {
+		const c = shape.circles[0];
+		return {
+			radius:  c.radius,
+			offsetX: c.offsetX,
+			offsetY: c.offsetY,
+		};
+	}
+
+	return {
+		circles: shape.circles.map(c => ({
+			offsetX: c.offsetX,
+			offsetY: c.offsetY,
+			radius:  c.radius,
+		})),
+	};
+}
+
+/**
+ * Apply a transform to the current context, pivoting around the
+ * transform's pivot point.
+ *
+ * `cx` and `cy` are the frame's origin in draw-local coordinates — the
+ * point the drawImage call places at (0, 0). The transform's pivot,
+ * when specified, is in frame-local coordinates: (0, 0) is the frame
+ * rect's top-left, so a 24×24 frame's centre is (12, 12).
+ *
+ * When pivot is not set, defaults to the frame's origin, which is what
+ * every transform did before pivots existed.
+ */
+function applyLocalTransform(ctx, tf, cx, cy) {
+	if (!tf) return;
+	const pivotX = tf.pivotX !== undefined ? tf.pivotX : cx;
+	const pivotY = tf.pivotY !== undefined ? tf.pivotY : cy;
+	const dx = pivotX - cx;
+	const dy = pivotY - cy;
+
+	const hasPivotShift = (dx !== 0 || dy !== 0);
+	if (hasPivotShift) ctx.translate(dx, dy);
+	if (tf.translateX || tf.translateY) ctx.translate(tf.translateX, tf.translateY);
+	if (tf.rotation) ctx.rotate(tf.rotation * Math.PI / 180);
+	if (tf.scaleX !== 1 || tf.scaleY !== 1) ctx.scale(tf.scaleX, tf.scaleY);
+	if (hasPivotShift) ctx.translate(-dx, -dy);
+}
+
 /* -------------------------------------------------------------------------- */
 /* SpriteSheet                                                                */
 /* -------------------------------------------------------------------------- */
 
 /**
  * An image plus the frames cut from it and the sequences that animate them.
- * Immutable once loaded — sprites reference it, they never mutate it.
+ *
+ * The runtime treats a loaded sheet as read-only - sprites reference it and
+ * never write to it. The editor does the opposite: it mutates `frames`,
+ * `sequences`, `image`, and the top-level settings directly, which is why
+ * Sprite reads `frame`, `image`, and `sequence` through live getters rather
+ * than caching.
  */
 class SpriteSheet {
 	constructor(options = {}) {
@@ -198,8 +332,6 @@ class SpriteSheet {
 		this.frames = Object.create(null);
 		/** @type {Record<string, Sequence>} */
 		this.sequences = Object.create(null);
-		/** @type {CollisionShape|null} */
-		this.collision = null;
 
 		this.ready = false;
 	}
@@ -207,7 +339,7 @@ class SpriteSheet {
 	get frameNames()    { return Object.keys(this.frames); }
 	get sequenceNames() { return Object.keys(this.sequences); }
 
-	/** Reads through to the image, so it is always correct — no listeners. */
+	/** Reads through to the image, so it is always correct - no listeners. */
 	get imageWidth()  { const i = this.image; return i ? (i.naturalWidth  ?? i.width)  : 0; }
 	get imageHeight() { const i = this.image; return i ? (i.naturalHeight ?? i.height) : 0; }
 
@@ -275,8 +407,22 @@ class SpriteSheet {
 		const sequences = pick('sequences');
 		if (sequences !== undefined) this.loadSequences(sequences);
 
-		const collision = pick('collision');
-		if (collision !== undefined) this.collision = parseCollision(collision);
+		// Legacy sheets carry a single sheet-wide collision shape. Fold it
+		// into each frame that doesn't have its own, then forget it.
+		// Loading and re-saving a sheet in the editor makes the migration
+		// permanent.
+		const legacyCollision = pick('collision');
+		if (legacyCollision !== undefined) {
+			const parsed = parseCollision(legacyCollision);
+			if (parsed) {
+				for (const name of this.frameNames) {
+					const f = this.frames[name];
+					if (!Object.prototype.hasOwnProperty.call(f, 'collision')) {
+						f.collision = clone(parsed);
+					}
+				}
+			}
+		}
 
 		return this;
 	}
@@ -301,7 +447,7 @@ class SpriteSheet {
 	/** @returns {Sprite} */
 	newSprite() {
 		if (!this.ready) {
-			throw new Error('SpriteSheet: sheet is not ready — await load()/fromJSON() first');
+			throw new Error('SpriteSheet: sheet is not ready - await load()/fromJSON() first');
 		}
 		const sprite = new Sprite(this);
 		sprite.scale = this.scale;
@@ -326,7 +472,6 @@ class SpriteSheet {
 			height: this.frameHeight || this.imageHeight,
 			centerx: this.centerx,
 			centery: this.centery,
-			drawOffset: { x: 0, y: 0 },
 		};
 		applyFrameParams(frame, params, this.frameWidth, this.frameHeight);
 		this.frames[name] = frame;
@@ -361,6 +506,12 @@ class SpriteSheet {
 			method: 'auto',
 			...def,
 		};
+		// Normalise whatever shape the caller supplied.
+		if (Array.isArray(seq.frames)) {
+			seq.frames = seq.frames.map(normaliseSequenceSlot).filter(Boolean);
+		} else {
+			seq.frames = [];
+		}
 		this.sequences[name] = seq;
 		return seq;
 	}
@@ -383,7 +534,9 @@ class SpriteSheet {
 
 				switch (key) {
 					case 'frames':
-						seq.frames = Array.isArray(value) ? value.slice() : [];
+						seq.frames = Array.isArray(value)
+							? value.map(normaliseSequenceSlot).filter(Boolean)
+							: [];
 						break;
 					case 'framerate':
 						seq.frameRate = Number(value);
@@ -416,8 +569,10 @@ class SpriteSheet {
 	validate() {
 		const problems = [];
 		for (const [seqName, seq] of Object.entries(this.sequences)) {
-			for (const frameName of seq.frames) {
-				if (!this.frames[frameName]) problems.push({ sequence: seqName, frame: frameName });
+			for (const slot of seq.frames) {
+				if (!this.frames[slot.frame]) {
+					problems.push({ sequence: seqName, frame: slot.frame });
+				}
 			}
 		}
 		return problems;
@@ -434,22 +589,29 @@ class SpriteSheet {
 				width: f.width, height: f.height,
 				centerx: f.centerx, centery: f.centery,
 			};
-			if (f.drawOffset && (f.drawOffset.x || f.drawOffset.y)) {
-				out.drawOffset = { x: f.drawOffset.x, y: f.drawOffset.y };
-			}
+			const collision = formatCollisionForJSON(f.collision);
+			if (collision) out.collision = collision;
+			if (f.transform) out.transform = { ...f.transform };
 			frames[name] = out;
 		}
 
 		const sequences = {};
 		for (const [name, s] of Object.entries(this.sequences)) {
-			const out = { frames: s.frames.slice(), frameRate: s.frameRate };
+			// Compact serialisation: bare strings for slots with no
+			// transform, objects for the rest. Keeps hand-authored JSON
+			// readable and matches the pre-transform format.
+			const frames = s.frames.map(slot => {
+				if (!slot.transform) return slot.frame;
+				return { frame: slot.frame, transform: { ...slot.transform } };
+			});
+			const out = { frames, frameRate: s.frameRate };
 			if (s.iterations) out.iterations = s.iterations;
 			if (s.method && s.method !== 'auto') out.method = s.method;
 			if (s.frameTimes?.length) out.frameTimes = s.frameTimes.slice();
 			sequences[name] = out;
 		}
 
-		const out = {
+		return {
 			image: this.imageSrc,
 			frameWidth: this.frameWidth,
 			frameHeight: this.frameHeight,
@@ -459,8 +621,6 @@ class SpriteSheet {
 			frames,
 			sequences,
 		};
-		if (this.collision) out.collision = clone(this.collision);
-		return out;
 	}
 }
 
@@ -474,7 +634,7 @@ class SpriteSheet {
  * Coordinate model: `position` is where the sprite's origin lands in the
  * parent's space. The origin defaults to the sheet's `centerx`/`centery`, or
  * the frame's own override. Children are drawn inside the parent's transform,
- * so a child at (0, 0) sits on the parent's origin — handy for equipment.
+ * so a child at (0, 0) sits on the parent's origin - handy for equipment.
  */
 class Sprite {
 	/** @param {SpriteSheet} sheet */
@@ -484,7 +644,6 @@ class Sprite {
 		}
 
 		this.sheet = sheet;
-		this.image = sheet.image;
 
 		this.position   = { x: 0, y: 0 };
 		this.drawOffset = { x: 0, y: 0 };
@@ -496,8 +655,7 @@ class Sprite {
 		this.opacity    = 1;
 		this.visible    = true;
 
-		/** @type {Frame|null} */
-		this.frame = null;
+		/** @type {string|null} Name of the current frame, or null for none. */
 		this.frameName = null;
 
 		/** @type {Sprite|null} */
@@ -507,12 +665,38 @@ class Sprite {
 
 		// Animation state
 		this.animating    = false;
-		this.sequence     = null;
 		this.sequenceName = null;
 		this._frameIndex     = 0;
 		this._elapsed        = 0;
 		this._iterationsLeft = 0;
 		this._onComplete     = null;
+
+		// Transform of the current sequence slot, or null when the sprite
+		// is not playing a sequence (or the slot has no transform). Applied
+		// at draw time on top of the frame transform; does not affect
+		// collision.
+		this._slotTransform = null;
+	}
+
+	/* ---- live getters ---------------------------------------------------- */
+
+	// All four of the following read through to the sheet so that editor-side
+	// mutations (frame data replaced, image swapped, sequence reordered) take
+	// effect immediately, without the sprite needing to invalidate anything.
+
+	// The current frame's collision shape, or null if it has none. Every
+	// frame owns its own collision; there is no sheet-wide fallback.
+	get collision() {
+		return this.frame?.collision ?? null;
+	}
+	get image() { return this.sheet?.image ?? null; }
+	get frame() {
+		if (this.frameName == null) return null;
+		return this.sheet?.frames?.[this.frameName] ?? null;
+	}
+	get sequence() {
+		if (!this.sequenceName) return null;
+		return this.sheet?.sequences?.[this.sequenceName] ?? null;
 	}
 
 	get numChildren() { return this.children.length; }
@@ -527,18 +711,42 @@ class Sprite {
 
 	/* ---- frames ---------------------------------------------------------- */
 
-	/** @param {string} name */
+	/**
+	 * Set the current frame directly. Clears any slot transform, since
+	 * setting a frame outside a sequence context means "no sequence is
+	 * animating this sprite right now".
+	 * @param {string} name
+	 */
 	setFrame(name) {
-		const frame = this.sheet.frames[name];
-		if (!frame) throw new Error(`Sprite.setFrame: unknown frame "${name}"`);
-		this.frame = frame;
+		if (!this.sheet.frames[name]) {
+			throw new Error(`Sprite.setFrame: unknown frame "${name}"`);
+		}
 		this.frameName = name;
+		this._slotTransform = null;
 		return this;
 	}
 
+	// Internal: apply a sequence slot — sets the frame and installs the
+	// slot's transform (or clears it). Called from play() and _step().
+	_applySlot(slot) {
+		if (!slot || !this.sheet.frames[slot.frame]) return;
+		this.frameName = slot.frame;
+		this._slotTransform = slot.transform || null;
+	}
+
 	clearFrame() {
-		this.frame = null;
 		this.frameName = null;
+		return this;
+	}
+
+	/**
+	 * Set the current frame from a sequence slot ({ frame, transform })
+	 * and install the slot's transform. Used externally when a caller
+	 * needs to display a specific slot without playing the sequence —
+	 * the editor's preview pane does this when paused.
+	 */
+	setSlot(slot) {
+		this._applySlot(slot);
 		return this;
 	}
 
@@ -562,23 +770,22 @@ class Sprite {
 		}
 
 		this.animating       = true;
-		this.sequence        = seq;
 		this.sequenceName    = name;
 		this._frameIndex     = 0;
 		this._elapsed        = 0;
 		this._iterationsLeft = seq.iterations ?? 0;
 		this._onComplete     = options.onComplete ?? seq.callback ?? null;
 
-		this.setFrame(seq.frames[0]);
+		this._applySlot(seq.frames[0]);
 		return this;
 	}
 
 	/** Stop animating. Does not fire the completion callback. */
 	stop() {
 		this.animating = false;
-		this.sequence = null;
 		this.sequenceName = null;
 		this._onComplete = null;
+		this._slotTransform = null;
 		return this;
 	}
 
@@ -607,9 +814,8 @@ class Sprite {
 			if (this._iterationsLeft > 0) {
 				this._iterationsLeft -= 1;
 				if (this._iterationsLeft === 0) {
-					// Finished — hold the final frame, then notify.
+					// Finished - hold the final frame, then notify.
 					this.animating = false;
-					this.sequence = null;
 					this.sequenceName = null;
 					const cb = this._onComplete;
 					this._onComplete = null;
@@ -621,8 +827,7 @@ class Sprite {
 		}
 
 		this._frameIndex = next;
-		const name = frames[next];
-		if (name) this.setFrame(name);
+		this._applySlot(frames[next]);
 	}
 
 	/**
@@ -667,9 +872,8 @@ class Sprite {
 		const cy = options.centery ?? frame?.centery ?? sheet.centery;
 
 		const scale = options.scale ?? this.scale;
-		const x = (options.x ?? this.position.x) + this.drawOffset.x + (frame?.drawOffset?.x ?? 0);
-		const y = (options.y ?? this.position.y) + this.drawOffset.y + (frame?.drawOffset?.y ?? 0);
-
+		const x = (options.x ?? this.position.x) + this.drawOffset.x;
+		const y = (options.y ?? this.position.y) + this.drawOffset.y;
 		ctx.save();
 		try {
 			ctx.translate(x * scale, y * scale);
@@ -679,8 +883,14 @@ class Sprite {
 			if (this.opacity !== 1) ctx.globalAlpha *= this.opacity;
 
 			this._drawChildren(ctx, true);
+
+			applyLocalTransform(ctx, frame?.transform, cx, cy);
+			applyLocalTransform(ctx, this._slotTransform, cx, cy);
+
 			ctx.drawImage(this.image, sx, sy, sw, sh, -cx, -cy, sw, sh);
+
 			this._drawChildren(ctx, false);
+
 		} finally {
 			ctx.restore();
 		}
@@ -705,7 +915,7 @@ class Sprite {
 	}
 
 	/**
-	 * Blit a random region of the sheet — handy for rubble, foliage, stars.
+	 * Blit a random region of the sheet - handy for rubble, foliage, stars.
 	 * @param {number} [randomKey] Deterministic seed; omit for true randomness.
 	 */
 	drawRandomArea(ctx, dx, dy, width, height, randomKey) {
@@ -754,7 +964,7 @@ class Sprite {
 	}
 
 	/**
-	 * Detach `child` from this sprite, or — with no argument — detach this
+	 * Detach `child` from this sprite, or - with no argument âtach this
 	 * sprite from its own parent.
 	 * @param {Sprite} [child]
 	 */
@@ -781,6 +991,5 @@ class Sprite {
 	}
 }
 
-//export { Sprite, SpriteSheet };
 window.Sprite = Sprite;
 window.SpriteSheet = SpriteSheet;
