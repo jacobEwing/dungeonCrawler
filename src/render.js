@@ -589,6 +589,21 @@ function createRenderView(game){
 			o.sprite.draw(game.ctx, { x : o.x, y : o.y });
 		}
 
+		// --- clouds (sky layer, drawn above the world but below the HUD) ---
+		if(game.activeMap.clouds && game.activeMap.clouds.length > 0){
+			var cloudSprite = game.sprites.clouds;
+			var sorted = game.activeMap.clouds.slice().sort(function(a, b){ return a.y - b.y; });
+			for(var ci = 0; ci < sorted.length; ci++){
+				var c = sorted[ci];
+				cloudSprite.setFrame(c.frame);
+				cloudSprite.setPosition(
+					cellSize * middleX + c.x - game.player.position.x,
+					cellSize * middleY + c.y - game.player.position.y
+				);
+				cloudSprite.draw(game.ctx);
+			}
+		}
+
 		if(game.showCollisionShapes){
 			drawCollisionShapes(game, middleX, middleY);
 		}

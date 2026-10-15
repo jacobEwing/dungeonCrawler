@@ -144,7 +144,8 @@ class Game {
 			{'name' : 'valuable', 'file' : 'valuables.json' }, // valuable inventory icons
 			{'name' : 'weapon', 'file' : 'weapon.json' }, // weapon inventory icons
 			{'name' : 'ui', 'file' : 'ui.json'}, // ui components
-			{'name' : 'weapon_sword', 'file' : 'weapon_sword.json'}
+			{'name' : 'weapon_sword', 'file' : 'weapon_sword.json'},
+			{'name' : 'clouds', 'file' : 'clouds.json'},
 
 		];
 
@@ -349,6 +350,8 @@ class Game {
 			this.waterCycleAccum -= 1;
 			this.waterCycle++;
 		}
+
+		this.updateClouds(dt);
 
 		if(this.mousePointers.target){
 			this.mousePointers.target.update(dt * 1000);
@@ -1347,6 +1350,79 @@ class Game {
 			console.error("Failed to materialize spawn point", sp, err);
 			sp.spawning = false;
 		});
+	}
+
+	// ------------------------------------------------------------------
+	// clouds
+	// ------------------------------------------------------------------
+	updateClouds(dt){
+		if(!this.activeMap) return;
+		if(this.activeMap.cloudCount <= 0) return;
+
+		if(!this.activeMap.clouds){
+			this.spawnClouds(this.activeMap);
+		}
+
+		var viewW = this.canvas.width  / gameScale;
+		var viewH = this.canvas.height / gameScale;
+		var px = this.player.position.x;
+		var py = this.player.position.y;
+
+		var margin = CLOUD_SPAWN_MARGIN;
+		var winLeft   = px - viewW / 2 - margin;
+		var winRight  = px + viewW / 2 + margin;
+		var winTop    = py - viewH / 2 - margin;
+		var winBottom = py + viewH / 2 + margin;
+
+		for(var n = 0; n < this.activeMap.clouds.length; n++){
+			var c = this.activeMap.clouds[n];
+			c.x += c.speed * dt;
+
+			// Horizontal wrap.  Two cases:
+			//   1. Drifted past the right edge of the window → recycle left.
+			//   2. Player walked past it (now off the left edge) → recycle right.
+			if(c.x > winRight){
+				c.x = winLeft + Math.random() * 60;
+				c.y = winTop + Math.random() * (winBottom - winTop);
+				c.frame = String(1 + Math.floor(Math.random() * CLOUD_FRAME_COUNT));
+				c.speed = CLOUD_SPEED_MIN + Math.random() * (CLOUD_SPEED_MAX - CLOUD_SPEED_MIN);
+			}else if(c.x < winLeft){
+				c.x = winRight - Math.random() * 60;
+				c.y = winTop + Math.random() * (winBottom - winTop);
+				c.frame = String(1 + Math.floor(Math.random() * CLOUD_FRAME_COUNT));
+				c.speed = CLOUD_SPEED_MIN + Math.random() * (CLOUD_SPEED_MAX - CLOUD_SPEED_MIN);
+			}
+
+			// Vertical wrap — only relevant when the player walks north or south.
+			if(c.y > winBottom){
+				c.y = winTop + Math.random() * 60;
+			}else if(c.y < winTop){
+				c.y = winBottom - Math.random() * 60;
+			}
+		}
+	}
+
+	spawnClouds(map){
+		map.clouds = [];
+
+		var viewW = this.canvas.width  / gameScale;
+		var viewH = this.canvas.height / gameScale;
+		var px = this.player.position.x;
+		var py = this.player.position.y;
+
+		var left   = px - viewW / 2 - CLOUD_SPAWN_MARGIN;
+		var right  = px + viewW / 2 + CLOUD_SPAWN_MARGIN;
+		var top    = py - viewH / 2 - CLOUD_SPAWN_MARGIN;
+		var bottom = py + viewH / 2 + CLOUD_SPAWN_MARGIN;
+
+		for(var n = 0; n < map.cloudCount; n++){
+			var c = {};
+			c.x = left + Math.random() * (right - left);
+			c.y = top  + Math.random() * (bottom - top);
+			c.frame = String(1 + Math.floor(Math.random() * CLOUD_FRAME_COUNT));
+			c.speed = CLOUD_SPEED_MIN + Math.random() * (CLOUD_SPEED_MAX - CLOUD_SPEED_MIN);
+			map.clouds.push(c);
+		}
 	}
 
 	handleResize(){

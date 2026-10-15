@@ -5,6 +5,7 @@
 
 var gameScale = 5;
 var cellSize = 12;
+var CLOUD_SPAWN_MARGIN = 200;   // world pixels; how far outside the view window clouds spawn/wrap
 
 
 // ============================================================================
@@ -175,6 +176,12 @@ var walkSpeed = 44;
 
 // Water animation steps per second of wall-clock time.
 var waterCycleRate = 14;
+
+// --- clouds ---
+var CLOUD_SPEED_MIN = 8;      // px/sec, leftmost drift speed
+var CLOUD_SPEED_MAX = 12;      // px/sec, rightmost drift speed
+var CLOUD_SPAWN_MARGIN = 96;  // px beyond the left edge where clouds respawn
+var CLOUD_FRAME_COUNT = 8;     // matches clouds.json
 
 // --- spawn point tuning ---
 

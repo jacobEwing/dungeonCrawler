@@ -1,5 +1,6 @@
 {
 	"image" : "Map2.gif",
+	"cloudCount" : 5,
 	"spawnMode" : "persistent",
 	"spawns" : [
 		{ "key" : "mjgTEUTetdueueoeus", "x" : 50, "y" : 58, "type" : "knight" },

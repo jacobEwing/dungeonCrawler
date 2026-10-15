@@ -55,6 +55,7 @@ var mapBuilder = function(){
 	this.rng = null;
 	this.file = null;
 	this.id = null;
+	this.cloudCount = 0;
 	this.defaultParams = {
 		'category' : 'dungeon',
 		'width' : 60,
@@ -77,6 +78,7 @@ mapBuilder.prototype.loadImageMap = function(mapFile){
 	var me = this;
 	return new Promise(function(resolve, reject){
 		me.width = me.height = 0;
+		me.cloudCount = 0;
 		me.mappedItems = [];
 		me.items = {};
 		me.entities = [];
@@ -128,7 +130,9 @@ mapBuilder.prototype.loadImageMap = function(mapFile){
 					if(data.spawns){
 						me.rawSpawns = data.spawns;					
 					}
-
+					if(data.cloudCount != null){
+						me.cloudCount = Number(data.cloudCount) || 0;
+					}
 					var canvas = document.createElement('canvas');
 					canvas.width = me.width;
 					canvas.height = me.height;
