@@ -238,7 +238,7 @@ class Entity {
 		if(this.sprite) this.sprite.stop();
 	}
 
-	idleFrame(){
+	idleSequence(){
 		return WALK_SEQUENCES[this.facing][1];
 	}
 
@@ -354,8 +354,7 @@ class Entity {
 			if(this.attackTimer <= 0){
 				this.attackTimer = 0;
 				this.attackCooldown = ATTACK_COOLDOWN;
-				this.sprite.stop();
-				this.sprite.setFrame(this.idleFrame());
+				this.sprite.play(this.idleSequence());
 				this.sequence = null;
 			}
 
@@ -411,18 +410,13 @@ class Entity {
 
 		if(sequence == null){
 			if(this.sequence != null){
-				this.sprite.stop();
-				this.sprite.setFrame(this.currentEndFrame);
+				this.sprite.play(this.currentEndFrame);
 				this.sequence = null;
 			}
 		}else if(sequence != this.sequence){
 			this.currentEndFrame = endFrame;
 			this.sequence = sequence;
-			// [migrated] play(name, fn) → play(name, { onComplete: fn })
-			this.sprite.play(sequence, { onComplete: function(){
-				self.sequence = null;
-				self.sprite.setFrame(endFrame);
-			} });
+			this.sprite.play(sequence);
 		}
 	}
 

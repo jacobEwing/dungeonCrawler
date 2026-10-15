@@ -142,7 +142,6 @@ class Game {
 			{'name' : 'caveEntrance' , 'file' : 'caveEntrance.json'},
 			{'name' : 'waterWaves' , 'file' : 'waterWaves.json'},
 			{'name' : 'rat', 'file' : 'rat.json'},
-			{'name' : 'treasures', 'file' : 'treasures.json' },
 			{'name' : 'valuable', 'file' : 'valuables.json' }, // valuable inventory icons
 			{'name' : 'weapon', 'file' : 'weapon.json' }, // weapon inventory icons
 			{'name' : 'ui', 'file' : 'ui.json'}, // ui components
@@ -172,7 +171,7 @@ class Game {
 		this.player.sprite = this.playerSpriteSet.newSprite();
 		this.player.sprite.setScale(gameScale);
 		this.player.sprite.setPosition(this.screenMiddle.x, this.screenMiddle.y, true);
-		this.player.sprite.setFrame('front_idle');
+		this.player.sprite.play('front_idle');
 		this.renderCharacterIcon();
 	}
 
@@ -204,7 +203,7 @@ class Game {
 		var entity = new Class(this, options);
 		entity.sprite = set.newSprite();
 		entity.sprite.setScale(gameScale);
-		entity.sprite.setFrame(options.initialFrame || 'front_idle');
+		entity.sprite.play(options.initialSequence || 'front_idle');
 
 		if(options.x != undefined && options.y != undefined){
 			entity.setMapPos(options.x, options.y);
@@ -509,23 +508,21 @@ class Game {
 
 	spawnCorpseFor(deadEntity){
 		var corpse = new Corpse(this, {
-			facing	  : deadEntity.facing,
+			facing      : deadEntity.facing,
 			possessions : deadEntity.possessions,
 			gold        : deadEntity.gold || 0
 		});
 
 		corpse.spawnPoint = deadEntity.spawnPoint;
 
-		var treasureSprite = this.pickTreasureSprite(corpse);
-		if(treasureSprite){
-			corpse.sprite = this.spriteSets.treasures.newSprite();
-
-			corpse.sprite.setScale(gameScale);
-			corpse.sprite.play(treasureSprite);
+		// The corpse wears the dead entity's own sprite, playing its "dead"
+		// sequence.  Fall back to the facing idle frame if the sheet doesn't
+		// define one (e.g. a sprite that hasn't been updated yet).
+		corpse.sprite = deadEntity.sprite.sheet.newSprite();
+		corpse.sprite.setScale(gameScale);
+		if(corpse.sprite.sheet.sequences.dead){
+			corpse.sprite.play('dead');
 		}else{
-			// fall back to the old visual for empty corpses
-			corpse.sprite = deadEntity.sprite.sheet.newSprite();
-			corpse.sprite.setScale(gameScale);
 			corpse.sprite.setFrame(WALK_SEQUENCES[deadEntity.facing][1]);
 		}
 
@@ -536,15 +533,6 @@ class Game {
 
 		this.characters.push(corpse);
 		return corpse;
-	}
-
-	pickTreasureSprite(corpse){
-		var hasGold  = corpse.gold > 0;
-		var hasItems = corpse.possessions && corpse.possessions.length > 0;
-
-		if(hasItems) return 'chestSparkle';
-		if(hasGold)  return 'goldSparkle';
-		return null;
 	}
 
 	lootCorpse(corpse){
@@ -1021,7 +1009,7 @@ class Game {
 		p.currentEndFrame = null;
 		p.isAlive = true;
 		p.sprite.stop();
-		p.sprite.setFrame(p.idleFrame());
+		p.sprite.play(p.idleSequence());
 
 		// Refresh visibility and redraw.
 		this.updateVisibility();
