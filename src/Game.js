@@ -141,7 +141,6 @@ class Game {
 			{'name' : 'longGrass', 'file' : 'longGrass.json'},
 			{'name' : 'caveEntrance' , 'file' : 'caveEntrance.json'},
 			{'name' : 'waterWaves' , 'file' : 'waterWaves.json'},
-			{'name' : 'rat', 'file' : 'rat.json'},
 			{'name' : 'valuable', 'file' : 'valuables.json' }, // valuable inventory icons
 			{'name' : 'weapon', 'file' : 'weapon.json' }, // weapon inventory icons
 			{'name' : 'ui', 'file' : 'ui.json'}, // ui components
@@ -185,7 +184,7 @@ class Game {
 	}
 
 	// Spawn an Entity subclass into the world.  Class must be a subclass of
-	// Entity.  spriteFile is a path like 'sprites/rat.json'.  options are
+	// Entity.  spriteFile is a path like 'sprites/mouse.json'.  options are
 	// passed through to the entity's constructor and can also include x, y,
 	// initialFrame, and spriteName.
 	async spawnEntity(Class, spriteFile, options){
