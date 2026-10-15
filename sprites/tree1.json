@@ -1,27 +1,23 @@
 {
-	"image" : "tree1.png",
-	"frameWidth" : 6,
-	"frameHeight" : 6,
-	"centerx" : 0,
-	"centery" : 0,
-	"frames" : {
-		"trunk" : { 
-			"xoffset" : 30, 
-			"yoffset" : 18, 
-			"width" : 7, 
-			"height" : 19, 
-			"drawOffset" :  { 
-				"x" : 2, 
-				"y" : -10
-			}
+	"image": "tree1.png",
+	"frameWidth": 6,
+	"frameHeight": 6,
+	"centerx": 0,
+	"centery": 0,
+	"frames": {
+		"trunk": {
+			"xoffset": 30,
+			"yoffset": 18,
+			"width": 7,
+			"height": 19,
+			"centerx": -2,
+			"centery": 10
 		},
-		"greens" : { 
-			"width" : 26, 
-			"height" : 23, 
-			"drawoffset" : { 
-				"x" : -8, 
-				"y" : -27 
-			}
+		"greens": {
+			"width": 26,
+			"height": 23,
+			"centerx": 8,
+			"centery": 27
 		}
 	}
 }

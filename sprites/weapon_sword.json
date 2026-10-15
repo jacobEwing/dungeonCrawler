@@ -3,11 +3,6 @@
 	"frameRate": 10,
 	"frameWidth": 24,
 	"frameHeight": 24,
-	"collision": {
-		"radius": 2,
-		"offsetX": 0,
-		"offsetY": -1
-	},
 	"frames": {
 		"left_idle": {
 			"col": 0,
